@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini World Profile</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --glass-bg: rgba(15, 23, 42, 0.95);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --primary: #38bdf8;
+        }
+        body { font-family: 'Quicksand', sans-serif; background-color: #020617; color: #e2e8f0; overflow-x: hidden; min-height: 100vh; }
+        
+        /* Starry BG */
+        .stars { position: fixed; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(circle at bottom, #1e293b 0%, #020617 100%); }
+        .star { position: absolute; background: white; border-radius: 50%; animation: twinkle var(--d) infinite ease-in-out; opacity: var(--o); }
+        @keyframes twinkle { 50% { opacity: 1; transform: scale(1.2); box-shadow: 0 0 3px white; } }
+
+        /* Components */
+        .glass { background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 24px; box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5); }
+        .btn-grad { background: linear-gradient(135deg, #0ea5e9, #6366f1); transition: 0.3s; }
+        .btn-grad:hover { transform: translateY(-2px); box-shadow: 0 0 20px rgba(56, 189, 248, 0.4); }
+        .btn-grad:active { transform: scale(0.95); }
+        
+        .tool-btn { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; transition: 0.2s; border-radius: 8px; cursor: pointer; }
+        .tool-btn:hover { background: rgba(255,255,255,0.2); color: white; }
+        
+        .copy-btn { cursor: pointer; transition: all 0.2s; }
+        .copy-btn:hover { transform: scale(1.1); color: #38bdf8; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 99px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+
+        .anim-up { animation: up 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+        @keyframes up { from { opacity: 0; transform: translateY(20px); } }
+
+        /* Smooth Blink Animation (1.5s cycle) */
+        @keyframes smooth-blink { 
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; } 
+        }
+        .blink-text { animation: smooth-blink 1.5s ease-in-out infinite; }
+
+        /* Link Styles */
+        a.mw-link { color: #38bdf8; text-decoration: underline; transition: color 0.2s; cursor: pointer; }
+        a.mw-link:hover { color: #7dd3fc; }
+
+        /* JSON Viewer */
+        .json-viewer { 
+            font-family: 'Fira Code', monospace; 
+            font-size: 13px; 
+            line-height: 1.5; 
+            color: #d4d4d4; 
+            white-space: pre; 
+            counter-reset: line; 
+        }
+        .j-line { display: flex; align-items: flex-start; }
+        .j-line:hover { background: rgba(255,255,255,0.05); }
+        .j-num-col { 
+            flex-shrink: 0; width: 45px; text-align: right; 
+            padding-right: 15px; margin-right: 10px; 
+            color: #6e7681; border-right: 1px solid rgba(255,255,255,0.1); 
+            user-select: none; opacity: 0.7; 
+        }
+        .j-content { flex-grow: 1; }
+        .j-key { color: #9cdcfe; } .j-str { color: #ce9178; } .j-num { color: #b5cea8; } .j-bool { color: #569cd6; } .j-null { color: #569cd6; } .j-punc { color: #d4d4d4; }
+        .j-toggle { cursor: pointer; display: inline-block; width: 14px; text-align: center; color: #c5c5c5; transition: 0.15s; margin-right: 2px; }
+        .j-toggle:hover { color: #fff; }
+        .j-toggle.collapsed { transform: rotate(-90deg); }
+        .j-collapsed-content { display: none; color: #808080; cursor: pointer; font-style: italic; padding: 0 4px; }
+        .j-collapsed-content:hover { color: #b0b0b0; }
+        .j-line.collapsed .j-collapsed-content { display: inline; } 
+        .j-line.collapsed .j-open-brace { display: inline; } 
+        .j-hidden { display: none !important; }
+        
+        /* Modal */
+        #data-modal.show { opacity: 1; pointer-events: auto; }
+        #data-modal .modal-content { transform: scale(0.95); transition: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        #data-modal.show .modal-content { transform: scale(1); }
+
+        /* Viewer Nav */
+        .nav-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; z-index: 60; }
+        .nav-btn:hover { background: var(--primary); border-color: var(--primary); }
+        .nav-prev { left: 30px; } .nav-next { right: 30px; }
+        
+        #v-container { cursor: grab; } #v-container.grabbing { cursor: grabbing; }
+
+        /* Counter in Viewer */
+        #v-counter {
+            position: absolute; top: 30px; left: 30px; 
+            background: rgba(0,0,0,0.6); color: white; 
+            padding: 5px 12px; border-radius: 20px; 
+            font-size: 14px; font-weight: bold; pointer-events: none;
+            border: 1px solid rgba(255,255,255,0.1); z-index: 60;
+        }
+    </style>
+</head>
+<body>
+    <div id="stars" class="stars"></div>
+
+    <div class="container mx-auto px-4 py-8 flex flex-col items-center min-h-screen">
+        <div class="w-full max-w-2xl mt-10 mb-12 text-center z-10">
+            <h1 class="text-5xl md:text-6xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-sky-300 via-indigo-300 to-purple-300 drop-shadow-lg tracking-tight">Mini World Profile</h1>
+            <div class="glass p-2 flex items-center shadow-2xl relative group">
+                <i class="fa-solid fa-magnifying-glass text-sky-400 ml-4 text-lg group-focus-within:text-indigo-400 transition-colors"></i>
+                <input type="text" id="search-input" class="w-full bg-transparent border-none text-white px-4 py-3 focus:outline-none placeholder-slate-500 font-semibold text-lg" placeholder="Nhập UIDs">
+                <button onclick="handleSearch()" class="btn-grad text-white px-8 py-2.5 rounded-xl font-bold text-sm shadow-lg whitespace-nowrap mr-1">SEARCH</button>
+            </div>
+            <p class="text-slate-500 text-xs mt-3 font-medium">       </p>
+        </div>
+
+        <div id="loading" class="hidden my-10"><div class="w-10 h-10 border-4 border-sky-500/30 border-t-sky-400 rounded-full animate-spin"></div></div>
+        <div id="error-msg" class="hidden w-full max-w-xl mb-6 bg-red-500/10 border border-red-500/20 text-red-200 px-6 py-4 rounded-2xl flex items-center gap-3 backdrop-blur-md anim-up"><i class="fa-solid fa-triangle-exclamation text-xl"></i> <span id="err-txt">Lỗi kết nối</span></div>
+        <div id="results" class="w-full max-w-5xl grid grid-cols-1 gap-8 pb-20 z-10"></div>
+    </div>
+
+    <!-- Viewer -->
+    <div id="viewer" class="fixed inset-0 z-50 hidden bg-black/95 backdrop-blur-md flex items-center justify-center opacity-0 transition-opacity duration-300 select-none">
+        <div id="v-counter">1 / 1</div>
+        <button id="v-prev" class="nav-btn nav-prev" onclick="navImg(-1)"><i class="fa-solid fa-chevron-left text-xl"></i></button>
+        <button id="v-next" class="nav-btn nav-next" onclick="navImg(1)"><i class="fa-solid fa-chevron-right text-xl"></i></button>
+
+        <div class="absolute bottom-10 glass px-6 py-3 rounded-full flex gap-4 z-50">
+            <button onclick="imgAct('rot-l')" class="text-white/70 hover:text-sky-400" title="Xoay Trái"><i class="fa-solid fa-rotate-left"></i></button>
+            <button onclick="imgAct('rot-r')" class="text-white/70 hover:text-sky-400" title="Xoay Phải"><i class="fa-solid fa-rotate-right"></i></button>
+            <button onclick="imgAct('flip-h')" class="text-white/70 hover:text-sky-400" title="Lật Ngang"><i class="fa-solid fa-arrows-left-right"></i></button>
+            <button onclick="imgAct('flip-v')" class="text-white/70 hover:text-sky-400" title="Lật Dọc"><i class="fa-solid fa-arrows-up-down"></i></button>
+            <div class="w-px bg-white/10 mx-2"></div>
+            <button onclick="imgAct('zm-o')" class="text-white/70 hover:text-sky-400"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+            <button onclick="imgAct('rst')" class="text-white text-xs font-bold px-2">RESET</button>
+            <button onclick="imgAct('zm-i')" class="text-white/70 hover:text-sky-400"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+            <div class="w-px bg-white/10 mx-2"></div>
+            <button onclick="dlImg()" class="text-white/70 hover:text-green-400"><i class="fa-solid fa-download"></i></button>
+            <button onclick="openImg()" class="text-white/70 hover:text-blue-400"><i class="fa-solid fa-external-link"></i></button>
+        </div>
+        <button onclick="closeV()" class="absolute top-8 right-8 text-white/50 hover:text-white text-4xl transition z-50"><i class="fa-solid fa-xmark"></i></button>
+        
+        <div class="w-full h-full flex items-center justify-center overflow-hidden" id="v-container">
+            <img id="v-img" class="max-w-full max-h-full object-contain transition-transform duration-75 origin-center will-change-transform">
+        </div>
+    </div>
+
+    <!-- Data Modal -->
+    <div id="data-modal" class="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="modal-content glass w-[95%] max-w-5xl h-[90vh] flex flex-col overflow-hidden shadow-2xl border border-white/10">
+            <div class="flex justify-between items-center px-6 py-4 border-b border-white/10 bg-white/5">
+                <h3 class="text-lg font-bold text-sky-400 flex items-center gap-2"><i class="fa-solid fa-code"></i> Dữ Liệu Raw (JSON)</h3>
+                <div class="flex gap-3">
+                    <button onclick="copyData()" class="tool-btn px-3 py-1.5 text-xs font-bold flex items-center gap-2 hover:bg-white/10"><i class="fa-regular fa-copy mr-1"></i> Copy</button>
+                    <button onclick="dlData()" class="tool-btn px-3 py-1.5 text-xs font-bold flex items-center gap-2 hover:bg-green-500/20 text-green-400"><i class="fa-solid fa-download"></i> Tải JSON</button>
+                    <div class="w-px bg-white/10 mx-1"></div>
+                    <button onclick="closeData()" class="text-xl text-slate-400 hover:text-red-400 transition"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+            <div class="flex-grow overflow-auto bg-[#1e1e1e] text-sm custom-scroll">
+                <div id="json-viewer" class="json-viewer p-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        const API_BASE = "http://shequ.miniworldgame.com:8080/miniw/profile/?act=getProfileBatch";
+        const PROXIES = [
+            u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+            u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+            u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+            u => `https://thingproxy.freeboard.io/fetch/${u}`
+        ];
+        
+        window.PROFILE_DB = {}; 
+
+        // Viewer State Variables
+        let vs = {s:1, r:0, x:1, y:1, tx:0, ty:0};
+        let isDragging = false, startX, startY;
+        let curPhotos = [], curIdx = -1;
+        let jsonLines = [], lineCounter = 0;
+        let currentUinForData = null;
+
+        // Utils
+        const getProxyImg = u => {
+            if(!u) return "https://www.miniworldgame.com/static/images/icon.png";
+            return u.startsWith("http:") ? `https://wsrv.nl/?url=${encodeURIComponent(u)}` : u;
+        };
+        const fmtDate = ts => ts ? new Date(ts*1000).toLocaleString('vi-VN', {weekday:'long',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : "N/A";
+        const timeAgo = ts => {
+            if(!ts) return "";
+            const d = Math.floor(Date.now()/1000) - ts;
+            if(d<60) return "Vừa xong"; if(d<3600) return `${Math.floor(d/60)} phút trước`; if(d<86400) return `${Math.floor(d/3600)} giờ trước`;
+            if(d<2592000) return `${Math.floor(d/86400)} ngày trước`; if(d<31536000) return `${Math.floor(d/2592000)} tháng trước`; return `${Math.floor(d/31536000)} năm trước`;
+        };
+        const copy = (btn, txt) => {
+            if(!txt) return; try{ txt=decodeURIComponent(txt); }catch(e){}
+            const el = document.createElement('textarea'); el.value = txt; el.style.position='fixed'; el.style.left='-9999px'; document.body.appendChild(el);
+            el.select(); try { document.execCommand('copy'); if(btn){ const i = btn.querySelector('i'); if(i){ const old=i.className; i.className="fa-solid fa-check text-green-400"; setTimeout(()=>i.className=old,2000); }}} catch(e){}
+            document.body.removeChild(el);
+        };
+        const linkify = (text) => {
+            if (!text) return "";
+            // Enhanced regex for domains starting with www or ending with common TLDs without http
+            return text.replace(/((https?:\/\/)|(www\.))([^\s]+)|([a-zA-Z0-9-]+\.(com|net|org|edu|gov|io|info|vn|co|uk)([^\s]*))/g, (url) => {
+                let href = url;
+                if (!href.startsWith('http')) href = 'http://' + href;
+                return `<a href="${href}" target="_blank" class="mw-link" onclick="event.stopPropagation()">${url}</a>`;
+            });
+        };
+
+        const parseMood = (txt) => {
+            // Check if null or undefined, but allow empty string to fall through to default
+            if (txt === null || txt === undefined) return '<span class="text-slate-500 italic">Không có</span>';
+            if (String(txt).trim() === "") return '<span class="text-slate-500 italic">Không có</span>';
+            
+            let safe = txt.replace(/</g,"&lt;").replace(/>/g, "&gt;");
+            
+            // Linkify text content first
+            safe = linkify(safe);
+            safe = safe.replace(/\n/g,"<br>");
+
+            // Tokenize by formatting codes including new ones
+            const parts = safe.split(/(#[RGBYPWKnlbL]|#c[0-9a-fA-F]{6})/g);
+            
+            let html = "";
+            let style = { 
+                colorClass: 'text-slate-300', 
+                customColor: null, 
+                bold: false, 
+                blink: false, 
+                underline: false 
+            };
+
+            for (let part of parts) {
+                if (part.startsWith("#")) {
+                    const code = part.substring(1);
+                    if (code === 'n') { 
+                        // Reset all styles
+                        style = { colorClass: 'text-slate-300', customColor: null, bold: false, blink: false, underline: false }; 
+                    }
+                    else if (code === 'b') { style.blink = true; }
+                    else if (code === 'L') { style.underline = true; }
+                    else if (code.startsWith('c')) { 
+                        style.customColor = '#' + code.substring(1); 
+                        style.isCustom = true; 
+                        style.bold = true; 
+                    }
+                    else {
+                        style.isCustom = false; style.bold = true;
+                        if(code==='R') style.colorClass='text-red-400';
+                        else if(code==='G') style.colorClass='text-green-400';
+                        else if(code==='B') style.colorClass='text-blue-400';
+                        else if(code==='Y') style.colorClass='text-yellow-400';
+                        else if(code==='P') style.colorClass='text-pink-400';
+                        else if(code==='W') style.colorClass='text-white';
+                        else if(code==='K') style.colorClass='text-slate-900 bg-slate-200 px-1 rounded';
+                    }
+                } else if (part) {
+                    let classes = [];
+                    let styles = [];
+                    if (style.isCustom && style.customColor) styles.push(`color:${style.customColor}`);
+                    else if (style.colorClass) classes.push(style.colorClass);
+                    else classes.push('text-slate-300');
+
+                    if (style.bold) classes.push('font-bold');
+                    if (style.blink) classes.push('blink-text');
+                    if (style.underline) classes.push('underline decoration-2 underline-offset-2');
+                    
+                    const classStr = classes.length ? `class="${classes.join(' ')}"` : '';
+                    const styleStr = styles.length ? `style="${styles.join(';')}"` : '';
+                    html += `<span ${classStr} ${styleStr}>${part}</span>`;
+                }
+            }
+            // If parse result is empty but original wasn't, return original safe
+            return html || `<span class="text-slate-300">${safe}</span>`;
+        };
+
+        // --- JSON Renderer ---
+        function buildJsonLines(key, value, depth, isLast, parentId='root') {
+            const indent = ' '.repeat(depth * 4); 
+            const id = Math.random().toString(36).substr(2, 9);
+            const lineNum = ++lineCounter;
+            const lineBase = { id, parentId, depth, visible: true, isCollapsible: false, isOpen: true, lineNum };
+            const wrap = (cls, v) => `<span class="${cls}">${v}</span>`;
+            const punc = (v) => wrap('j-punc', v);
+            const keyHtml = key ? `${punc('"')}<span class="j-key">${key}</span>${punc('": ')}` : '';
+            const comma = isLast ? '' : ',';
+
+            if (value === null) jsonLines.push({ ...lineBase, html: `${indent}${keyHtml}${wrap('j-null', 'null')}${punc(comma)}` });
+            else if (typeof value === 'boolean') jsonLines.push({ ...lineBase, html: `${indent}${keyHtml}${wrap('j-bool', value)}${punc(comma)}` });
+            else if (typeof value === 'number') jsonLines.push({ ...lineBase, html: `${indent}${keyHtml}${wrap('j-num', value)}${punc(comma)}` });
+            else if (typeof value === 'string') {
+                const safeVal = value.replace(/"/g, '\\"').replace(/</g, '&lt;');
+                jsonLines.push({ ...lineBase, html: `${indent}${keyHtml}${punc('"')}${wrap('j-str', safeVal)}${punc('"')}${punc(comma)}` });
+            } else if (typeof value === 'object') {
+                const isArr = Array.isArray(value);
+                const keys = Object.keys(value);
+                const isEmpty = keys.length === 0;
+                const open = isArr ? '[' : '{';
+                const close = isArr ? ']' : '}';
+                if (isEmpty) {
+                    jsonLines.push({ ...lineBase, html: `${indent}${keyHtml}${punc(open + close + comma)}` });
+                } else {
+                    const collapsedContent = `... ${close}${comma}`;
+                    const toggleHtml = `<span class="j-toggle" onclick="window.toggleJson('${id}')">▼</span>`;
+                    const collapsedHtml = `<span class="j-collapsed-content" onclick="window.toggleJson('${id}')">${collapsedContent}</span>`;
+                    const openBraceHtml = `<span class="j-open-brace j-punc">${open}</span>`;
+                    jsonLines.push({ ...lineBase, isCollapsible: true, html: `${indent}${toggleHtml}${keyHtml}${openBraceHtml}${collapsedHtml}` });
+                    keys.forEach((k, i) => buildJsonLines(isArr ? null : k, value[k], depth + 1, i === keys.length - 1, id));
+                    lineCounter++; 
+                    jsonLines.push({ id: `close-${id}`, parentId: id, depth, visible: true, lineNum: lineCounter, html: `${indent}${punc(close + comma)}` });
+                }
+            }
+        }
+        function renderJsonView() {
+            const container = document.getElementById('json-viewer');
+            let html = '';
+            jsonLines.forEach(line => {
+                const displayStyle = line.visible ? '' : 'style="display:none;"';
+                const collapsedClass = (line.isCollapsible && !line.isOpen) ? 'collapsed' : '';
+                html += `<div class="j-line ${collapsedClass}" ${displayStyle} id="line-${line.id}"><div class="j-num-col">${line.lineNum}</div><div class="j-content">${line.html}</div></div>`;
+            });
+            container.innerHTML = html;
+        }
+        window.toggleJson = (id) => {
+            const parentLine = jsonLines.find(l => l.id === id);
+            if (!parentLine) return;
+            parentLine.isOpen = !parentLine.isOpen;
+            document.getElementById(`line-${id}`).classList.toggle('collapsed', !parentLine.isOpen);
+            const setChildrenVisibility = (pid, isVisible) => {
+                jsonLines.forEach(line => {
+                    if (line.parentId === pid) {
+                        line.visible = isVisible;
+                        const el = document.getElementById(`line-${line.id}`);
+                        if(el) el.style.display = isVisible ? 'flex' : 'none';
+                        if (line.isCollapsible && line.isOpen && isVisible) setChildrenVisibility(line.id, true);
+                        else if (line.isCollapsible) setChildrenVisibility(line.id, false);
+                    }
+                });
+            };
+            setChildrenVisibility(id, parentLine.isOpen);
+        };
+
+        window.viewData = (uin) => {
+            const data = window.PROFILE_DB[uin];
+            if(!data) return;
+            currentUinForData = uin;
+            jsonLines = []; lineCounter = 0;
+            buildJsonLines(null, data, 0, true);
+            renderJsonView();
+            document.getElementById('data-modal').classList.add('show');
+        };
+        window.closeData = () => document.getElementById('data-modal').classList.remove('show');
+        window.copyData = () => { if(currentUinForData) copy(null, JSON.stringify(window.PROFILE_DB[currentUinForData], null, 4)); };
+        window.dlData = () => { if(currentUinForData) dlJson(currentUinForData, window.PROFILE_DB[currentUinForData]); };
+
+        // --- Logic ---
+        function parseLua(txt) {
+            if (!txt || typeof txt !== 'string') return null;
+            txt = txt.trim().replace(/^\ufeff/, '');
+            let i=0, len=txt.length;
+            const skip=()=>{while(i<len&&txt.charCodeAt(i)<=32)i++;};
+            const str=()=>{
+                const q=txt[i++]; let r="";
+                while(i<len){
+                    if(txt[i]===q){i++;return r;}
+                    if(txt[i]==='\\'){
+                        i++; const n=txt[i];
+                        if(n==='n')r+='\n'; else if(/[0-9]/.test(n)){ let nm=n; i++; if(/[0-9]/.test(txt[i]))nm+=txt[i++]; if(/[0-9]/.test(txt[i]))nm+=txt[i++]; r+=String.fromCharCode(parseInt(nm,10)); i--; } 
+                        else r+=n;
+                    } else r+=txt[i];
+                    i++;
+                } return r;
+            };
+            const num=()=>{ let s=i; if(txt[i]==='-')i++; while(i<len&&/[0-9.eE+-]/.test(txt[i]))i++; return parseFloat(txt.substring(s,i)); };
+            const val=()=>{
+                skip(); if(i>=len)return null;
+                const c=txt[i];
+                if(c==='{'){
+                    i++; const o={};
+                    while(i<len){
+                        skip(); if(txt[i]==='}'){i++;return o;}
+                        let k=null;
+                        if(txt[i]==='['){ i++; skip(); k=(txt[i]==='"'||txt[i]==='\'')?str():num(); skip(); i++; skip(); i++; } 
+                        else if(/[a-zA-Z_]/.test(txt[i])){ let s=i; while(/[a-zA-Z0-9_]/.test(txt[i]))i++; k=txt.substring(s,i); skip(); i++; }
+                        o[k]=val(); skip(); if(txt[i]===','||txt[i]===';')i++;
+                    } return o;
+                }
+                if(c==='"'||c==='\'')return str(); if(/[0-9-]/.test(c))return num();
+                if(txt.startsWith('true',i)){i+=4;return true;} if(txt.startsWith('false',i)){i+=5;return false;} if(txt.startsWith('nil',i)){i+=3;return null;}
+                i++; return null;
+            };
+            try { return val(); } catch(e) { return null; }
+        }
+
+        async function fetchAPI(url) {
+            for (const p of PROXIES) {
+                try {
+                    const res = await fetch(p(url), { cache: "no-store" });
+                    if (!res.ok) continue;
+                    const text = await res.text();
+                    if (text && text.trim().startsWith('{') && text.includes('=')) return text;
+                } catch(e) {}
+            }
+            throw new Error("Không thể kết nối hoặc dữ liệu lỗi.");
+        }
+
+        function getVal(obj, path) {
+            if(!obj) return undefined;
+            const keys = path.split('>>');
+            let cur = obj;
+            for(const k of keys) { if(cur && cur[k]!==undefined) cur=cur[k]; else return undefined; }
+            return cur;
+        }
+        function findKey(obj, key) {
+            if(!obj || typeof obj !== 'object') return undefined;
+            if(obj.hasOwnProperty(key)) return obj[key];
+            for(let k in obj) { const r = findKey(obj[k], key); if(r!==undefined) return r; }
+            return undefined;
+        }
+
+        const STATS = {
+            gender: { 1: '<span class="text-blue-400"><i class="fa-solid fa-mars"></i> Nam</span>', 2: '<span class="text-pink-400"><i class="fa-solid fa-venus"></i> Nữ</span>', 0: '<span class="text-slate-400"><i class="fa-solid fa-lock"></i> Bảo mật</span>' },
+            country: { "VN": "Việt Nam", "US": "Hoa Kỳ", "CN": "Trung Quốc", "TH": "Thái Lan", "ID": "Indonesia", "BR": "Brazil", "ES": "Tây Ban Nha", "RU": "Nga", "JP": "Nhật Bản", "KR": "Hàn Quốc", "TR": "Thổ Nhĩ Kỳ" },
+            lang: { 10: "Tiếng Việt", 1: "English", 2: "Chinese", 3: "Thai", 15: "Indonesian" }
+        };
+
+        function renderCard(data) {
+            const p = data.profile || data; 
+            const uin = findKey(data, "uin");
+            if(!uin) return null;
+            window.PROFILE_DB[uin] = data;
+
+            const nick = findKey(data, "NickName") || "Unknown";
+            const sex = findKey(data, "gender");
+            const country = findKey(data, "country") || "VN";
+            const lang = findKey(data, "lang");
+            const update = findKey(data, "_t_");
+            
+            let ava = "https://www.miniworldgame.com/static/images/icon.png";
+            const h1 = findKey(data, "header")?.url;
+            const h2 = findKey(data, "header2")?.url;
+            if(h1 && h1.startsWith("http")) ava = getProxyImg(h1);
+            else if(h2 && h2.startsWith("http")) ava = getProxyImg(h2);
+            
+            const moodRaw = findKey(data, "mood_text") || "";
+            const moodIcon = findKey(data, "mood_icon");
+            const moodFull = (moodIcon ? `#${moodIcon} ` : "") + moodRaw;
+            const moodHtml = parseMood(moodFull);
+            const moodEnc = encodeURIComponent(moodFull);
+            const nameHtml = parseMood(nick); 
+
+            const model = findKey(data, "Model") || "N/A";
+            const skin = findKey(data, "SkinID") || "N/A";
+            const diy = findKey(data, "cc_time");
+            
+            const creatorLvl = getVal(p, "creator>>level") || 0;
+            const dlCount = findKey(data, "all_download_count") || 0;
+            const frame = findKey(data, "head_frame_id") || "Mặc định";
+            
+            const expLvl = getVal(p, "expert>>level") || 0;
+            const expScore = getVal(p, "expert>>score") || 0;
+            const expMax = getVal(p, "expert>>score_max") || 0;
+            const expPoint = getVal(p, "expert>>points") || 0;
+            const expTime = getVal(p, "expert>>invite_time");
+            
+            const reportsObj = findKey(data, "report_rt");
+            const reports = reportsObj ? (Array.isArray(reportsObj) ? reportsObj.length : Object.keys(reportsObj).length) : 0;
+
+            const photosObj = findKey(data, "photo");
+            const photos = photosObj ? Object.values(photosObj).map(p => ({...p, url: getProxyImg(p.url)})) : [];
+
+            const genderHtml = STATS.gender[sex] || STATS.gender[0];
+            const countryHtml = STATS.country[country] || country;
+            const langHtml = STATS.lang[lang] || "Khác";
+
+            const card = document.createElement('div');
+            card.className = "glass w-full p-6 relative overflow-hidden anim-up mb-8";
+            const bg = (sex===2) ? "from-pink-500/10 to-purple-500/10" : "from-sky-500/10 to-indigo-500/10";
+
+            card.innerHTML = `
+                <div class="absolute inset-0 bg-gradient-to-br ${bg} -z-10"></div>
+                <div class="absolute top-4 right-4 flex gap-2">
+                    <button class="tool-btn px-3 py-1 text-xs font-bold" onclick="viewData(${uin})"><i class="fa-solid fa-database"></i> DATA</button>
+                    <button class="tool-btn px-3 py-1 text-xs font-bold" onclick="dlJson(${uin}, window.PROFILE_DB[${uin}])"><i class="fa-solid fa-file-code"></i> JSON</button>
+                    <button class="tool-btn px-3 py-1 text-xs font-bold" onclick="openSrc(${uin})"><i class="fa-solid fa-link"></i> API</button>
+                </div>
+                <div class="flex flex-col md:flex-row gap-8 mt-2">
+                    <div class="flex flex-col items-center w-full md:w-56 shrink-0">
+                        <div class="relative group cursor-pointer w-44 h-44 rounded-[2rem] overflow-hidden border-4 border-white/10 shadow-2xl bg-black/40 transition hover:scale-105" onclick="openGallery(${uin}, -1)">
+                            <img src="${ava}" class="w-full h-full object-cover" onerror="this.src='https://www.miniworldgame.com/static/images/icon.png'">
+                            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center rounded-[2rem]"><i class="fa-solid fa-expand text-white text-3xl"></i></div>
+                        </div>
+                        <div class="mt-4 text-center">
+                            <h2 class="text-3xl font-bold text-white drop-shadow-md mb-2 flex items-center justify-center gap-3">${nameHtml} <button onclick="copy(this, '${encodeURIComponent(nick)}')" class="copy-btn text-slate-400 hover:text-sky-400 text-xl"><i class="fa-regular fa-copy"></i></button></h2>
+                            <div class="bg-black/30 rounded-full px-4 py-1 text-sm text-sky-300 font-mono border border-white/10 inline-block">${uin}</div>
+                        </div>
+                    </div>
+                    <div class="flex-grow space-y-6">
+                        <div class="flex flex-wrap gap-3 text-sm font-semibold">
+                            <div class="px-3 py-1 bg-white/5 rounded-lg border border-white/5">${genderHtml}</div>
+                            <div class="px-3 py-1 bg-white/5 rounded-lg border border-white/5 text-slate-300"><i class="fa-solid fa-earth-americas text-sky-400 mr-1"></i> ${countryHtml}</div>
+                            <div class="px-3 py-1 bg-white/5 rounded-lg border border-white/5 text-slate-300"><i class="fa-solid fa-language text-purple-400 mr-1"></i> ${langHtml}</div>
+                        </div>
+                        <div class="bg-black/20 rounded-2xl p-4 border border-white/5 relative group">
+                            <div class="flex justify-between items-center mb-2">
+                                <div class="text-lg font-bold text-slate-400 uppercase tracking-widest">Tiểu Sử</div>
+                                <button onclick="copy(this, '${moodEnc}')" class="tool-btn px-2 py-1 text-xs flex gap-1 hover:bg-white/10"><i class="fa-regular fa-copy"></i> Copy</button>
+                            </div>
+                            <div class="text-lg leading-relaxed font-medium break-words">${moodHtml}</div>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="bg-purple-500/10 rounded-xl p-3 border border-purple-500/20">
+                                <div class="text-base font-bold text-purple-300 uppercase mb-2">Nhân Vật</div>
+                                <div class="text-sm text-slate-300 flex justify-between"><span>Model:</span> <span class="text-white">${model}</span></div>
+                                <div class="text-sm text-slate-300 flex justify-between mt-1"><span>Skin:</span> <span class="text-white">${skin}</span></div>
+                                <div class="text-sm text-purple-300/70 mt-2 text-right">DIY: ${timeAgo(diy)||"--"}</div>
+                            </div>
+                            <div class="bg-sky-500/10 rounded-xl p-3 border border-sky-500/20">
+                                <div class="text-base font-bold text-sky-300 uppercase mb-2">Nhà Phát Triển</div>
+                                <div class="text-sm text-slate-300 flex justify-between"><span>Cấp:</span> <span class="text-yellow-400 font-bold">${creatorLvl}</span></div>
+                                <div class="text-sm text-slate-300 flex justify-between mt-1"><span>Tải:</span> <span class="text-green-400">${dlCount.toLocaleString()}</span></div>
+                                <div class="text-sm text-sky-300/70 mt-2 text-right">Khung: ${frame}</div>
+                            </div>
+                            <div class="bg-yellow-500/10 rounded-xl p-3 border border-yellow-500/20">
+                                <div class="text-base font-bold text-yellow-300 uppercase mb-2">Expert</div>
+                                <div class="text-sm text-slate-300 flex justify-between"><span>Cấp:</span> <span class="text-white font-bold">${expLvl}</span></div>
+                                <div class="text-sm text-slate-300 flex justify-between mt-1"><span>Điểm:</span> <span class="text-white">${expScore}/${expMax}</span></div>
+                                <div class="text-sm text-slate-300 flex justify-between mt-1"><span>Tin cậy:</span> <span class="text-blue-300">${expPoint}</span></div>
+                                <div class="text-sm text-yellow-300/70 mt-1 text-right">Tham gia: ${timeAgo(expTime)||"--"}</div>
+                            </div>
+                            <div class="bg-red-500/10 rounded-xl p-3 border border-red-500/20">
+                                <div class="text-base font-bold text-red-300 uppercase mb-2">Uy Tín</div>
+                                <div class="text-center mt-2">
+                                    <span class="text-xl font-bold text-white">${reports}</span>
+                                    <div class="text-sm text-red-200/60">Lần bị tố cáo</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-6 pt-4 border-t border-white/5 text-right text-sm text-slate-400 font-medium">Cập Nhật: <span class="text-slate-300">${fmtDate(update)}</span> (${timeAgo(update)})</div>
+                ${photos.length > 0 ? `
+                <div class="mt-6">
+                    <div class="text-sm font-bold text-slate-500 uppercase mb-3"><i class="fa-solid fa-images mr-1"></i> Thư Viện Ảnh (${photos.length})</div>
+                    <div class="flex gap-4 overflow-x-auto pb-4 pt-2 scrollbar-hide" onwheel="this.scrollLeft+=event.deltaY;event.preventDefault()">
+                        ${photos.map((p, idx) => `
+                            <div class="w-24 h-24 shrink-0 rounded-2xl border-2 border-white/10 overflow-hidden cursor-pointer relative group shadow-lg hover:border-sky-400 transition" onclick="openGallery(${uin}, ${idx})"><img src="${p.url}" class="w-full h-full object-cover transition duration-500 group-hover:scale-110"></div>
+                        `).join('')}
+                    </div>
+                </div>` : ''}
+            `;
+            return card;
+        }
+
+        window.handleSearch = async () => {
+            const raw = document.getElementById('search-input').value;
+            if(!raw) return;
+            const ids = raw.split(/[,\s]+/).map(s => { 
+                s=s.trim(); 
+                if(!/^\d+$/.test(s)) return null;
+                let n=parseInt(s); 
+                if(s.length < 10) n+=1000000000; 
+                return n; 
+            }).filter(Boolean);
+            
+            if(ids.length===0) return;
+            document.getElementById('error-msg').classList.add('hidden');
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('results').innerHTML = '';
+            
+            try {
+                // Ensure no caching
+                const url = `${API_BASE}&op_uin_list=${ids.join(',')}&time=1753000710&auth=f372fa25c15b56111fb65287e0fd7870&s2t=1753000576&uin=1308706682`;
+                const res = await fetchAPI(url);
+                const data = parseLua(res);
+                document.getElementById('loading').classList.add('hidden');
+                
+                if (!data) throw new Error("Dữ liệu trống hoặc lỗi định dạng");
+
+                const profiles = Object.values(data);
+                if(profiles.length===0) document.getElementById('results').innerHTML = '<div class="text-center text-slate-500">Không tìm thấy dữ liệu.</div>';
+                profiles.forEach(p => { const card = renderCard(p); if(card) document.getElementById('results').appendChild(card); });
+            } catch(e) {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('error-msg').classList.remove('hidden');
+                document.getElementById('err-txt').innerText = e.message;
+            }
+        };
+
+        window.dlJson = (id, data) => { const b = new Blob([JSON.stringify(data,null,4)],{type:'application/json'}); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href=u; a.download=`profile_${id}.json`; a.click(); URL.revokeObjectURL(u); };
+        window.openSrc = id => window.open(`${API_BASE}&op_uin_list=${id}&time=1753000710&auth=f372fa25c15b56111fb65287e0fd7870&s2t=1753000576&uin=1308706682`, '_blank');
+        
+        // Viewer State Logic
+        window.openGallery = (uin, idx) => {
+            const data = window.PROFILE_DB[uin];
+            if(!data) return;
+            
+            const p = data.profile || data;
+            const h1 = findKey(data, "header")?.url;
+            const h2 = findKey(data, "header2")?.url;
+            let ava = (h1 && h1.startsWith("http")) ? getProxyImg(h1) : ((h2 && h2.startsWith("http")) ? getProxyImg(h2) : "https://www.miniworldgame.com/static/images/icon.png");
+            
+            const photosObj = findKey(data, "photo");
+            const photos = photosObj ? Object.values(photosObj).map(p => getProxyImg(p.url)) : [];
+
+            if (idx === -1) {
+                curPhotos = [ava];
+                curIdx = 0;
+            } else {
+                curPhotos = photos;
+                curIdx = idx;
+            }
+            
+            updateViewer();
+            const v = document.getElementById('viewer');
+            v.classList.remove('hidden'); 
+            setTimeout(()=>v.classList.remove('opacity-0'),10); 
+            window.addEventListener('keydown', handleKeyNav);
+        };
+
+        function updateViewer() {
+            const vImg = document.getElementById('v-img');
+            const vCounter = document.getElementById('v-counter');
+            if (vImg) vImg.src = curPhotos[curIdx];
+            if (vCounter) vCounter.innerText = `${curIdx + 1} / ${curPhotos.length}`;
+            
+            vs = {s:1, r:0, x:1, y:1, tx:0, ty:0};
+            upV();
+            
+            const prev = document.getElementById('v-prev');
+            const next = document.getElementById('v-next');
+            if(prev && next) {
+                if (curPhotos.length <= 1) {
+                    prev.style.display = 'none'; next.style.display = 'none';
+                } else {
+                    prev.style.display = 'flex'; next.style.display = 'flex';
+                    prev.classList.remove('disabled'); next.classList.remove('disabled');
+                }
+            }
+        }
+
+        window.navImg = (d) => {
+            if (curPhotos.length <= 1) return;
+            let n = curIdx + d;
+            // Cyclic logic
+            if (n < 0) n = curPhotos.length - 1;
+            else if (n >= curPhotos.length) n = 0;
+            
+            curIdx = n; 
+            updateViewer();
+        };
+
+        const handleKeyNav = (e) => {
+            const v = document.getElementById('viewer');
+            if(v && v.classList.contains('hidden')) return;
+            if(e.key === 'ArrowLeft') navImg(-1);
+            if(e.key === 'ArrowRight') navImg(1);
+            if(e.key === 'Escape') window.closeV();
+        };
+
+        window.closeV = () => { 
+            const v = document.getElementById('viewer');
+            if (v) { v.classList.add('opacity-0'); setTimeout(()=>v.classList.add('hidden'),300); } 
+            window.removeEventListener('keydown', handleKeyNav);
+        };
+        
+        window.imgAct = a => {
+            if(a=='zm-i') vs.s+=0.25; 
+            else if(a=='zm-o') vs.s=Math.max(0.25,vs.s-0.25);
+            else if(a=='rot-l') vs.r-=90; 
+            else if(a=='rot-r') vs.r+=90;
+            else if(a=='flip-h') vs.x*=-1; 
+            else if(a=='flip-v') vs.y*=-1;
+            else if(a=='rst') vs={s:1,r:0,x:1,y:1,tx:0,ty:0};
+            upV();
+        };
+        const upV = () => {
+            const vImg = document.getElementById('v-img');
+            if(vImg) vImg.style.transform = `translate(${vs.tx}px, ${vs.ty}px) scale(${vs.s}) rotate(${vs.r}deg) scaleX(${vs.x}) scaleY(${vs.y})`;
+        };
+
+        window.dlImg = async () => { 
+            const vImg = document.getElementById('v-img');
+            try { const r=await fetch(vImg.src); const b=await r.blob(); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=`img_${Date.now()}.png`; a.click(); URL.revokeObjectURL(u); } catch { window.open(vImg.src,'_blank'); } 
+        };
+        window.openImg = () => {
+            const vImg = document.getElementById('v-img');
+            window.open(vImg.src, '_blank');
+        };
+        window.copy = copy;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const vCont = document.getElementById('v-container');
+            const vImg = document.getElementById('v-img');
+
+            if(vCont) vCont.addEventListener('wheel', e => {
+                e.preventDefault();
+                const d = e.deltaY > 0 ? -0.1 : 0.1;
+                const newS = Math.max(0.25, vs.s + d);
+                const rect = vCont.getBoundingClientRect();
+                const mx = e.clientX - rect.left - rect.width/2; 
+                const my = e.clientY - rect.top - rect.height/2; 
+                vs.tx -= (mx - vs.tx) * (newS - vs.s) / vs.s;
+                vs.ty -= (my - vs.ty) * (newS - vs.s) / vs.s;
+                vs.s = newS;
+                upV();
+            });
+
+            if(vImg) {
+                vImg.addEventListener('mousedown', e => { e.preventDefault(); isDragging=true; startX=e.clientX-vs.tx; startY=e.clientY-vs.ty; vCont.classList.add('grabbing'); });
+                window.addEventListener('mousemove', e => { if(!isDragging)return; e.preventDefault(); vs.tx=e.clientX-startX; vs.ty=e.clientY-startY; upV(); });
+                window.addEventListener('mouseup', () => { isDragging=false; if(vCont) vCont.classList.remove('grabbing'); });
+            }
+
+            const s = document.getElementById('stars');
+            for(let j=0;j<60;j++){ let d=document.createElement('div'); d.className='star'; d.style.left=Math.random()*100+'%'; d.style.top=Math.random()*100+'%'; d.style.width=d.style.height=Math.random()*2+1+'px'; d.style.setProperty('--d',Math.random()*3+2+'s'); d.style.setProperty('--o',Math.random()); s.appendChild(d); }
+            const p = new URLSearchParams(location.search).get('playerid'); if(p){ document.getElementById('search-input').value=p; handleSearch(); }
+        });
+        document.getElementById('search-input').addEventListener('keypress',e=>{if(e.key==='Enter')handleSearch()});
+    })();
+    </script>
+</body>
+</html>
