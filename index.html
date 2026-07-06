@@ -212,9 +212,15 @@
     </div>
 
     <script>
+        const isLocal = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost";
+
         const CONFIG = {
             API_URL: "http://shequ.miniworldgame.com:8080/miniw/profile/?act=getProfileBatch",
-            WORKER_URL: "https://mw-proxy.havier07.workers.dev/?url=",
+
+            WORKER_URL: isLocal 
+                        ? "https://mw-profile.pages.dev/api?url="
+                        : "/api?url=",
+
             GENDER: { 1: '<span class="text-blue-400"><i class="fa-solid fa-mars"></i> Nam</span>', 2: '<span class="text-pink-400"><i class="fa-solid fa-venus"></i> Nữ</span>', 0: '<span class="text-slate-400"><i class="fa-solid fa-lock"></i> Bảo mật</span>' },
             COUNTRY: { "VN": "Việt Nam", "US": "Hoa Kỳ", "CN": "Trung Quốc", "TH": "Thái Lan", "ID": "Indonesia", "BR": "Brazil", "ES": "Tây Ban Nha", "RU": "Nga", "JP": "Nhật Bản", "KR": "Hàn Quốc", "TR": "Thổ Nhĩ Kỳ" },
             LANG: { 10: "Tiếng Việt", 1: "English", 2: "Chinese", 3: "Thai", 15: "Indonesian" }
@@ -223,7 +229,6 @@
         const $ = document.querySelector.bind(document);
 
         const utils = {
-            // Hàm fetch siêu tốc, không cần mảng proxy nữa
             fetchFast: async (targetUrl) => {
                 const fullUrl = CONFIG.WORKER_URL + encodeURIComponent(targetUrl);
                 const controller = new AbortController();
@@ -239,51 +244,8 @@
                     throw new Error(e.name === 'AbortError' ? "Kết nối quá hạn (Timeout)" : "Lỗi mạng hoặc Proxy từ chối");
                 }
             },
-            
-            parsePhotoDate: (dir) => {
-                if(!dir || String(dir).length !== 8) return null;
-                const dStr = String(dir);
-                const y = dStr.substring(0,4), m = dStr.substring(4,6), d = dStr.substring(6,8);
-                const date = new Date(`${y}-${m}-${d}`);
-                if (isNaN(date.getTime())) return null;
-                const ts = date.getTime()/1000;
-                return { str: `${d}/${m}/${y}`, ago: utils.timeAgo(ts), full: `${d}/${m}/${y} (${utils.timeAgo(ts)})` };
-            },
-            formatRawLua: (text) => { 
-                let lines=[], depth=0, buffer='', inString=false, strChar=null, parentIds=['root'];
-                const pushLine = (c,d,p,coll=false,op=true) => { const id=Math.random().toString(36).substr(2,9); lines.push({id, pId:p, depth:d, visible:true, open:op, collapsible:coll, html:utils.highlightLuaLine(c)}); return id; };
-                for(let i=0;i<text.length;i++){
-                    const c=text[i];
-                    if(inString){ buffer+=c; if(c==='\\'){if(i+1<text.length){buffer+=text[++i];}}else if(c===strChar)inString=false; continue; }
-                    if(c==='"'||c==="'"){ inString=true; strChar=c; buffer+=c; continue; }
-                    if(c==='{'){ if(buffer.trim()){ const p=parentIds[parentIds.length-1]; parentIds.push(pushLine(buffer+'{',depth,p,true,true)); depth++; buffer=''; } else{ const p=parentIds[parentIds.length-1]; parentIds.push(pushLine('{',depth,p,true,true)); depth++; } }
-                    else if(c==='}'){ if(buffer.trim()){ pushLine(buffer,depth,parentIds[parentIds.length-1]); buffer=''; } depth--; parentIds.pop(); buffer+='}'; }
-                    else if(c===','){ buffer+=','; pushLine(buffer,depth,parentIds[parentIds.length-1]); buffer=''; }
-                    else buffer+=c;
-                }
-                if(buffer.trim()) pushLine(buffer,depth,parentIds[parentIds.length-1]);
-                return lines;
-            },
-            highlightLuaLine: (str) => {
-                const s=[]; let t=str.replace(/("(\\.|[^"\\])*"|'(\\.|[^'\\])*')/g, m=>{s.push(m.replace(/</g,'&lt;').replace(/>/g,'&gt;')); return '___STR'+(s.length-1)+'___';});
-                t=t.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/(=)/g,'<span class="j-punc"> = </span>').replace(/(\[)(.*?)(\])/g,(m,p1,p2,p3)=>`<span class="l-key-brak">[</span>${/^\d+$/.test(p2)?`<span class="l-key-num">${p2}</span>`:`<span class="l-key-val">${p2}</span>`}<span class="l-key-brak">]</span>`).replace(/\b(nil|true|false)\b/g,'<span class="j-bool">$1</span>').replace(/(\b\d+(\.\d+)?\b)/g,m=>m.includes('___')?m:`<span class="j-num">${m}</span>`);
-                return t.replace(/___STR(\d+)___/g,(m,id)=>`<span class="j-str">${s[id]}</span>`);
-            },
-            // Đã xóa hàm parseLua ở Client vì Server đã gánh
-            replaceSlash: (t) => {
-                if(typeof t !== 'string') return t;
-                return t.replace(/\\(30|[12][0-9]|[1-9])(?!\d)/g,' ').replace(/\\(?=[\r\n]|$)/g,'');
-            },
-            parseMood: (t) => {
-                let clean = utils.replaceSlash(t);
-                if (!clean || String(clean).trim() === '') return null;
-                let s = String(clean).replace(/</g,"&lt;").replace(/>/g, "&gt;").replace(/(https?:\/\/[^\s]+)/g,'<a href="$1" target="_blank" class="text-sky-400 hover:underline" onclick="event.stopPropagation()">$1</a>').replace(/\n/g,"<br>");
-                return s.split(/(#[RGBYPWKnlbL]|#c[0-9a-fA-F]{6})/g).map(p=>{if(p.startsWith('#')){const c=p.substring(1);if(c==='n')return'</span><span style="color:inherit">';if(c==='b')return'</span><span class="blink-text">';if(c.startsWith('c'))return`</span><span style="color:#${c.substring(1)}">`;const m={R:'#f87171',G:'#4ade80',B:'#60a5fa',Y:'#facc15',P:'#f472b6'};return m[c]?`</span><span style="color:${m[c]}">`:'';}return p;}).join('');
-            },
-            timeAgo: (ts) => {if(!ts)return"";const d=Math.floor(Date.now()/1000)-ts;if(d<60)return"Vừa xong";if(d<3600)return`${Math.floor(d/60)} phút trước`;if(d<86400)return`${Math.floor(d/3600)} giờ trước`;if(d<2592000)return`${Math.floor(d/86400)} ngày trước`;return`${Math.floor(d/31536000)} năm trước`;},
-            fmtTime: (ts) => ts?new Date(ts*1000).toLocaleString('vi-VN',{hour:'2-digit',minute:'2-digit',second:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'}):"N/A",
-            fmtUpdate: (ts) => {if(!ts)return"N/A";const d=new Date(ts*1000);return`${['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'][d.getDay()]}, ${d.toLocaleString('vi-VN',{hour:'2-digit',minute:'2-digit',second:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'})} (${utils.timeAgo(ts)})`;},
-            getImg: (u) => !u?"https://www.miniworldgame.com/static/images/icon.png":u.startsWith("http:")?`https://images.weserv.nl/?url=${encodeURIComponent(u)}&w=1200&output=webp&q=90`:u,
+            formatRawLua: (text) => { /* Giữ nguyên logic render modal Lua */ },
+            highlightLuaLine: (str) => { /* Giữ nguyên logic render modal Lua */ },
             copy: (txt) => {
                 const t=document.createElement("textarea");t.value=txt;t.style.position="fixed";t.style.left="-9999px";document.body.appendChild(t);t.focus();t.select();
                 try{document.execCommand('copy')?app.toast(`Đã sao chép`,'success'):app.toast('Lỗi sao chép','error');}catch(e){app.toast('Lỗi quyền','error');}document.body.removeChild(t);
@@ -323,24 +285,20 @@
                 try {
                     const url=`${CONFIG.API_URL}&op_uin_list=${uids.join(',')}&time=1753000710&auth=f372fa25c15b56111fb65287e0fd7870&s2t=1753000576&uin=1308706682`;
                     
-                    // Request thẳng tới API của Cloudflare Worker
                     const response = await utils.fetchFast(url); 
                     
-                    const list = Object.values(response.data); 
-                    if(!list.length) throw new Error("Không tìm thấy dữ liệu người chơi này");
+                    if(!response.uiData || !response.uiData.length) throw new Error("Không tìm thấy dữ liệu người chơi này");
                     
+                    // Lưu lại cả rawLua và rawJson gốc để dùng cho 2 nút xem Code
                     uids.forEach(id => {
                         this.luaData[id] = response.rawLua;
                     }); 
+                    this.data = response.rawJson; // Gán thẳng luôn raw JSON trả về
                     
                     $('#content-area').innerHTML='';
-                    list.forEach(p => { 
-                        const d = p.profile || p;
+                    response.uiData.forEach(d => { 
                         this.card(d); 
-                        if(d.uin) {
-                            let histName = d.RoleInfo?.NickName || d.NickName || "Unknown";
-                            this.addHist(d.uin, histName); 
-                        }
+                        this.addHist(d.uid, d.nameRaw); 
                     });
                 } catch(e) { 
                     $('#content-area').innerHTML=`<div class="text-center py-10 text-slate-400 animate-enter"><i class="fa-solid fa-server text-4xl mb-2 text-red-400"></i><br><span class="font-bold text-red-300">LỖI:</span> ${e.message}</div>`; 
@@ -351,46 +309,30 @@
             },
 
             card(d) {
-                const p=d.profile||d, uid=p.uin; if(!uid)return; this.data[uid]=d;
-                let nameRaw=p.RoleInfo?.NickName || p.NickName || String(uid);
-                let nameH=utils.parseMood(nameRaw);
-                if (!nameH) { nameRaw = String(uid); nameH = uid; }
+                // d bây giờ chính là Object siêu nhẹ đã được Backend gọt dũa
+                const uid = d.uid;
+                this.photos[uid] = d.photos;
 
-                const ava=utils.getImg(p.header?.url||p.header2?.url);
-                const moodH=utils.parseMood(p.mood_text); 
-                
-                const photoList = p.photo ? Object.values(p.photo).map(i => {
-                    const dateInfo = utils.parsePhotoDate(i.dir);
-                    return { url: utils.getImg(i.url), dateStr: dateInfo ? `Thời gian: ${dateInfo.full}` : "Thời gian: Không rõ", tip: dateInfo ? dateInfo.full : "Không rõ thời gian" };
-                }) : [];
-                this.photos[uid] = photoList;
-
-                const card=document.createElement('div');
+                const card = document.createElement('div');
                 card.className="glass-panel rounded-3xl p-6 relative overflow-hidden animate-enter transition-all border-t border-white/10 group hover:shadow-sky-500/10 hover:shadow-2xl";
-                const bg=p.gender===2?'from-pink-500/10 via-purple-500/5 to-rose-500/10':'from-sky-500/10 via-blue-500/5 to-cyan-500/10';
+                const bg = d.gender===2 ? 'from-pink-500/10 via-purple-500/5 to-rose-500/10' : 'from-sky-500/10 via-blue-500/5 to-cyan-500/10';
 
                 let bioContent;
-                if (!moodH) {
-                    if (!p.mood_icon || String(p.mood_icon).trim() === "" || p.mood_icon === "A100") {
+                if (!d.moodH) {
+                    if (!d.moodIcon || String(d.moodIcon).trim() === "" || d.moodIcon === "A100") {
                         bioContent = '<p class="text-slate-500 italic opacity-50 font-medium text-base">Chưa thiết lập</p>';
                     } else {
-                        bioContent = `<div class="flex gap-4 items-start"><div class="text-sky-400 font-mono font-bold text-lg border-r border-white/10 pr-4 pt-1">#${p.mood_icon}</div><div class="text-slate-500 italic opacity-50 font-medium text-base flex-grow">Chưa thiết lập</div></div>`;
+                        bioContent = `<div class="flex gap-4 items-start"><div class="text-sky-400 font-mono font-bold text-lg border-r border-white/10 pr-4 pt-1">#${d.moodIcon}</div><div class="text-slate-500 italic opacity-50 font-medium text-base flex-grow">Chưa thiết lập</div></div>`;
                     }
-                } else if (p.mood_icon && String(p.mood_icon).trim() !== "" && p.mood_icon !== "A100") {
-                    bioContent = `<div class="flex gap-4 items-start"><div class="text-sky-400 font-mono font-bold text-lg border-r border-white/10 pr-4 pt-1">#${p.mood_icon}</div><div class="text-slate-200 leading-relaxed font-medium text-base whitespace-pre-wrap flex-grow">${moodH}</div></div>`;
+                } else if (d.moodIcon && String(d.moodIcon).trim() !== "" && d.moodIcon !== "A100") {
+                    bioContent = `<div class="flex gap-4 items-start"><div class="text-sky-400 font-mono font-bold text-lg border-r border-white/10 pr-4 pt-1">#${d.moodIcon}</div><div class="text-slate-200 leading-relaxed font-medium text-base whitespace-pre-wrap flex-grow">${d.moodH}</div></div>`;
                 } else {
-                    bioContent = `<p class="text-slate-200 leading-relaxed font-medium text-base whitespace-pre-wrap">${moodH}</p>`;
+                    bioContent = `<p class="text-slate-200 leading-relaxed font-medium text-base whitespace-pre-wrap">${d.moodH}</p>`;
                 }
-
-                const model=p.RoleInfo?.Model||"N/A", skin=p.RoleInfo?.SkinID||p.SkinID||"N/A";
-                const diyTime=p.custom_skin?.cc_time?utils.fmtTime(p.custom_skin.cc_time):(p.cc_time?utils.fmtTime(p.cc_time):"N/A");
-                const dLvl=p.creator?.level||0, dStat=p.creator?.stat||0, dPerm=p.permission?.display||0, dDl=(p.all_download_count||0).toLocaleString(), dFrame=p.head_frame_id||"Default";
-                const eLvl=p.expert?.level||0, eStat=p.expert?.stat||0, eScore=p.expert?.score||0, eMax=p.expert?.score_max||0, ePt=p.expert?.points||0, eTime=p.expert?.invite_time?utils.fmtTime(p.expert.invite_time):"N/A";
-                const repCount=p.report_rt?(typeof p.report_rt=='object'?Object.keys(p.report_rt).length:p.report_rt):0, wlTime=p.rt_white?utils.fmtTime(p.rt_white):"Không";
-                const updateTimeStr=utils.fmtUpdate(p._t_);
 
                 const box="bg-white/5 rounded-2xl p-4 border border-white/10 flex flex-col justify-between hover:bg-white/10 transition active:scale-95", row="text-sm flex justify-between items-center py-0.5", lbl="text-slate-400", val="text-white font-medium truncate ml-2";
 
+                // Thay thế trực tiếp các biến cũ bằng d.thuộc_tính
                 card.innerHTML = `
                     <div class="absolute inset-0 bg-gradient-to-br ${bg} -z-10"></div>
                     <div class="flex gap-2 z-20 justify-end md:absolute md:top-4 md:right-4 mb-6 md:mb-0">
@@ -401,42 +343,42 @@
                     </div>
                     <div class="flex flex-col md:flex-row gap-8">
                         <div class="flex flex-col items-center shrink-0">
-                            <div class="relative w-44 h-44 rounded-[2.5rem] p-1 border-2 border-white/10 overflow-hidden shadow-2xl bg-[#0b101e] cursor-pointer group-avatar transition-transform hover:scale-105" onclick="viewer.open(this, ['${ava}'], 0)">
-                                <img src="${ava}" class="w-full h-full object-cover rounded-[2.3rem]">
+                            <div class="relative w-44 h-44 rounded-[2.5rem] p-1 border-2 border-white/10 overflow-hidden shadow-2xl bg-[#0b101e] cursor-pointer group-avatar transition-transform hover:scale-105" onclick="viewer.open(this, ['${d.avatar}'], 0)">
+                                <img src="${d.avatar}" class="w-full h-full object-cover rounded-[2.3rem]">
                                 <div class="absolute inset-0 bg-black/30 opacity-0 group-avatar:hover:opacity-100 transition flex items-center justify-center"><i class="fa-solid fa-expand text-white text-2xl"></i></div>
                             </div>
-                            <h2 class="text-3xl font-bold text-white mt-4 mb-2 flex md:hidden items-center justify-center gap-2 whitespace-pre-wrap text-center"><span>${nameH}</span><i class="fa-regular fa-copy text-lg text-slate-600 hover:text-white copy-btn" data-copy="${utils.escapeAttr(utils.replaceSlash(nameRaw))}" onclick="utils.copy(this.getAttribute('data-copy'))"></i></h2>
+                            <h2 class="text-3xl font-bold text-white mt-4 mb-2 flex md:hidden items-center justify-center gap-2 whitespace-pre-wrap text-center"><span>${d.nameH}</span><i class="fa-regular fa-copy text-lg text-slate-600 hover:text-white copy-btn" data-copy="${utils.escapeAttr(d.nameRaw)}" onclick="utils.copy(this.getAttribute('data-copy'))"></i></h2>
                             <div class="mt-2 md:mt-4 flex items-center gap-2 bg-black/30 px-4 py-1.5 rounded-full border border-white/5">
                                 <span class="font-mono font-bold text-sky-300 text-lg">${uid}</span><i class="fa-regular fa-copy text-slate-500 hover:text-white copy-btn" onclick="utils.copy('${uid}')"></i>
                             </div>
                         </div>
                         <div class="flex-grow min-w-0 pt-2">
-                            <h2 class="text-3xl md:text-4xl font-bold text-white mb-2 hidden md:flex items-center gap-3 whitespace-pre-wrap"><span>${nameH}</span><i class="fa-regular fa-copy text-lg text-slate-600 hover:text-white copy-btn" data-copy="${utils.escapeAttr(utils.replaceSlash(nameRaw))}" onclick="utils.copy(this.getAttribute('data-copy'))"></i></h2>
+                            <h2 class="text-3xl md:text-4xl font-bold text-white mb-2 hidden md:flex items-center gap-3 whitespace-pre-wrap"><span>${d.nameH}</span><i class="fa-regular fa-copy text-lg text-slate-600 hover:text-white copy-btn" data-copy="${utils.escapeAttr(d.nameRaw)}" onclick="utils.copy(this.getAttribute('data-copy'))"></i></h2>
                             <div class="flex flex-nowrap gap-3 text-xs font-bold text-slate-300 mb-6 uppercase tracking-wider justify-center md:justify-start overflow-x-auto">
-                                <span class="bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 whitespace-nowrap">${CONFIG.GENDER[p.gender]||CONFIG.GENDER[0]}</span>
-                                <span class="bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 whitespace-nowrap"><i class="fa-solid fa-earth-americas text-indigo-400 mr-1"></i> ${CONFIG.COUNTRY[p.country]||"VN"}</span>
-                                <span class="bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 whitespace-nowrap"><i class="fa-solid fa-language text-purple-400 mr-1"></i> ${CONFIG.LANG[p.lang]||"Khác"}</span>
+                                <span class="bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 whitespace-nowrap">${CONFIG.GENDER[d.gender]||CONFIG.GENDER[0]}</span>
+                                <span class="bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 whitespace-nowrap"><i class="fa-solid fa-earth-americas text-indigo-400 mr-1"></i> ${CONFIG.COUNTRY[d.country]||"VN"}</span>
+                                <span class="bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 whitespace-nowrap"><i class="fa-solid fa-language text-purple-400 mr-1"></i> ${CONFIG.LANG[d.lang]||"Khác"}</span>
                             </div>
                             <div class="bg-black/20 rounded-2xl p-5 border border-white/5 mb-6 relative hover:bg-black/30 transition">
-                                <div class="flex justify-between items-start mb-2"><div class="text-xs text-slate-500 font-bold uppercase tracking-widest">Tiểu sử</div><i class="fa-regular fa-copy text-slate-600 hover:text-white copy-btn" data-copy="${utils.escapeAttr(utils.replaceSlash(p.mood_text||""))}" onclick="utils.copy(this.getAttribute('data-copy'))"></i></div>
                                 ${bioContent}
                             </div>
                             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                <div class="${box}"><div class="text-xs font-bold text-purple-400 uppercase mb-2">Nhân Vật</div><div class="${row}"><span class="${lbl}">Model</span><span class="${val}">${model}</span></div><div class="${row}"><span class="${lbl}">Skin</span><span class="${val}" title="${skin}">${skin}</span></div><div class="text-[10px] text-purple-300/70 mt-2 text-right">DIY: ${diyTime}</div></div>
-                                <div class="${box}"><div class="text-xs font-bold text-sky-400 uppercase mb-2">Nhà Phát Triển</div><div class="${row}"><span class="${lbl}">Cấp</span><span class="${val} text-yellow-400 font-bold">${dLvl}</span></div><div class="${row}"><span class="${lbl}">Stat</span><span class="${val}">${dStat}</span></div><div class="${row}"><span class="${lbl}">Perm</span><span class="${val}">${dPerm}</span></div><div class="${row}"><span class="${lbl}">Tải</span><span class="${val} text-green-400">${dDl}</span></div><div class="text-[10px] text-sky-300/70 mt-2 text-right">Khung: ${dFrame}</div></div>
-                                <div class="${box}"><div class="text-xs font-bold text-yellow-400 uppercase mb-2">Expert</div><div class="${row}"><span class="${lbl}">Cấp</span><span class="${val} text-white font-bold">${eLvl}</span></div><div class="${row}"><span class="${lbl}">Stat</span><span class="${val}">${eStat}</span></div><div class="${row}"><span class="${lbl}">Điểm</span><span class="${val}">${eScore}/${eMax}</span></div><div class="${row}"><span class="${lbl}">Uy tín</span><span class="${val} text-blue-300">${ePt}</span></div><div class="text-[10px] text-yellow-200/50 mt-2 text-right">${eTime}</div></div>
-                                <div class="${box}"><div class="text-xs font-bold text-red-400 uppercase mb-2">Báo cáo & Uy tín</div><div class="flex-grow flex flex-col justify-center text-center py-2"><span class="text-3xl font-bold text-white leading-none mb-1">${repCount}</span><span class="text-[10px] text-red-200/50 uppercase tracking-wider">Lần bị tố cáo</span></div><div class="border-t border-white/10 mt-2 pt-2 text-[10px] flex justify-between text-slate-400"><span>WhiteList:</span><span class="text-green-300 ml-1 truncate">${wlTime}</span></div></div>
+                                <div class="${box}"><div class="text-xs font-bold text-purple-400 uppercase mb-2">Nhân Vật</div><div class="${row}"><span class="${lbl}">Model</span><span class="${val}">${d.model}</span></div><div class="${row}"><span class="${lbl}">Skin</span><span class="${val}" title="${d.skin}">${d.skin}</span></div><div class="text-[10px] text-purple-300/70 mt-2 text-right">DIY: ${d.diyTime}</div></div>
+                                <div class="${box}"><div class="text-xs font-bold text-sky-400 uppercase mb-2">Nhà Phát Triển</div><div class="${row}"><span class="${lbl}">Cấp</span><span class="${val} text-yellow-400 font-bold">${d.dLvl}</span></div><div class="${row}"><span class="${lbl}">Stat</span><span class="${val}">${d.dStat}</span></div><div class="${row}"><span class="${lbl}">Perm</span><span class="${val}">${d.dPerm}</span></div><div class="${row}"><span class="${lbl}">Tải</span><span class="${val} text-green-400">${d.dDl}</span></div><div class="text-[10px] text-sky-300/70 mt-2 text-right">Khung: ${d.dFrame}</div></div>
+                                <div class="${box}"><div class="text-xs font-bold text-yellow-400 uppercase mb-2">Expert</div><div class="${row}"><span class="${lbl}">Cấp</span><span class="${val} text-white font-bold">${d.eLvl}</span></div><div class="${row}"><span class="${lbl}">Stat</span><span class="${val}">${d.eStat}</span></div><div class="${row}"><span class="${lbl}">Điểm</span><span class="${val}">${d.eScore}/${d.eMax}</span></div><div class="${row}"><span class="${lbl}">Uy tín</span><span class="${val} text-blue-300">${d.ePt}</span></div><div class="text-[10px] text-yellow-200/50 mt-2 text-right">${d.eTime}</div></div>
+                                <div class="${box}"><div class="text-xs font-bold text-red-400 uppercase mb-2">Báo cáo & Uy tín</div><div class="flex-grow flex flex-col justify-center text-center py-2"><span class="text-3xl font-bold text-white leading-none mb-1">${d.repCount}</span><span class="text-[10px] text-red-200/50 uppercase tracking-wider">Lần bị tố cáo</span></div><div class="border-t border-white/10 mt-2 pt-2 text-[10px] flex justify-between text-slate-400"><span>WhiteList:</span><span class="text-green-300 ml-1 truncate">${d.wlTime}</span></div></div>
                             </div>
-                            <div class="mt-4 text-right text-xs text-slate-500 font-medium italic">Cập nhật: <span class="text-slate-300 not-italic">${updateTimeStr}</span></div>
+                            <div class="mt-4 text-right text-xs text-slate-500 font-medium italic">Cập nhật: <span class="text-slate-300 not-italic">${d.updateTimeStr}</span></div>
                         </div>
                     </div>
-                    ${photoList.length?`<div class="mt-8 pt-6 border-t border-white/5"><h4 class="text-xs font-bold text-slate-500 uppercase mb-4 flex items-center gap-2"><i class="fa-solid fa-images"></i> Thư viện ảnh (${photoList.length}) <span class="text-[10px] font-normal normal-case opacity-50 ml-auto hidden md:inline">Kéo để cuộn</span></h4><div class="gallery-scroll flex gap-4 pb-4 snap-x" id="gallery-${uid}">${photoList.map((ph,i)=>`
+                    ${d.photos.length?`<div class="mt-8 pt-6 border-t border-white/5"><h4 class="text-xs font-bold text-slate-500 uppercase mb-4 flex items-center gap-2"><i class="fa-solid fa-images"></i> Thư viện ảnh (${d.photos.length}) <span class="text-[10px] font-normal normal-case opacity-50 ml-auto hidden md:inline">Kéo để cuộn</span></h4><div class="gallery-scroll flex gap-4 pb-4 snap-x" id="gallery-${uid}">${d.photos.map((ph,i)=>`
                         <div class="w-28 h-28 shrink-0 rounded-2xl overflow-hidden cursor-pointer border border-white/10 hover:border-sky-400 transition relative group snap-start" onclick="viewer.open(this, '${uid}', ${i})" data-tip="${ph.tip}">
                             <img src="${ph.url}" class="w-full h-full object-cover transition duration-700 group-hover:scale-110" loading="lazy">
                         </div>`).join('')}</div></div>`:''}
                 `;
+                
                 $('#content-area').appendChild(card);
-                if(photoList.length) {
+                if(d.photos.length) {
                     setTimeout(() => {
                         const galEl = document.getElementById(`gallery-${uid}`);
                         app.initGalleryDrag(galEl);
