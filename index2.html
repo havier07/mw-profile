@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mini World Profile | Ultimate V6.3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-dark: #020617;
+            --glass: rgba(15, 23, 42, 0.95);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+        
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: var(--bg-dark);
+            color: #f1f5f9;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #star-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+        
+        .glass-panel {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5);
+            transform: translateZ(0);
+        }
+
+        @media (min-width: 768px) {
+            .glass-panel { backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+        }
+        @media (max-width: 640px) {
+            .glass-panel { background: rgba(15, 23, 42, 0.98); } 
+            .j-line { padding-left: 35px !important; }
+            .j-num-col { width: 25px !important; }
+        }
+
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 99px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-enter { animation: fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+        .blink-text { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+        .copy-btn { cursor: pointer; transition: 0.2s; opacity: 0.6; }
+        .copy-btn:hover { opacity: 1; transform: scale(1.1); color: #38bdf8; }
+        
+        .viewer-btn { 
+            @apply w-10 h-10 rounded-full bg-black/40 hover:bg-sky-500 hover:text-white 
+            text-white/80 backdrop-blur-md border border-white/10 flex items-center justify-center 
+            transition-all active:scale-95 shadow-lg; 
+        }
+        
+        .stat-box { 
+            @apply bg-white/5 rounded-2xl p-4 border border-white/5 flex flex-col justify-between hover:bg-white/10 transition active:scale-95;
+        }
+        .stat-row { @apply text-sm flex justify-between items-center py-0.5; }
+        .stat-label { @apply text-slate-400; }
+        .stat-val { @apply text-white font-medium truncate ml-2; }
+
+        .code-viewer { font-family: 'Fira Code', monospace; font-size: 13px; line-height: 1.5; color: #d4d4d4; }
+        .j-line { display: block; position: relative; padding-left: 45px; }
+        .j-line:hover { background: rgba(255,255,255,0.05); }
+        .j-num-col { position: absolute; left: 0; top: 0; width: 35px; text-align: right; color: #6e7681; border-right: 1px solid rgba(255,255,255,0.1); user-select: none; opacity: 0.5; font-size: 11px; height: 100%; }
+        .j-content { white-space: pre-wrap; word-break: break-all; }
+        .j-key { color: #9cdcfe; } .j-str { color: #ce9178; } .j-num { color: #b5cea8; } .j-bool { color: #569cd6; } .j-null { color: #569cd6; } .j-punc { color: #d4d4d4; }
+        .l-key-brak { color: #ffd700; opacity: 0.7; } .l-key-val { color: #9cdcfe; } .l-key-num { color: #b5cea8; }
+        .j-toggle { cursor: pointer; display: inline-block; width: 14px; text-align: center; color: #c5c5c5; margin-right: 2px; transition: 0.2s; user-select: none; }
+        .j-toggle:hover { color: #fff; }
+        .j-toggle.collapsed { transform: rotate(-90deg); }
+        .j-collapsed-content { display: none; color: #808080; cursor: pointer; font-style: italic; padding: 0 4px; }
+        .j-line.collapsed .j-collapsed-content { display: inline; } .j-line.collapsed .j-open-brace { display: inline; }
+
+        .gallery-scroll { 
+            display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem;
+            scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+        }
+        .gallery-item { scroll-snap-align: start; flex-shrink: 0; }
+        
+        #v-img { will-change: transform; transform-origin: center center; }
+
+        /* Zoom Indicator */
+        #zoom-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 50;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        #zoom-indicator.show { opacity: 1; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <canvas id="star-canvas"></canvas>
+
+    <!-- Global Tooltip -->
+    <div id="global-tooltip" class="fixed top-0 left-0 bg-black/90 backdrop-blur border border-white/10 px-3 py-1.5 rounded-lg text-xs text-white z-[9999] pointer-events-none transition-opacity duration-75 opacity-0 will-change-transform shadow-xl"></div>
+
+    <main class="container mx-auto px-4 pt-4 md:pt-8 pb-24 flex-grow flex flex-col items-center max-w-5xl z-10">
+        
+        <!-- Header -->
+        <div class="w-full max-w-3xl text-center mb-6 animate-enter">
+            <h1 class="text-4xl md:text-7xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-sky-300 via-indigo-300 to-purple-300 tracking-tight drop-shadow-lg">
+                MW Profile
+            </h1>
+            
+            <!-- Search Box -->
+            <div class="glass-panel rounded-2xl p-1.5 md:p-2 flex items-center shadow-2xl transition-all duration-300 focus-within:ring-2 focus-within:ring-sky-500/50 relative mt-4 md:mt-6 z-50">
+                <i class="fa-solid fa-magnifying-glass text-sky-400 ml-3 md:ml-5 text-lg"></i>
+                <input type="text" id="search-input" 
+                    class="w-full bg-transparent border-none text-white px-3 md:px-4 py-2.5 md:py-3.5 focus:outline-none placeholder-slate-500 font-bold text-base md:text-lg font-mono tracking-wide" 
+                    placeholder="Nhập UID (VD: 1000)" autocomplete="off">
+                <button onclick="app.search()" 
+                    class="bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white px-4 md:px-8 py-2 md:py-3 rounded-xl font-bold text-xs md:text-sm shadow-lg transition-all active:scale-95 whitespace-nowrap mr-1">
+                    TRA CỨU
+                </button>
+                
+                <!-- History Dropdown -->
+                <div id="history-box" class="absolute top-[calc(100%+10px)] left-0 right-0 glass-panel rounded-xl overflow-hidden hidden animate-enter flex-col shadow-2xl ring-1 ring-white/10 z-[60]">
+                    <div class="p-3 text-sm text-slate-400 font-bold uppercase tracking-wider flex justify-between items-center bg-black/40 backdrop-blur-md">
+                        <span><i class="fa-solid fa-clock-rotate-left mr-1"></i> Lịch sử (Gần đây)</span>
+                        <span class="cursor-pointer hover:text-red-400 transition p-1" onclick="app.clearHistory()">Xóa tất cả</span>
+                    </div>
+                    <div id="history-list" class="grid grid-cols-2 gap-2 p-2 max-h-60 overflow-y-auto custom-scroll bg-[#0b101e]"></div>
+                </div>
+            </div>
+            <p class="text-slate-400/80 text-[10px] md:text-xs mt-2 font-medium">Tự động cộng <span class="font-mono text-sky-300">10^9</span> nếu UID < 10 ký tự</p>
+        </div>
+
+        <!-- Content Area -->
+        <div id="content-area" class="w-full grid grid-cols-1 gap-6 md:gap-8"></div>
+
+    </main>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full glass-panel shadow-2xl flex items-center gap-3 transition-all duration-300 translate-y-24 opacity-0 z-[300] border-l-4 border-sky-400 w-max max-w-[90vw]">
+        <i id="toast-icon" class="fa-solid fa-circle-info text-sky-400 shrink-0"></i>
+        <span id="toast-msg" class="font-semibold text-sm truncate">Thông báo</span>
+    </div>
+
+    <!-- Fullscreen Image Viewer -->
+    <div id="viewer" class="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl hidden opacity-0 transition-opacity duration-300 select-none flex flex-col pointer-events-none">
+        <div class="absolute top-0 left-0 w-full p-4 flex justify-between items-start z-50 pointer-events-auto">
+            <div class="flex flex-col items-start gap-1">
+                <div class="text-white/90 font-mono font-bold text-lg bg-white/10 px-4 py-1 rounded-full backdrop-blur-md shadow-lg" id="v-counter">1 / 1</div>
+                <div class="text-slate-300 text-sm font-medium px-4 py-2 bg-black/50 rounded-lg backdrop-blur-md border border-white/5 shadow-lg hidden" id="v-date"></div>
+            </div>
+            <button onclick="viewer.close()" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-red-500/80 hover:text-white text-white/70 transition text-xl"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        
+        <!-- Zoom Indicator -->
+        <div id="zoom-indicator" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/60 text-white px-4 py-2 rounded-lg font-bold opacity-0 transition-opacity duration-300 z-50 backdrop-blur-sm border border-white/10">100%</div>
+
+        <div class="flex-grow w-full h-full relative overflow-hidden flex items-center justify-center pointer-events-auto cursor-grab active:cursor-grabbing" id="v-container">
+            <img id="v-img" class="max-w-full max-h-full object-contain will-change-transform" draggable="false">
+        </div>
+        <button onclick="viewer.nav(-1)" class="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 w-10 md:w-12 h-10 md:h-12 flex items-center justify-center rounded-full bg-black/20 hover:bg-white/20 text-white/50 hover:text-white transition z-40 backdrop-blur-sm pointer-events-auto"><i class="fa-solid fa-chevron-left text-xl"></i></button>
+        <button onclick="viewer.nav(1)" class="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 w-10 md:w-12 h-10 md:h-12 flex items-center justify-center rounded-full bg-black/20 hover:bg-white/20 text-white/50 hover:text-white transition z-40 backdrop-blur-sm pointer-events-auto"><i class="fa-solid fa-chevron-right text-xl"></i></button>
+        
+        <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-3 z-50 bg-black/50 p-2 rounded-full backdrop-blur-md border border-white/10 pointer-events-auto overflow-x-auto max-w-[90vw]">
+            <button onclick="viewer.rotate(-90)" class="viewer-btn" title="Xoay trái"><i class="fa-solid fa-rotate-left"></i></button>
+            <button onclick="viewer.rotate(90)" class="viewer-btn" title="Xoay phải"><i class="fa-solid fa-rotate-right"></i></button>
+            <button onclick="viewer.flipH()" class="viewer-btn" title="Lật ngang"><i class="fa-solid fa-arrows-left-right"></i></button>
+            <button onclick="viewer.flipV()" class="viewer-btn" title="Lật dọc"><i class="fa-solid fa-arrows-up-down"></i></button>
+            <button onclick="viewer.openSource()" class="viewer-btn" title="Link Gốc"><i class="fa-solid fa-external-link-alt"></i></button>
+            <div class="w-px bg-white/20 mx-1"></div>
+            <button onclick="viewer.zoom(-0.5)" class="viewer-btn"><i class="fa-solid fa-minus"></i></button>
+            <button onclick="viewer.reset()" class="viewer-btn w-auto px-4 font-bold text-xs">RESET</button>
+            <button onclick="viewer.zoom(0.5)" class="viewer-btn"><i class="fa-solid fa-plus"></i></button>
+            <div class="w-px bg-white/20 mx-1"></div>
+            <button onclick="viewer.download()" class="viewer-btn hover:!bg-green-500 hover:!text-white" title="Tải ảnh"><i class="fa-solid fa-download"></i></button>
+        </div>
+    </div>
+
+    <!-- Code Modal -->
+    <div id="json-modal" class="fixed inset-0 z-[150] bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="glass-panel w-full max-w-5xl h-[85vh] rounded-2xl flex flex-col shadow-2xl overflow-hidden scale-95 transition-transform duration-300 bg-[#0d1117] will-change-transform" id="json-box">
+            <div class="flex justify-between items-center px-4 md:px-6 py-3 md:py-4 border-b border-white/10 bg-white/5 shrink-0">
+                <h3 class="text-sky-400 font-bold font-mono text-sm flex items-center gap-2 truncate" id="modal-title"><i class="fa-solid fa-code"></i> RAW DATA</h3>
+                <div class="flex gap-2 shrink-0">
+                    <button onclick="app.copyContent()" class="px-2 md:px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-300 transition flex items-center gap-2"><i class="fa-regular fa-copy"></i> <span class="hidden md:inline">Copy</span></button>
+                    <button onclick="app.dlContent()" class="px-2 md:px-3 py-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-xs font-bold text-green-400 transition flex items-center gap-2"><i class="fa-solid fa-download"></i> <span class="hidden md:inline">Tải về</span></button>
+                    <button onclick="app.closeModal()" class="ml-1 md:ml-2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-500/20 hover:text-red-400 transition"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+            <div class="flex-grow overflow-auto bg-[#1e1e1e] p-2 custom-scroll relative" id="json-viewer-container">
+                <div id="code-viewer" class="code-viewer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            API_URL: "http://shequ.miniworldgame.com:8080/miniw/profile/?act=getProfileBatch",
+            PROXIES: [
+                // 1. AllOrigins: Khá ổn định, BẮT BUỘC phải encodeURIComponent
+                u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+
+                // 2. CorsProxy.io: Hoạt động tốt nhất với encodeURIComponent để tránh lỗi mất query string (?a=1&b=2)
+                u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+
+                // 3. CodeTabs: Dịch vụ này thường bị lỗi 400 nếu bạn dùng encodeURIComponent cho phần 'https://'. Tốt nhất là truyền URL gốc hoặc dùng encodeURI.
+                u => `https://api.codetabs.com/v1/proxy?quest=${u}`,
+
+                // 4. ThingProxy (Dự phòng bổ sung): Không cần encode phức tạp
+                u => `https://thingproxy.freeboard.io/fetch/${u}`,
+                
+                // 5. Ytils (Dự phòng bổ sung): Proxy khá nhanh và ít bị giới hạn
+                u => `https://cors.ytils.com/?${u}`
+            ],
+            GENDER: { 1: '<span class="text-blue-400"><i class="fa-solid fa-mars"></i> Nam</span>', 2: '<span class="text-pink-400"><i class="fa-solid fa-venus"></i> Nữ</span>', 0: '<span class="text-slate-400"><i class="fa-solid fa-lock"></i> Bảo mật</span>' },
+            COUNTRY: { "VN": "Việt Nam", "US": "Hoa Kỳ", "CN": "Trung Quốc", "TH": "Thái Lan", "ID": "Indonesia", "BR": "Brazil", "ES": "Tây Ban Nha", "RU": "Nga", "JP": "Nhật Bản", "KR": "Hàn Quốc", "TR": "Thổ Nhĩ Kỳ" },
+            LANG: { 10: "Tiếng Việt", 1: "English", 2: "Chinese", 3: "Thai", 15: "Indonesian" }
+        };
+
+        const $ = document.querySelector.bind(document);
+
+        const utils = {
+            fetchFast: async (targetUrl) => {
+                const validate = async (r) => { 
+                    if (!r.ok) throw new Error(`HTTP Error ${r.status}`); 
+                    const t = await r.text(); 
+                    // Proxy miễn phí hay trả về trang HTML báo lỗi (như Cloudflare block), cần chặn lại
+                    if (!t || t.trim().startsWith('<')) throw new Error("Proxy trả về dữ liệu rác (HTML)"); 
+                    return t; 
+                };
+
+                // Bước 1: Thử gọi trực tiếp (Chỉ hoạt động nếu chạy ở localhost hoặc HTTP)
+                try {
+                    const controller = new AbortController();
+                    const id = setTimeout(() => controller.abort(), 3000); // Chờ direct 3s
+                    const res = await fetch(targetUrl, { signal: controller.signal }).then(validate);
+                    clearTimeout(id);
+                    return res;
+                } catch (e) {
+                    console.log("Direct fetch thất bại (Do CORS hoặc HTTPS). Đang chuyển sang Proxy...");
+                }
+
+                // Bước 2: Duyệt tuần tự qua các Proxy. Lỗi cái này mới gọi cái tiếp theo (Chống Spam Rate-Limit)
+                for (let i = 0; i < CONFIG.PROXIES.length; i++) {
+                    const proxyUrl = CONFIG.PROXIES[i](targetUrl);
+                    try {
+                        console.log(`Đang thử Proxy số ${i + 1}...`);
+                        const controller = new AbortController();
+                        const id = setTimeout(() => controller.abort(), 6000); // Chờ mỗi proxy tối đa 6s
+                        const res = await fetch(proxyUrl, { signal: controller.signal }).then(validate);
+                        clearTimeout(id);
+                        return res; // Thành công thì trả về luôn, thoát vòng lặp
+                    } catch (err) {
+                        console.warn(`Proxy ${i + 1} lỗi, đang thử proxy tiếp theo...`);
+                        // Tiếp tục vòng lặp
+                    }
+                }
+                
+                // Bước 3: Nếu tất cả đều tạch
+                throw new Error("Toàn bộ Proxy đang quá tải. Vui lòng thử lại sau ít phút.");
+            },
+            
+            // ... GIỮ NGUYÊN TOÀN BỘ CÁC HÀM CÒN LẠI BÊN DƯỚI CỦA utils ...
+            parsePhotoDate: (dir) => {
+                if(!dir || String(dir).length !== 8) return null;
+                const dStr = String(dir);
+                const y = dStr.substring(0,4), m = dStr.substring(4,6), d = dStr.substring(6,8);
+                const date = new Date(`${y}-${m}-${d}`);
+                if (isNaN(date.getTime())) return null;
+                const ts = date.getTime()/1000;
+                return { str: `${d}/${m}/${y}`, ago: utils.timeAgo(ts), full: `${d}/${m}/${y} (${utils.timeAgo(ts)})` };
+            },
+            formatRawLua: (text) => { /* ... giữ nguyên code cũ ... */ 
+                let lines=[], depth=0, buffer='', inString=false, strChar=null, parentIds=['root'];
+                const pushLine = (c,d,p,coll=false,op=true) => { const id=Math.random().toString(36).substr(2,9); lines.push({id, pId:p, depth:d, visible:true, open:op, collapsible:coll, html:utils.highlightLuaLine(c)}); return id; };
+                for(let i=0;i<text.length;i++){
+                    const c=text[i];
+                    if(inString){ buffer+=c; if(c==='\\'){if(i+1<text.length){buffer+=text[++i];}}else if(c===strChar)inString=false; continue; }
+                    if(c==='"'||c==="'"){ inString=true; strChar=c; buffer+=c; continue; }
+                    if(c==='{'){ if(buffer.trim()){ const p=parentIds[parentIds.length-1]; parentIds.push(pushLine(buffer+'{',depth,p,true,true)); depth++; buffer=''; } else{ const p=parentIds[parentIds.length-1]; parentIds.push(pushLine('{',depth,p,true,true)); depth++; } }
+                    else if(c==='}'){ if(buffer.trim()){ pushLine(buffer,depth,parentIds[parentIds.length-1]); buffer=''; } depth--; parentIds.pop(); buffer+='}'; }
+                    else if(c===','){ buffer+=','; pushLine(buffer,depth,parentIds[parentIds.length-1]); buffer=''; }
+                    else buffer+=c;
+                }
+                if(buffer.trim()) pushLine(buffer,depth,parentIds[parentIds.length-1]);
+                return lines;
+            },
+            highlightLuaLine: (str) => { /* ... giữ nguyên code cũ ... */
+                const s=[]; let t=str.replace(/("(\\.|[^"\\])*"|'(\\.|[^'\\])*')/g, m=>{s.push(m.replace(/</g,'&lt;').replace(/>/g,'&gt;')); return '___STR'+(s.length-1)+'___';});
+                t=t.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/(=)/g,'<span class="j-punc"> = </span>').replace(/(\[)(.*?)(\])/g,(m,p1,p2,p3)=>`<span class="l-key-brak">[</span>${/^\d+$/.test(p2)?`<span class="l-key-num">${p2}</span>`:`<span class="l-key-val">${p2}</span>`}<span class="l-key-brak">]</span>`).replace(/\b(nil|true|false)\b/g,'<span class="j-bool">$1</span>').replace(/(\b\d+(\.\d+)?\b)/g,m=>m.includes('___')?m:`<span class="j-num">${m}</span>`);
+                return t.replace(/___STR(\d+)___/g,(m,id)=>`<span class="j-str">${s[id]}</span>`);
+            },
+            parseLua: (txt) => { /* ... giữ nguyên code cũ ... */ 
+                if(!txt||typeof txt!=='string')return null; txt=txt.trim().replace(/^\ufeff/,''); let i=0,len=txt.length; const skip=()=>{while(i<len&&txt.charCodeAt(i)<=32)i++;};
+                const parseStr=(q)=>{ i++;let s="";while(i<len){if(txt[i]===q)break;if(txt[i]==='\\'){const n=txt[i+1];if(n==='n'){i+=2;s+='\n'}else if(n==='r'){i+=2;s+='\r'}else if(n==='t'){i+=2;s+='\t'}else if(n==='"'){i+=2;s+='"'}else if(n==="'"){i+=2;s+="'"}else if(n==='\\'){i+=2;s+='\\'}else{s+='\\';i++}}else s+=txt[i++];}i++;return s;};
+                const parseNum=()=>{const s=i;if(txt[i]==='-')i++;while(i<len&&/[0-9.eE+-]/.test(txt[i]))i++;return parseFloat(txt.substring(s,i));};
+                const parseKey=()=>{if(txt[i]==='['){i++;skip();const k=(txt[i]==='"'||txt[i]==="'")?parseStr(txt[i]):parseNum();skip();i++;return k;}const s=i;while(i<len&&/[a-zA-Z0-9_]/.test(txt[i]))i++;return txt.substring(s,i);};
+                const parseVal=()=>{skip();if(i>=len)return null;if(txt[i]==='{'){i++;skip();const o={};while(i<len&&txt[i]!=='}'){const k=parseKey();skip();if(txt[i]==='='||txt[i]===':'){i++;o[k]=parseVal();}skip();if(txt[i]===','||txt[i]===';')i++;skip();}i++;return o;}if(txt[i]==='"'||txt[i]==="'")return parseStr(txt[i]);if(/[0-9-]/.test(txt[i]))return parseNum();if(txt.startsWith('true',i)){i+=4;return true;}if(txt.startsWith('false',i)){i+=5;return false;}if(txt.startsWith('nil',i)){i+=3;return null;}i++;return null;};
+                try{return parseVal();}catch(e){return null;}
+            },
+            replaceSlash: (t) => {
+                if(typeof t !== 'string') return t;
+                return t.replace(/\\(30|[12][0-9]|[1-9])(?!\d)/g,' ').replace(/\\(?=[\r\n]|$)/g,'');
+            },
+            parseMood: (t) => {
+                let clean = utils.replaceSlash(t);
+                if (!clean || String(clean).trim() === '') return null;
+                let s = String(clean).replace(/</g,"&lt;").replace(/>/g, "&gt;").replace(/(https?:\/\/[^\s]+)/g,'<a href="$1" target="_blank" class="text-sky-400 hover:underline" onclick="event.stopPropagation()">$1</a>').replace(/\n/g,"<br>");
+                return s.split(/(#[RGBYPWKnlbL]|#c[0-9a-fA-F]{6})/g).map(p=>{if(p.startsWith('#')){const c=p.substring(1);if(c==='n')return'</span><span style="color:inherit">';if(c==='b')return'</span><span class="blink-text">';if(c.startsWith('c'))return`</span><span style="color:#${c.substring(1)}">`;const m={R:'#f87171',G:'#4ade80',B:'#60a5fa',Y:'#facc15',P:'#f472b6'};return m[c]?`</span><span style="color:${m[c]}">`:'';}return p;}).join('');
+            },
+            timeAgo: (ts) => {if(!ts)return"";const d=Math.floor(Date.now()/1000)-ts;if(d<60)return"Vừa xong";if(d<3600)return`${Math.floor(d/60)} phút trước`;if(d<86400)return`${Math.floor(d/3600)} giờ trước`;if(d<2592000)return`${Math.floor(d/86400)} ngày trước`;return`${Math.floor(d/31536000)} năm trước`;},
+            fmtTime: (ts) => ts?new Date(ts*1000).toLocaleString('vi-VN',{hour:'2-digit',minute:'2-digit',second:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'}):"N/A",
+            fmtUpdate: (ts) => {if(!ts)return"N/A";const d=new Date(ts*1000);return`${['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'][d.getDay()]}, ${d.toLocaleString('vi-VN',{hour:'2-digit',minute:'2-digit',second:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'})} (${utils.timeAgo(ts)})`;},
+            getImg: (u) => !u?"https://www.miniworldgame.com/static/images/icon.png":u.startsWith("http:")?`https://images.weserv.nl/?url=${encodeURIComponent(u)}&w=1200&output=webp&q=90`:u,
+            copy: (txt) => {
+                const t=document.createElement("textarea");t.value=txt;t.style.position="fixed";t.style.left="-9999px";document.body.appendChild(t);t.focus();t.select();
+                try{document.execCommand('copy')?app.toast(`Đã sao chép`,'success'):app.toast('Lỗi sao chép','error');}catch(e){app.toast('Lỗi quyền','error');}document.body.removeChild(t);
+            },
+            escapeAttr: (t) => String(t).replace(/"/g,'&quot;').replace(/\n/g,'&#10;')
+        };
+
+        const app = {
+            data: {}, luaData: {}, photos: {}, history: JSON.parse(localStorage.getItem('mw_h') || '[]'),
+            curId: null, viewerLines: [], curMode: 'JSON',
+
+            init() {
+                this.renderHist();
+                $('#search-input').addEventListener('focus',()=>this.history.length&&$('#history-box').classList.remove('hidden'));
+                document.addEventListener('click',e=>!e.target.closest('#search-input')&&!e.target.closest('#history-box')&&$('#history-box').classList.add('hidden'));
+                $('#search-input').addEventListener('keydown',e=>e.key==='Enter'&&this.search());
+                const p=new URLSearchParams(location.search).get('uid'); if(p){$('#search-input').value=p;this.search();}
+                document.addEventListener("visibilitychange",()=>document.hidden?bgAnim.stop():bgAnim.start());
+                bgAnim.start();
+            },
+
+            async search(val) {
+                const inp=$('#search-input'); 
+                const btn = inp.nextElementSibling; // Lấy nút TRA CỨU
+                let raw=val||inp.value.trim();
+                let uids=raw.split(/[,\s]+/).map(s=>{s=s.trim();if(!/^\d+$/.test(s))return null;return s.length<10?String(Number(s)+1000000000):s;}).filter(Boolean);
+                
+                if(!uids.length) return this.toast('UID không hợp lệ','error');
+                
+                // UX: Hiển thị trạng thái loading
+                $('#history-box').classList.add('hidden'); 
+                $('#content-area').innerHTML=this.skeleton(uids.length);
+                const btnOriginalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> ĐANG TÌM...';
+                btn.disabled = true;
+                btn.classList.add('opacity-70', 'cursor-not-allowed');
+
+                this.data={}; this.luaData={}; this.photos={};
+                try {
+                    const url=`${CONFIG.API_URL}&op_uin_list=${uids.join(',')}&time=1753000710&auth=f372fa25c15b56111fb65287e0fd7870&s2t=1753000576&uin=1308706682`;
+                    const txt=await utils.fetchFast(url); 
+                    
+                    const res=utils.parseLua(txt);
+                    if(!res) throw new Error("API trả về sai định dạng (Không phải Lua/Profile)"); 
+                    
+                    const list=Object.values(res); 
+                    if(!list.length) throw new Error("Không tìm thấy dữ liệu người chơi này");
+                    
+                    uids.forEach(id=>this.luaData[id]=txt); 
+                    $('#content-area').innerHTML='';
+                    
+                    list.forEach(p=>{ 
+                        const d=p.profile||p;
+                        this.card(d); 
+                        if(d.uin) {
+                            let histName = d.RoleInfo?.NickName || d.NickName || "Unknown";
+                            this.addHist(d.uin, histName); 
+                        }
+                    });
+                } catch(e) { 
+                    $('#content-area').innerHTML=`<div class="text-center py-10 text-slate-400 animate-enter"><i class="fa-solid fa-server text-4xl mb-2 text-red-400"></i><br><span class="font-bold text-red-300">LỖI:</span> ${e.message}</div>`; 
+                } finally {
+                    // Trả lại trạng thái bình thường cho nút bấm
+                    btn.innerHTML = btnOriginalText;
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-70', 'cursor-not-allowed');
+                }
+            },
+
+            card(d) {
+                const p=d.profile||d, uid=p.uin; if(!uid)return; this.data[uid]=d;
+                let nameRaw=p.RoleInfo?.NickName || p.NickName || String(uid);
+                let nameH=utils.parseMood(nameRaw);
+                if (!nameH) { nameRaw = String(uid); nameH = uid; }
+
+                const ava=utils.getImg(p.header?.url||p.header2?.url);
+                const moodH=utils.parseMood(p.mood_text); 
+                
+                const photoList = p.photo ? Object.values(p.photo).map(i => {
+                    const dateInfo = utils.parsePhotoDate(i.dir);
+                    return { url: utils.getImg(i.url), dateStr: dateInfo ? `Thời gian: ${dateInfo.full}` : "Thời gian: Không rõ", tip: dateInfo ? dateInfo.full : "Không rõ thời gian" };
+                }) : [];
+                this.photos[uid] = photoList;
+
+                const card=document.createElement('div');
+                card.className="glass-panel rounded-3xl p-6 relative overflow-hidden animate-enter transition-all border-t border-white/10 group hover:shadow-sky-500/10 hover:shadow-2xl";
+                const bg=p.gender===2?'from-pink-500/10 via-purple-500/5 to-rose-500/10':'from-sky-500/10 via-blue-500/5 to-cyan-500/10';
+
+                let bioContent;
+                if (!moodH) {
+                    if (!p.mood_icon || String(p.mood_icon).trim() === "" || p.mood_icon === "A100") {
+                        bioContent = '<p class="text-slate-500 italic opacity-50 font-medium text-base">Chưa thiết lập</p>';
+                    } else {
+                        bioContent = `<div class="flex gap-4 items-start"><div class="text-sky-400 font-mono font-bold text-lg border-r border-white/10 pr-4 pt-1">#${p.mood_icon}</div><div class="text-slate-500 italic opacity-50 font-medium text-base flex-grow">Chưa thiết lập</div></div>`;
+                    }
+                } else if (p.mood_icon && String(p.mood_icon).trim() !== "" && p.mood_icon !== "A100") {
+                    bioContent = `<div class="flex gap-4 items-start"><div class="text-sky-400 font-mono font-bold text-lg border-r border-white/10 pr-4 pt-1">#${p.mood_icon}</div><div class="text-slate-200 leading-relaxed font-medium text-base whitespace-pre-wrap flex-grow">${moodH}</div></div>`;
+                } else {
+                    bioContent = `<p class="text-slate-200 leading-relaxed font-medium text-base whitespace-pre-wrap">${moodH}</p>`;
+                }
+
+                const model=p.RoleInfo?.Model||"N/A", skin=p.RoleInfo?.SkinID||p.SkinID||"N/A";
+                const diyTime=p.custom_skin?.cc_time?utils.fmtTime(p.custom_skin.cc_time):(p.cc_time?utils.fmtTime(p.cc_time):"N/A");
+                const dLvl=p.creator?.level||0, dStat=p.creator?.stat||0, dPerm=p.permission?.display||0, dDl=(p.all_download_count||0).toLocaleString(), dFrame=p.head_frame_id||"Default";
+                const eLvl=p.expert?.level||0, eStat=p.expert?.stat||0, eScore=p.expert?.score||0, eMax=p.expert?.score_max||0, ePt=p.expert?.points||0, eTime=p.expert?.invite_time?utils.fmtTime(p.expert.invite_time):"N/A";
+                const repCount=p.report_rt?(typeof p.report_rt=='object'?Object.keys(p.report_rt).length:p.report_rt):0, wlTime=p.rt_white?utils.fmtTime(p.rt_white):"Không";
+                const updateTimeStr=utils.fmtUpdate(p._t_);
+
+                const box="bg-white/5 rounded-2xl p-4 border border-white/10 flex flex-col justify-between hover:bg-white/10 transition active:scale-95", row="text-sm flex justify-between items-center py-0.5", lbl="text-slate-400", val="text-white font-medium truncate ml-2";
+
+                card.innerHTML = `
+                    <div class="absolute inset-0 bg-gradient-to-br ${bg} -z-10"></div>
+                    <div class="flex gap-2 z-20 justify-end md:absolute md:top-4 md:right-4 mb-6 md:mb-0">
+                        <button onclick="app.share('${uid}')" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-300 hover:text-white transition" title="Share"><i class="fa-solid fa-share-nodes"></i></button>
+                        <button onclick="app.openApi('${uid}')" class="px-3 py-1 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-bold text-purple-400 border border-purple-500/20 transition"><i class="fa-solid fa-server"></i> API</button>
+                        <button onclick="app.showLua('${uid}')" class="px-3 py-1 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-bold text-orange-400 border border-orange-500/20 transition"><i class="fa-solid fa-file-code"></i> Lua</button>
+                        <button onclick="app.showJson('${uid}')" class="px-3 py-1 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-bold text-sky-400 border border-sky-500/20 transition"><i class="fa-solid fa-code"></i> JSON</button>
+                    </div>
+                    <div class="flex flex-col md:flex-row gap-8">
+                        <div class="flex flex-col items-center shrink-0">
+                            <div class="relative w-44 h-44 rounded-[2.5rem] p-1 border-2 border-white/10 overflow-hidden shadow-2xl bg-[#0b101e] cursor-pointer group-avatar transition-transform hover:scale-105" onclick="viewer.open(this, ['${ava}'], 0)">
+                                <img src="${ava}" class="w-full h-full object-cover rounded-[2.3rem]">
+                                <div class="absolute inset-0 bg-black/30 opacity-0 group-avatar:hover:opacity-100 transition flex items-center justify-center"><i class="fa-solid fa-expand text-white text-2xl"></i></div>
+                            </div>
+                            <h2 class="text-3xl font-bold text-white mt-4 mb-2 flex md:hidden items-center justify-center gap-2 whitespace-pre-wrap text-center"><span>${nameH}</span><i class="fa-regular fa-copy text-lg text-slate-600 hover:text-white copy-btn" data-copy="${utils.escapeAttr(utils.replaceSlash(nameRaw))}" onclick="utils.copy(this.getAttribute('data-copy'))"></i></h2>
+                            <div class="mt-2 md:mt-4 flex items-center gap-2 bg-black/30 px-4 py-1.5 rounded-full border border-white/5">
+                                <span class="font-mono font-bold text-sky-300 text-lg">${uid}</span><i class="fa-regular fa-copy text-slate-500 hover:text-white copy-btn" onclick="utils.copy('${uid}')"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow min-w-0 pt-2">
+                            <h2 class="text-3xl md:text-4xl font-bold text-white mb-2 hidden md:flex items-center gap-3 whitespace-pre-wrap"><span>${nameH}</span><i class="fa-regular fa-copy text-lg text-slate-600 hover:text-white copy-btn" data-copy="${utils.escapeAttr(utils.replaceSlash(nameRaw))}" onclick="utils.copy(this.getAttribute('data-copy'))"></i></h2>
+                            <div class="flex flex-nowrap gap-3 text-xs font-bold text-slate-300 mb-6 uppercase tracking-wider justify-center md:justify-start overflow-x-auto">
+                                <span class="bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 whitespace-nowrap">${CONFIG.GENDER[p.gender]||CONFIG.GENDER[0]}</span>
+                                <span class="bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 whitespace-nowrap"><i class="fa-solid fa-earth-americas text-indigo-400 mr-1"></i> ${CONFIG.COUNTRY[p.country]||"VN"}</span>
+                                <span class="bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 whitespace-nowrap"><i class="fa-solid fa-language text-purple-400 mr-1"></i> ${CONFIG.LANG[p.lang]||"Khác"}</span>
+                            </div>
+                            <div class="bg-black/20 rounded-2xl p-5 border border-white/5 mb-6 relative hover:bg-black/30 transition">
+                                <div class="flex justify-between items-start mb-2"><div class="text-xs text-slate-500 font-bold uppercase tracking-widest">Tiểu sử</div><i class="fa-regular fa-copy text-slate-600 hover:text-white copy-btn" data-copy="${utils.escapeAttr(utils.replaceSlash(p.mood_text||""))}" onclick="utils.copy(this.getAttribute('data-copy'))"></i></div>
+                                ${bioContent}
+                            </div>
+                            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div class="${box}"><div class="text-xs font-bold text-purple-400 uppercase mb-2">Nhân Vật</div><div class="${row}"><span class="${lbl}">Model</span><span class="${val}">${model}</span></div><div class="${row}"><span class="${lbl}">Skin</span><span class="${val}" title="${skin}">${skin}</span></div><div class="text-[10px] text-purple-300/70 mt-2 text-right">DIY: ${diyTime}</div></div>
+                                <div class="${box}"><div class="text-xs font-bold text-sky-400 uppercase mb-2">Nhà Phát Triển</div><div class="${row}"><span class="${lbl}">Cấp</span><span class="${val} text-yellow-400 font-bold">${dLvl}</span></div><div class="${row}"><span class="${lbl}">Stat</span><span class="${val}">${dStat}</span></div><div class="${row}"><span class="${lbl}">Perm</span><span class="${val}">${dPerm}</span></div><div class="${row}"><span class="${lbl}">Tải</span><span class="${val} text-green-400">${dDl}</span></div><div class="text-[10px] text-sky-300/70 mt-2 text-right">Khung: ${dFrame}</div></div>
+                                <div class="${box}"><div class="text-xs font-bold text-yellow-400 uppercase mb-2">Expert</div><div class="${row}"><span class="${lbl}">Cấp</span><span class="${val} text-white font-bold">${eLvl}</span></div><div class="${row}"><span class="${lbl}">Stat</span><span class="${val}">${eStat}</span></div><div class="${row}"><span class="${lbl}">Điểm</span><span class="${val}">${eScore}/${eMax}</span></div><div class="${row}"><span class="${lbl}">Uy tín</span><span class="${val} text-blue-300">${ePt}</span></div><div class="text-[10px] text-yellow-200/50 mt-2 text-right">${eTime}</div></div>
+                                <div class="${box}"><div class="text-xs font-bold text-red-400 uppercase mb-2">Báo cáo & Uy tín</div><div class="flex-grow flex flex-col justify-center text-center py-2"><span class="text-3xl font-bold text-white leading-none mb-1">${repCount}</span><span class="text-[10px] text-red-200/50 uppercase tracking-wider">Lần bị tố cáo</span></div><div class="border-t border-white/10 mt-2 pt-2 text-[10px] flex justify-between text-slate-400"><span>WhiteList:</span><span class="text-green-300 ml-1 truncate">${wlTime}</span></div></div>
+                            </div>
+                            <div class="mt-4 text-right text-xs text-slate-500 font-medium italic">Cập nhật: <span class="text-slate-300 not-italic">${updateTimeStr}</span></div>
+                        </div>
+                    </div>
+                    ${photoList.length?`<div class="mt-8 pt-6 border-t border-white/5"><h4 class="text-xs font-bold text-slate-500 uppercase mb-4 flex items-center gap-2"><i class="fa-solid fa-images"></i> Thư viện ảnh (${photoList.length}) <span class="text-[10px] font-normal normal-case opacity-50 ml-auto hidden md:inline">Kéo để cuộn</span></h4><div class="gallery-scroll flex gap-4 pb-4 snap-x" id="gallery-${uid}">${photoList.map((ph,i)=>`
+                        <div class="w-28 h-28 shrink-0 rounded-2xl overflow-hidden cursor-pointer border border-white/10 hover:border-sky-400 transition relative group snap-start" onclick="viewer.open(this, '${uid}', ${i})" data-tip="${ph.tip}">
+                            <img src="${ph.url}" class="w-full h-full object-cover transition duration-700 group-hover:scale-110" loading="lazy">
+                        </div>`).join('')}</div></div>`:''}
+                `;
+                $('#content-area').appendChild(card);
+                if(photoList.length) {
+                    setTimeout(() => {
+                        const galEl = document.getElementById(`gallery-${uid}`);
+                        app.initGalleryDrag(galEl);
+                        app.initTooltips(galEl); 
+                    }, 0);
+                }
+            },
+            
+            initGalleryDrag(el) {
+                if(!el) return;
+                let isDown = false, startX, scrollLeft;
+                el.addEventListener('wheel', e => { if(el.scrollWidth > el.clientWidth) { e.preventDefault(); el.scrollLeft += e.deltaY; } });
+                el.addEventListener('mousedown', e => { if(el.scrollWidth <= el.clientWidth) return; isDown = true; el.classList.add('active'); startX = e.pageX - el.offsetLeft; scrollLeft = el.scrollLeft; });
+                el.addEventListener('mouseleave', () => { isDown = false; el.classList.remove('active'); });
+                el.addEventListener('mouseup', () => { isDown = false; el.classList.remove('active'); });
+                el.addEventListener('mousemove', e => { if(!isDown) return; e.preventDefault(); const x = e.pageX - el.offsetLeft; const walk = (x - startX) * 2; el.scrollLeft = scrollLeft - walk; });
+            },
+
+            initTooltips(el) {
+                if(!el) return;
+                const tipEl = document.getElementById('global-tooltip');
+                const items = el.querySelectorAll('[data-tip]');
+                items.forEach(item => {
+                    item.addEventListener('mouseenter', () => { tipEl.innerText = item.getAttribute('data-tip'); tipEl.classList.remove('opacity-0'); });
+                    item.addEventListener('mousemove', (e) => { const x = e.clientX + 15; const y = e.clientY + 15; tipEl.style.transform = `translate(${x}px, ${y}px)`; });
+                    item.addEventListener('mouseleave', () => { tipEl.classList.add('opacity-0'); });
+                });
+            },
+
+            skeleton: (n) => Array(n).fill(0).map(()=>`<div class="glass-panel rounded-3xl p-6 h-96 animate-pulse"><div class="flex gap-8"><div class="w-44 h-44 bg-white/5 rounded-[2.5rem] shrink-0"></div><div class="flex-grow space-y-4"><div class="h-10 bg-white/5 w-2/3 rounded-xl"></div><div class="h-6 bg-white/5 w-1/3 rounded-lg"></div><div class="h-32 bg-white/5 w-full rounded-2xl mt-4"></div></div></div></div>`).join(''),
+            addHist(uid, name) {
+                const n = (name||'Unknown').replace(/<[^>]+>/g,'').trim();
+                this.history = this.history.filter(h=>h.uid!=uid);
+                this.history.unshift({uid, name:n});
+                if(this.history.length>10) this.history.pop();
+                localStorage.setItem('mw_h', JSON.stringify(this.history));
+                this.renderHist();
+            },
+            renderHist() {
+                const l = $('#history-list');
+                if(!this.history.length) { l.innerHTML='<div class="col-span-2 text-center text-slate-500 italic text-xs py-2">Trống</div>'; return; }
+                l.innerHTML = this.history.map(h => `<div class="px-3 py-2 hover:bg-white/10 cursor-pointer rounded-lg bg-white/5 border border-white/5 flex flex-col justify-center" onclick="app.search('${h.uid}')"><div class="font-bold text-sky-200 font-mono text-base">${h.uid}</div><div class="text-sm text-slate-400 truncate">${h.name}</div></div>`).join('');
+            },
+            clearHistory() { this.history=[]; localStorage.removeItem('mw_h'); this.renderHist(); },
+            share(uid) { utils.copy(`${location.protocol}//${location.host}${location.pathname}?uid=${uid}`); },
+            openApi(uid) { window.open(`${CONFIG.API_URL}&op_uin_list=${uid}&time=1753000710&auth=f372fa25c15b56111fb65287e0fd7870&s2t=1753000576&uin=1308706682`, '_blank'); },
+            toast(msg, type) { const t=$('#toast'); $('#toast-msg').innerText=msg; $('#toast-icon').className=type==='error'?'fa-solid fa-circle-exclamation text-red-400':'fa-solid fa-circle-check text-green-400'; t.style.opacity=1; t.style.transform='translate(-50%,0)'; setTimeout(()=>{t.style.opacity=0; t.style.transform='translate(-50%,24px)'},3000); },
+            showJson(uid) { this.curId=uid; this.curMode='JSON'; this.viewerLines=[]; this.buildJson(null,this.data[uid],0,true); this.renderLines(); $('#modal-title').innerHTML='<i class="fa-solid fa-code"></i> JSON DATA'; $('#json-viewer-container').scrollTop=0; this.openModal(); },
+            showLua(uid) { this.curId=uid; this.curMode='LUA'; this.viewerLines=utils.formatRawLua(this.luaData[uid]); this.renderLines(); $('#modal-title').innerHTML='<i class="fa-solid fa-file-code"></i> RAW LUA'; $('#json-viewer-container').scrollTop=0; this.openModal(); },
+            openModal() { const m=$('#json-modal'); m.classList.remove('hidden'); setTimeout(()=>m.classList.remove('opacity-0'),10); $('#json-box').classList.remove('scale-95'); $('#json-box').classList.add('scale-100'); },
+            closeModal() { const m=$('#json-modal'); m.classList.add('opacity-0'); $('#json-box').classList.add('scale-95'); setTimeout(()=>{ m.classList.add('hidden'); this.viewerLines=[]; document.getElementById('code-viewer').innerHTML=''; },300); },
+            renderLines() { $('#code-viewer').innerHTML=this.viewerLines.map((l,i)=>`<div class="j-line ${l.collapsible&&!l.open?'collapsed':''}" id="jl-${l.id}" style="display:${l.visible?'block':'none'}"><div class="j-num-col">${i+1}</div><div class="j-content" style="padding-left:${l.depth*20}px">${l.html}</div></div>`).join(''); },
+            buildJson(key,val,depth,isLast,pId='root') {
+                const id=Math.random().toString(36).substr(2,9), base={id,pId,depth,visible:true,open:true,html:''}, wrap=(c,v)=>`<span class="${c}">${v}</span>`;
+                const kHtml=key!==null?`${wrap('j-punc','"')}${wrap('j-key',key)}${wrap('j-punc','": ')}`:''; const comma=isLast?'':',', indent=`style="padding-left:${depth*20}px"`;
+                if(val===null) this.viewerLines.push({...base,html:`<div ${indent}>${kHtml}${wrap('j-null','null')}${comma}</div>`});
+                else if(typeof val!=='object') this.viewerLines.push({...base,html:`<div ${indent}>${kHtml}${wrap(typeof val==='number'?'j-num':(typeof val==='boolean'?'j-bool':'j-str'),typeof val==='string'?`"${val.replace(/"/g,'\\"')}"`:val)}${comma}</div>`});
+                else {
+                    const keys=Object.keys(val), open=Array.isArray(val)?'[':'{', close=Array.isArray(val)?']':'}';
+                    if(!keys.length) this.viewerLines.push({...base,html:`<div ${indent}>${kHtml}${wrap('j-punc',open+close+comma)}</div>`});
+                    else {
+                        const tog=`<span class="j-toggle" onclick="app.toggleLine('${id}')">▼</span>`, col=`<span class="j-collapsed-content" onclick="app.toggleLine('${id}')">... ${close}${comma}</span>`;
+                        this.viewerLines.push({...base,collapsible:true,html:`<div ${indent} style="position:relative">${tog}${kHtml}${wrap('j-punc',open)}${col}</div>`});
+                        keys.forEach((k,i)=>this.buildJson(Array.isArray(val)?null:k,val[k],depth+1,i===keys.length-1,id));
+                        this.viewerLines.push({id:`end-${id}`,pId:id,depth,visible:true,html:`<div ${indent}>${wrap('j-punc',close+comma)}</div>`});
+                    }
+                }
+            },
+            toggleLine(id) {
+                const p=this.viewerLines.find(l=>l.id===id); if(!p)return; p.open=!p.open; document.getElementById(`jl-${id}`).classList.toggle('collapsed',!p.open);
+                const setVis=(pid,vis)=>{this.viewerLines.forEach(l=>{if(l.pId===pid){l.visible=vis;document.getElementById(`jl-${l.id}`).style.display=vis?'block':'none';if(l.collapsible&&l.open&&vis)setVis(l.id,true);else if(l.collapsible)setVis(l.id,false);}});}; setVis(id,p.open);
+            },
+            copyContent() { utils.copy(this.curMode==='JSON'?JSON.stringify(this.data[this.curId],null,4):this.luaData[this.curId]); },
+            dlContent() { const c=this.curMode==='JSON'?JSON.stringify(this.data[this.curId],null,4):this.luaData[this.curId], ext=this.curMode==='JSON'?'json':'lua', type=this.curMode==='JSON'?'application/json':'text/plain'; const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([c],{type})); a.download=`profile_${this.curId}.${ext}`; a.click(); }
+        };
+
+        const viewer = {
+            imgs: [], cur: 0,
+            x: 0, y: 0, s: 1, r: 0, fx: 1, fy: 1, isDrag: false, lx: 0, ly: 0,
+            loop() { if(this.isDrag) requestAnimationFrame(this.loop.bind(this)); },
+            
+            open(el, uid, idx) {
+                // Get photos from app state
+                this.imgs = app.photos[uid];
+                
+                // --- FIX: Handle Direct Array for Avatar Click ---
+                if (!this.imgs || this.imgs.length === 0) {
+                    if (Array.isArray(uid)) {
+                         // Convert array of strings to array of objects compatible with viewer
+                         this.imgs = uid.map(u => ({ url: u, dateStr: '', tip: '' }));
+                    } else {
+                         this.imgs = app.photos[uid];
+                    }
+                }
+                
+                this.cur = idx;
+                
+                const v=$('#viewer'), img=$('#v-img');
+                const rect=el.getBoundingClientRect();
+                img.src=this.imgs[this.cur].url; 
+                img.style.transition='none';
+                img.style.transformOrigin = 'top left';
+                img.style.position = 'fixed';
+                img.style.left = rect.left + 'px';
+                img.style.top = rect.top + 'px';
+                img.style.width = rect.width + 'px';
+                img.style.height = rect.height + 'px';
+                v.classList.remove('hidden'); v.classList.remove('opacity-0');
+                
+                requestAnimationFrame(() => {
+                    img.style.transition = 'all 0.4s cubic-bezier(0.19, 1, 0.22, 1)';
+                    img.style.left = '0'; img.style.top = '0'; img.style.width = '100%'; img.style.height = '100%';
+                    img.style.objectFit = 'contain';
+                    
+                    setTimeout(() => {
+                        img.style.position = 'static'; 
+                        img.style.transform = 'none'; 
+                        img.style.transformOrigin = 'center center'; 
+                        this.reset(); 
+                        $('#viewer').classList.remove('pointer-events-none'); 
+                    }, 400);
+                });
+                this.update(); window.addEventListener('keydown', this.key);
+            },
+            close() { $('#viewer').classList.add('opacity-0'); setTimeout(()=>$('#viewer').classList.add('hidden'),300); window.removeEventListener('keydown', this.key); $('#viewer').classList.add('pointer-events-none'); },
+            nav(d) { this.cur=(this.cur+d+this.imgs.length)%this.imgs.length; this.reset(); const i=$('#v-img'); i.style.opacity=0; setTimeout(()=>{ i.src=this.imgs[this.cur].url; i.style.opacity=1; this.update(); },150); },
+            update() { 
+                $('#v-counter').innerText=`${this.cur+1} / ${this.imgs.length}`;
+                const dateEl = $('#v-date');
+                const dateStr = this.imgs[this.cur].dateStr;
+                
+                if(dateStr && dateStr !== "Thời gian: Không rõ") {
+                    dateEl.innerText = dateStr;
+                    dateEl.classList.remove('hidden');
+                } else {
+                    dateEl.classList.add('hidden');
+                }
+                
+                this.updateZoomIndicator();
+            },
+            
+            updateZoomIndicator() {
+                const ind = document.getElementById('zoom-indicator');
+                ind.innerText = Math.round(this.s * 100) + '%';
+                ind.classList.add('show');
+                clearTimeout(this.zoomTimeout);
+                this.zoomTimeout = setTimeout(() => ind.classList.remove('show'), 1500);
+            },
+
+            apply(smooth = false) {
+                const img = $('#v-img');
+                img.style.transition = smooth ? 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)' : 'none';
+                img.style.transform = `translate3d(${this.x}px,${this.y}px,0) rotate(${this.r}deg) scale(${this.s}) scaleX(${this.fx}) scaleY(${this.fy})`;
+                if(smooth) this.updateZoomIndicator();
+            },
+
+            reset() { this.x=0; this.y=0; this.s=1; this.r=0; this.fx=1; this.fy=1; this.apply(true); },
+            rotate(d) { this.r+=d; this.apply(true); }, flipH() { this.fx*=-1; this.apply(true); }, flipV() { this.fy*=-1; this.apply(true); },
+            zoom(d) { this.s=Math.max(0.5, this.s+d); this.apply(true); },
+            download() { window.open(this.imgs[this.cur].url,'_blank'); },
+            openSource() { 
+                let url = this.imgs[this.cur].url;
+                if (url.includes('images.weserv.nl')) {
+                    const match = url.match(/url=([^&]+)/);
+                    if (match && match[1]) url = decodeURIComponent(match[1]);
+                }
+                window.open(url, '_blank');
+            },
+
+            key(e) { if(e.key==='ArrowLeft')viewer.nav(-1); if(e.key==='ArrowRight')viewer.nav(1); if(e.key==='Escape')viewer.close(); },
+            
+            initEvents() {
+                const c=$('#v-container');
+                c.addEventListener('wheel',e=>{
+                    e.preventDefault();
+                    const d = e.deltaY * -0.001;
+                    const oldS = this.s;
+                    const newS = Math.min(Math.max(0.5, this.s + d), 8);
+                    const rect = c.getBoundingClientRect();
+                    const mx = e.clientX - rect.left - rect.width / 2;
+                    const my = e.clientY - rect.top - rect.height / 2;
+                    this.x += (mx - this.x) * (1 - newS / oldS);
+                    this.y += (my - this.y) * (1 - newS / oldS);
+                    this.s = newS;
+                    this.apply(false);
+                    this.updateZoomIndicator();
+                });
+                c.addEventListener('mousedown',e=>{if(e.button!==0)return;this.isDrag=true;this.lx=e.clientX;this.ly=e.clientY;c.style.cursor='grabbing';this.apply(false);});
+                window.addEventListener('mousemove',e=>{if(!this.isDrag)return;e.preventDefault();this.x+=e.clientX-this.lx;this.y+=e.clientY-this.ly;this.lx=e.clientX;this.ly=e.clientY;this.apply(false);});
+                window.addEventListener('mouseup',()=>{this.isDrag=false;c.style.cursor='grab';this.apply(true);});
+                c.addEventListener('touchstart',e=>{if(e.touches.length===1){this.isDrag=true;this.lx=e.touches[0].clientX;this.ly=e.touches[0].clientY;this.apply(false);}});
+                c.addEventListener('touchmove',e=>{if(!this.isDrag)return;e.preventDefault();this.x+=e.touches[0].clientX-this.lx;this.y+=e.touches[0].clientY-this.ly;this.lx=e.touches[0].clientX;this.ly=e.touches[0].clientY;this.apply(false);});
+                c.addEventListener('touchend',()=>{this.isDrag=false;this.apply(true);});
+            }
+        };
+
+        const bgAnim = {
+            raf: null, paused: false,
+            start() {
+                if(this.raf) cancelAnimationFrame(this.raf);
+                const c=document.getElementById('star-canvas'), x=c.getContext('2d');
+                let w,h,s=[]; 
+                const init=()=>{ 
+                    w=c.width=window.innerWidth; 
+                    h=c.height=window.innerHeight; 
+                    s=[]; 
+                    for(let i=0;i<(w<768?60:150);i++) s.push({
+                        x:Math.random()*w,
+                        y:Math.random()*h,
+                        r:Math.random()*2+1, 
+                        a:Math.random(),
+                        v:Math.random()*0.003+0.001, 
+                        dy: Math.random()*0.2 + 0.05 
+                    }); 
+                };
+                const loop=()=>{
+                    if(this.paused) return;
+                    x.clearRect(0,0,w,h); 
+                    x.fillStyle="#fff";
+                    s.forEach(p=>{ 
+                        p.a+=p.v; if(p.a>1||p.a<0) p.v*=-1; 
+                        p.y -= p.dy; if(p.y < -5) p.y = h;
+                        x.globalAlpha=Math.max(0, Math.min(1, Math.abs(p.a))); 
+                        x.fillRect(p.x,p.y,p.r,p.r); 
+                    });
+                    this.raf=requestAnimationFrame(loop);
+                };
+                window.addEventListener('resize',init); init(); loop();
+            },
+            stop() { this.paused=true; if(this.raf) cancelAnimationFrame(this.raf); },
+        };
+
+        document.addEventListener('DOMContentLoaded', () => { app.init(); viewer.initEvents(); });
+    </script>
+</body>
+</html>
