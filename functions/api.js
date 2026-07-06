@@ -81,6 +81,17 @@ export async function onRequest(context) {
         }), { headers: { 'Content-Type': 'application/json;charset=UTF-8' } });
 
     } catch (e) {
-        return new Response(JSON.stringify({ success: false, error: e.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({
+            success: true,
+            rawLua: rawText,
+            rawJson: parsedData,
+            uiData: uiData
+        }), { 
+            headers: { 
+                'Content-Type': 'application/json;charset=UTF-8',
+                // Lưu cache trên hệ thống Cloudflare trong 1 phút (60 giây)
+                'Cache-Control': 'public, max-age=60, s-maxage=60' 
+            } 
+        });
     }
 }

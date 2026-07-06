@@ -265,46 +265,72 @@
                 const p=new URLSearchParams(location.search).get('uid'); if(p){$('#search-input').value=p;this.search();}
                 document.addEventListener("visibilitychange",()=>document.hidden?bgAnim.stop():bgAnim.start());
                 bgAnim.start();
+
+                $('#search-input').addEventListener('input', (e) => {
+                    const val = e.target.value.trim();
+                    // Nếu nhập đủ 7 đến 10 số, âm thầm fetch trước dữ liệu để mồi Cache của trình duyệt
+                    if (/^\d{7,10}$/.test(val)) {
+                        const prefetchUrl = `${CONFIG.API_URL}&op_uin_list=${val}&time=1753000710&auth=f372fa25c15b56111fb65287e0fd7870&s2t=1753000576&uin=1308706682`;
+                        const proxyUrl = CONFIG.WORKER_URL + encodeURIComponent(prefetchUrl);
+                        fetch(proxyUrl).catch(() => {}); // Gọi ngầm kệ kết quả
+                    }
+                });
+            },
+
+            renderData(dataList) {
+                $('#content-area').innerHTML = '';
+                dataList.forEach(d => { 
+                    this.card(d); 
+                    this.addHist(d.uid, d.nameRaw); 
+                });
             },
 
             async search(val) {
-                const inp=$('#search-input'); 
+                const inp = $('#search-input'); 
                 const btn = inp.nextElementSibling;
-                let raw=val||inp.value.trim();
-                let uids=raw.split(/[,\s]+/).map(s=>{s=s.trim();if(!/^\d+$/.test(s))return null;return s.length<10?String(Number(s)+1000000000):s;}).filter(Boolean);
+                let raw = val || inp.value.trim();
+                let uids = raw.split(/[,\s]+/).map(s=>{s=s.trim();if(!/^\d+$/.test(s))return null;return s.length<10?String(Number(s)+1000000000):s;}).filter(Boolean);
                 
                 if(!uids.length) return this.toast('UID không hợp lệ','error');
                 
-                $('#history-box').classList.add('hidden'); 
-                $('#content-area').innerHTML=this.skeleton(uids.length);
-                const btnOriginalText = btn.innerHTML;
-                btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> ĐANG TÌM...';
-                btn.disabled = true; btn.classList.add('opacity-70', 'cursor-not-allowed');
+                const cacheKey = 'mw_cache_' + uids.join('_');
+                const cachedData = localStorage.getItem(cacheKey);
 
-                this.data={}; this.luaData={}; this.photos={};
+                $('#history-box').classList.add('hidden'); 
+                
+                // HIỆU ỨNG ÁNH SÁNG (SWR): Lôi data cũ ra render ngay lập tức (0ms)
+                if (cachedData) {
+                    try {
+                        const parsedCache = JSON.parse(cachedData);
+                        this.renderData(parsedCache);
+                    } catch(e) {}
+                } else {
+                    $('#content-area').innerHTML = this.skeleton(uids.length);
+                }
+
+                btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+                btn.disabled = true;
+
                 try {
-                    const url=`${CONFIG.API_URL}&op_uin_list=${uids.join(',')}&time=1753000710&auth=f372fa25c15b56111fb65287e0fd7870&s2t=1753000576&uin=1308706682`;
-                    
+                    const url = `${CONFIG.API_URL}&op_uin_list=${uids.join(',')}&time=1753000710&auth=f372fa25c15b56111fb65287e0fd7870&s2t=1753000576&uin=1308706682`;
                     const response = await utils.fetchFast(url); 
                     
-                    if(!response.uiData || !response.uiData.length) throw new Error("Không tìm thấy dữ liệu người chơi này");
+                    if(!response.uiData || !response.uiData.length) throw new Error("Không tìm thấy dữ liệu");
                     
-                    // Lưu lại cả rawLua và rawJson gốc để dùng cho 2 nút xem Code
-                    uids.forEach(id => {
-                        this.luaData[id] = response.rawLua;
-                    }); 
-                    this.data = response.rawJson; // Gán thẳng luôn raw JSON trả về
+                    uids.forEach(id => { this.luaData[id] = response.rawLua; }); 
+                    this.data = response.rawJson;
                     
-                    $('#content-area').innerHTML='';
-                    response.uiData.forEach(d => { 
-                        this.card(d); 
-                        this.addHist(d.uid, d.nameRaw); 
-                    });
+                    // Cập nhật lại bộ nhớ đệm nội bộ
+                    localStorage.setItem(cacheKey, JSON.stringify(response.uiData));
+                    
+                    // Render đè data mới nhất lên
+                    this.renderData(response.uiData);
                 } catch(e) { 
-                    $('#content-area').innerHTML=`<div class="text-center py-10 text-slate-400 animate-enter"><i class="fa-solid fa-server text-4xl mb-2 text-red-400"></i><br><span class="font-bold text-red-300">LỖI:</span> ${e.message}</div>`; 
+                    if (!cachedData) $('#content-area').innerHTML = `<div class="text-center py-10... LỖI...</div>`;
+                    this.toast(e.message, 'error');
                 } finally {
-                    btn.innerHTML = btnOriginalText;
-                    btn.disabled = false; btn.classList.remove('opacity-70', 'cursor-not-allowed');
+                    btn.innerHTML = 'TRA CỨU';
+                    btn.disabled = false;
                 }
             },
 
