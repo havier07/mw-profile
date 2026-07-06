@@ -217,9 +217,7 @@
         const CONFIG = {
             API_URL: "http://shequ.miniworldgame.com:8080/miniw/profile/?act=getProfileBatch",
 
-            WORKER_URL: isLocal 
-                        ? "https://mw-profile.pages.dev/api?url="
-                        : "/api?url=",
+            WORKER_URL: "https://mw-proxy.havier07.workers.dev/?url=",
 
             GENDER: { 1: '<span class="text-blue-400"><i class="fa-solid fa-mars"></i> Nam</span>', 2: '<span class="text-pink-400"><i class="fa-solid fa-venus"></i> Nữ</span>', 0: '<span class="text-slate-400"><i class="fa-solid fa-lock"></i> Bảo mật</span>' },
             COUNTRY: { "VN": "Việt Nam", "US": "Hoa Kỳ", "CN": "Trung Quốc", "TH": "Thái Lan", "ID": "Indonesia", "BR": "Brazil", "ES": "Tây Ban Nha", "RU": "Nga", "JP": "Nhật Bản", "KR": "Hàn Quốc", "TR": "Thổ Nhĩ Kỳ" },
@@ -236,12 +234,23 @@
                 try {
                     const res = await fetch(fullUrl, { signal: controller.signal });
                     clearTimeout(id);
-                    const json = await res.json();
-                    if (!json.success) throw new Error(json.error || "Lỗi máy chủ Proxy/Game");
+                    
+                    const rawText = await res.text();
+                    let json;
+                    try {
+                        json = JSON.parse(rawText);
+                    } catch (parseError) {
+                        console.error("Dữ liệu rác nhận được:", rawText);
+                        throw new Error("Cấu hình sai WORKER_URL hoặc Proxy bị sập (Server trả về HTML)");
+                    }
+
+                    if (!json.success) throw new Error(json.error || "Máy chủ Game từ chối kết nối");
                     return json;
                 } catch (e) {
                     clearTimeout(id);
-                    throw new Error(e.name === 'AbortError' ? "Kết nối quá hạn (Timeout)" : "Lỗi mạng hoặc Proxy từ chối");
+                    if (e.name === 'AbortError') throw new Error("Máy chủ Mini World phản hồi quá chậm (Timeout 10s)");
+                    // Trả lại ĐÚNG nguyên bản của lỗi để in ra giao diện
+                    throw e; 
                 }
             },
             copy: (txt) => {
