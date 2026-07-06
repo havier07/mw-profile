@@ -3,7 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mini World Profile | Ultimate V6.3</title>
+    <title>MiniWorld Profile Tracker</title>
+    <link rel="icon" href="https://play-lh.googleusercontent.com/fnvGJGqPU00v0p6oiOK_LtVmxe_-SIvAUEqnYrJPtz5pncU9G4VZuoZYmfvjPD0YBZbahsf1cPks-SyM9w2vdJ0" type="image/png">
+
+    <meta property="og:title" content="Mini World Profile | Trình Tra Cứu Siêu Tốc">
+    
+    <meta property="og:description" content="Tra cứu thông tin, ID, ảnh đại diện, thư viện ảnh và dữ liệu người chơi Mini World CREATA nhanh chóng qua hệ thống API của Havier.">
+    
+    <meta property="og:image" content="https://raw.githubusercontent.com/Havier2111/ten-repo-cua-ban/main/banner.jpg">
+    
+    <meta property="og:url" content="https://mw-stats.pages.dev">
+    
+    <meta property="og:type" content="website">
+    
+    <meta property="og:site_name" content="MW Profile Analytics">
+
+    <meta name="twitter:card" content="summary_large_image">
+    
+    <meta name="theme-color" content="#0ea5e9">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -123,7 +141,7 @@
         <!-- Header -->
         <div class="w-full max-w-3xl text-center mb-6 animate-enter">
             <h1 class="text-4xl md:text-7xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-sky-300 via-indigo-300 to-purple-300 tracking-tight drop-shadow-lg">
-                MW Profile
+                MiniWorld Profile
             </h1>
             
             <!-- Search Box -->
@@ -146,7 +164,7 @@
                     <div id="history-list" class="grid grid-cols-2 gap-2 p-2 max-h-60 overflow-y-auto custom-scroll bg-[#0b101e]"></div>
                 </div>
             </div>
-            <p class="text-slate-400/80 text-[10px] md:text-xs mt-2 font-medium">Tự động cộng <span class="font-mono text-sky-300">10^9</span> nếu UID < 10 ký tự</p>
+            <p class="text-slate-400/80 text-[10px] md:text-xs mt-2 font-medium">Author: <span class="font-mono text-sky-300">Havier</span>, UID: <span class="font-mono text-green-300">40799583</span></p>
         </div>
 
         <!-- Content Area -->
@@ -270,7 +288,6 @@
                 document.addEventListener('click',e=>!e.target.closest('#search-input')&&!e.target.closest('#history-box')&&$('#history-box').classList.add('hidden'));
                 $('#search-input').addEventListener('keydown',e=>e.key==='Enter'&&this.search());
                 const p=new URLSearchParams(location.search).get('uid'); if(p){$('#search-input').value=p;this.search();}
-                document.addEventListener("visibilitychange",()=>document.hidden?bgAnim.stop():bgAnim.start());
                 bgAnim.start();
 
                 $('#search-input').addEventListener('input', (e) => {
@@ -619,15 +636,14 @@
         };
 
         const bgAnim = {
-            raf: null, paused: false,
             start() {
-                if(this.raf) cancelAnimationFrame(this.raf);
                 const c=document.getElementById('star-canvas'), x=c.getContext('2d');
                 let w,h,s=[]; 
                 const init=()=>{ 
                     w=c.width=window.innerWidth; 
                     h=c.height=window.innerHeight; 
                     s=[]; 
+                    // Trên mobile hiện 60 sao cho nhẹ máy, PC hiện 150 sao
                     for(let i=0;i<(w<768?60:150);i++) s.push({
                         x:Math.random()*w,
                         y:Math.random()*h,
@@ -638,7 +654,6 @@
                     }); 
                 };
                 const loop=()=>{
-                    if(this.paused) return;
                     x.clearRect(0,0,w,h); 
                     x.fillStyle="#fff";
                     s.forEach(p=>{ 
@@ -647,11 +662,13 @@
                         x.globalAlpha=Math.max(0, Math.min(1, Math.abs(p.a))); 
                         x.fillRect(p.x,p.y,p.r,p.r); 
                     });
-                    this.raf=requestAnimationFrame(loop);
+                    requestAnimationFrame(loop);
                 };
-                window.addEventListener('resize',init); init(); loop();
-            },
-            stop() { this.paused=true; if(this.raf) cancelAnimationFrame(this.raf); },
+                
+                window.addEventListener('resize', init); 
+                init(); 
+                loop();
+            }
         };
 
         document.addEventListener('DOMContentLoaded', () => { app.init(); viewer.initEvents(); });
