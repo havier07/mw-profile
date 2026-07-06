@@ -244,8 +244,6 @@
                     throw new Error(e.name === 'AbortError' ? "Kết nối quá hạn (Timeout)" : "Lỗi mạng hoặc Proxy từ chối");
                 }
             },
-            formatRawLua: (text) => { /* Giữ nguyên logic render modal Lua */ },
-            highlightLuaLine: (str) => { /* Giữ nguyên logic render modal Lua */ },
             copy: (txt) => {
                 const t=document.createElement("textarea");t.value=txt;t.style.position="fixed";t.style.left="-9999px";document.body.appendChild(t);t.focus();t.select();
                 try{document.execCommand('copy')?app.toast(`Đã sao chép`,'success'):app.toast('Lỗi sao chép','error');}catch(e){app.toast('Lỗi quyền','error');}document.body.removeChild(t);
@@ -317,9 +315,7 @@
                     
                     if(!response.uiData || !response.uiData.length) throw new Error("Không tìm thấy dữ liệu");
                     
-                    uids.forEach(id => { this.luaData[id] = response.rawLua; }); 
                     this.data = {};
-                    uids.forEach(id => { this.luaData[id] = response.rawLua; }); 
                     
                     Object.values(response.rawJson).forEach(p => {
                         const d = p.profile || p;
@@ -370,7 +366,6 @@
                     <div class="flex gap-2 z-20 justify-end md:absolute md:top-4 md:right-4 mb-6 md:mb-0">
                         <button onclick="app.share('${uid}')" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-300 hover:text-white transition" title="Share"><i class="fa-solid fa-share-nodes"></i></button>
                         <button onclick="app.openApi('${uid}')" class="px-3 py-1 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-bold text-purple-400 border border-purple-500/20 transition"><i class="fa-solid fa-server"></i> API</button>
-                        <button onclick="app.showLua('${uid}')" class="px-3 py-1 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-bold text-orange-400 border border-orange-500/20 transition"><i class="fa-solid fa-file-code"></i> Lua</button>
                         <button onclick="app.showJson('${uid}')" class="px-3 py-1 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-bold text-sky-400 border border-sky-500/20 transition"><i class="fa-solid fa-code"></i> JSON</button>
                     </div>
                     <div class="flex flex-col md:flex-row gap-8">
@@ -459,7 +454,6 @@
             openApi(uid) { window.open(`${CONFIG.API_URL}&op_uin_list=${uid}&time=1753000710&auth=f372fa25c15b56111fb65287e0fd7870&s2t=1753000576&uin=1308706682`, '_blank'); },
             toast(msg, type) { const t=$('#toast'); $('#toast-msg').innerText=msg; $('#toast-icon').className=type==='error'?'fa-solid fa-circle-exclamation text-red-400':'fa-solid fa-circle-check text-green-400'; t.style.opacity=1; t.style.transform='translate(-50%,0)'; setTimeout(()=>{t.style.opacity=0; t.style.transform='translate(-50%,24px)'},3000); },
             showJson(uid) { this.curId=uid; this.curMode='JSON'; this.viewerLines=[]; this.buildJson(null,this.data[uid],0,true); this.renderLines(); $('#modal-title').innerHTML='<i class="fa-solid fa-code"></i> JSON DATA'; $('#json-viewer-container').scrollTop=0; this.openModal(); },
-            showLua(uid) { this.curId=uid; this.curMode='LUA'; this.viewerLines=utils.formatRawLua(this.luaData[uid]); this.renderLines(); $('#modal-title').innerHTML='<i class="fa-solid fa-file-code"></i> RAW LUA'; $('#json-viewer-container').scrollTop=0; this.openModal(); },
             openModal() { const m=$('#json-modal'); m.classList.remove('hidden'); setTimeout(()=>m.classList.remove('opacity-0'),10); $('#json-box').classList.remove('scale-95'); $('#json-box').classList.add('scale-100'); },
             closeModal() { const m=$('#json-modal'); m.classList.add('opacity-0'); $('#json-box').classList.add('scale-95'); setTimeout(()=>{ m.classList.add('hidden'); this.viewerLines=[]; document.getElementById('code-viewer').innerHTML=''; },300); },
             renderLines() { $('#code-viewer').innerHTML=this.viewerLines.map((l,i)=>`<div class="j-line ${l.collapsible&&!l.open?'collapsed':''}" id="jl-${l.id}" style="display:${l.visible?'block':'none'}"><div class="j-num-col">${i+1}</div><div class="j-content" style="padding-left:${l.depth*20}px">${l.html}</div></div>`).join(''); },
@@ -483,8 +477,16 @@
                 const p=this.viewerLines.find(l=>l.id===id); if(!p)return; p.open=!p.open; document.getElementById(`jl-${id}`).classList.toggle('collapsed',!p.open);
                 const setVis=(pid,vis)=>{this.viewerLines.forEach(l=>{if(l.pId===pid){l.visible=vis;document.getElementById(`jl-${l.id}`).style.display=vis?'block':'none';if(l.collapsible&&l.open&&vis)setVis(l.id,true);else if(l.collapsible)setVis(l.id,false);}});}; setVis(id,p.open);
             },
-            copyContent() { utils.copy(this.curMode==='JSON'?JSON.stringify(this.data[this.curId],null,4):this.luaData[this.curId]); },
-            dlContent() { const c=this.curMode==='JSON'?JSON.stringify(this.data[this.curId],null,4):this.luaData[this.curId], ext=this.curMode==='JSON'?'json':'lua', type=this.curMode==='JSON'?'application/json':'text/plain'; const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([c],{type})); a.download=`profile_${this.curId}.${ext}`; a.click(); }
+            copyContent() { 
+                utils.copy(JSON.stringify(this.data[this.curId], null, 4)); 
+            },
+            dlContent() { 
+                const c = JSON.stringify(this.data[this.curId], null, 4);
+                const a = document.createElement('a'); 
+                a.href = URL.createObjectURL(new Blob([c], {type: 'application/json'})); 
+                a.download = `profile_${this.curId}.json`; 
+                a.click(); 
+            }
         };
 
         const viewer = {
