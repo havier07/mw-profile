@@ -27,6 +27,7 @@ body {
     border: 1px solid var(--glass-border);
     box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
     transform: translateZ(0);
+    will-change: transform;
 }
 
 @media (min-width: 768px) {

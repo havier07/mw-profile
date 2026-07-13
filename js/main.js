@@ -52,6 +52,24 @@ const app = {
         if (p) { $("#search-input").value = p; this.search(); }
         bgAnim.start();
 
+        const tipEl = document.getElementById("global-tooltip");
+        document.addEventListener("mouseover", (e) => {
+            const item = e.target.closest("[data-tip]");
+            if (item && tipEl) {
+                tipEl.innerText = item.getAttribute("data-tip");
+                tipEl.classList.remove("opacity-0");
+            }
+        });
+        document.addEventListener("mousemove", (e) => {
+            if (tipEl && !tipEl.classList.contains("opacity-0")) {
+                tipEl.style.transform = `translate(${e.clientX + 15}px, ${e.clientY + 15}px)`;
+            }
+        });
+        document.addEventListener("mouseout", (e) => {
+            const item = e.target.closest("[data-tip]");
+            if (item && tipEl) tipEl.classList.add("opacity-0");
+        });
+
         $("#search-input").addEventListener("input", (e) => {
             const val = e.target.value.trim();
             if (/^\d{7,10}$/.test(val)) fetch(PROXY_URL + val).catch(() => { }); 
@@ -432,21 +450,51 @@ const viewer = {
 const bgAnim = {
     start() {
         const c = document.getElementById("star-canvas"), x = c.getContext("2d");
-        let w, h, s = [];
+        let w, h, s = [], lastTime = 0;
+        const fps = 30; // KHÓA CỨNG 30 FPS: Cứu tinh cho GPU và hiệu ứng kính mờ!
+        const interval = 1000 / fps;
+
         const init = () => {
-            w = c.width = window.innerWidth; h = c.height = window.innerHeight; s = [];
-            for (let i = 0; i < (w < 768 ? 60 : 150); i++) s.push({ x: Math.random() * w, y: Math.random() * h, r: Math.random() * 2 + 1, a: Math.random(), v: Math.random() * 0.003 + 0.001, dy: Math.random() * 0.2 + 0.05 });
+            w = c.width = window.innerWidth;
+            h = c.height = window.innerHeight;
+            s = [];
+            // Giảm nhẹ số lượng sao xuống 40 (mobile) và 100 (PC) là đủ đẹp
+            const count = w < 768 ? 40 : 100;
+            for (let i = 0; i < count; i++) {
+                s.push({
+                    x: Math.random() * w,
+                    y: Math.random() * h,
+                    r: Math.random() * 1.5 + 0.5,
+                    a: Math.random(),
+                    v: (Math.random() * 0.02 + 0.005) * (Math.random() > 0.5 ? 1 : -1),
+                    dy: Math.random() * 0.15 + 0.05,
+                });
+            }
         };
-        const loop = () => {
-            x.clearRect(0, 0, w, h); x.fillStyle = "#fff";
-            s.forEach((p) => {
-                p.a += p.v; if (p.a > 1 || p.a < 0) p.v *= -1;
-                p.y -= p.dy; if (p.y < -5) p.y = h;
-                x.globalAlpha = Math.max(0, Math.min(1, Math.abs(p.a))); x.fillRect(p.x, p.y, p.r, p.r);
-            });
+
+        const loop = (currentTime) => {
             requestAnimationFrame(loop);
+            const delta = currentTime - lastTime;
+            if (delta < interval) return; // Throttling: Bỏ qua nếu chưa đủ thời gian 30 FPS
+            lastTime = currentTime - (delta % interval);
+
+            x.clearRect(0, 0, w, h);
+            s.forEach((p) => {
+                p.a += p.v;
+                if (p.a > 1 || p.a < 0) p.v *= -1;
+                p.y -= p.dy;
+                if (p.y < 0) p.y = h;
+                
+                // TỐI ƯU HÓA: Dùng thẳng chuỗi rgba, KHÔNG đổi x.globalAlpha liên tục
+                const alpha = Math.max(0.1, Math.min(1, Math.abs(p.a))).toFixed(2);
+                x.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                x.fillRect(p.x, p.y, p.r, p.r);
+            });
         };
-        window.addEventListener("resize", init); init(); loop();
+
+        window.addEventListener("resize", init);
+        init();
+        requestAnimationFrame(loop);
     },
 };
 
