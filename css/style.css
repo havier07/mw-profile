@@ -279,3 +279,13 @@ body {
 #zoom-indicator.show {
     opacity: 1;
 }
+
+/* TỐI ƯU HÓA PHẦN CỨNG CHO TRÌNH XEM ẢNH TRÊN MÁY YẾU */
+#v-img {
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform-style: preserve-3d;
+    user-select: none;
+    -webkit-user-drag: none;
+}

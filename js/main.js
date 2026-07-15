@@ -370,28 +370,31 @@ const app = {
 const viewer = {
     imgs: [],
     cur: 0,
+    
+    // Tọa độ thực tế đang hiển thị trên màn hình
     x: 0, y: 0, s: 1, r: 0, fx: 1, fy: 1,
+    // Tọa độ mục tiêu (Dùng cho thuật toán quán tính Lerp)
+    tx: 0, ty: 0, ts: 1, tr: 0,
+    
     isDrag: false, lx: 0, ly: 0,
-    ticking: false, // Cờ khóa RAF Throttling chống nghẽn GPU
-    touchDist: 0,   // Lưu khoảng cách 2 ngón tay cho Mobile PE
-    lastTap: 0,     // Theo dõi Double-tap trên Mobile
+    animId: null,   // ID vòng lặp vật lý
+    isLerp: false,  // Cờ kích hoạt quán tính
+    touchDist: 0, lastTap: 0,
 
-    // 1. CHUYÊN XỬ LÝ AVATAR
     openAvatar(el, uid) {
         const info = app.avatars[uid];
         if (!info || !info.url) return;
         this.open(el, [info], 0);
     },
 
-    // 2. CHUYÊN XỬ LÝ ALBUM
     openGallery(el, uid, idx) {
         const list = app.photos[uid] || [];
         if (!list.length) return;
         this.open(el, list, idx);
     },
 
-    // 3. HÀM LÕI MỞ ẢNH TỐI ƯU FLIP (100% HARDWARE ACCELERATED)
-    open(el, imgList, idx) {
+    // HÀM MỞ ẢNH TỐI THƯỢNG: KẾT HỢP IMG.DECODE() & FLIP ANIMATION
+    async open(el, imgList, idx) {
         this.imgs = imgList;
         this.cur = idx;
         if (!this.imgs || !this.imgs[this.cur] || !this.imgs[this.cur].url) return;
@@ -399,41 +402,49 @@ const viewer = {
         const v = $("#viewer"), img = $("#v-img");
         const rect = el ? el.getBoundingClientRect() : null;
 
-        // Reset toàn bộ thông số biến đổi về chuẩn
-        this.x = 0; this.y = 0; this.s = 1; this.r = 0; this.fx = 1; this.fy = 1;
-        img.src = this.imgs[this.cur].url;
+        // Reset toàn bộ tọa độ về 0
+        this.x = this.tx = 0; this.y = this.ty = 0;
+        this.s = this.ts = 1; this.r = this.tr = 0; this.fx = 1; this.fy = 1;
         
+        // 1. TẢI VÀ GIẢI MÃ ẢNH TRƯỚC TRONG VRAM (Chống khựng 100% cho máy yếu)
+        img.src = this.imgs[this.cur].url;
+        try {
+            if (img.decode) await img.decode();
+        } catch (e) { /* Bỏ qua nếu ảnh lỗi hoặc trình duyệt cũ */ }
+
         v.classList.remove("hidden");
         v.classList.remove("opacity-0");
         v.classList.add("pointer-events-none");
 
         if (rect && el) {
-            // THUẬT TOÁN FLIP: Tính toán tọa độ và tỷ lệ thu nhỏ từ ảnh Thumb ra giữa màn hình
             const vw = window.innerWidth, vh = window.innerHeight;
             const startX = (rect.left + rect.width / 2) - (vw / 2);
             const startY = (rect.top + rect.height / 2) - (vh / 2);
-            const startScale = Math.max(0.1, rect.width / Math.min(vw, 800));
+            const startScale = Math.max(0.05, rect.width / Math.min(vw, 800));
 
+            // Đặt ảnh ngay tại vị trí Thumbnail
             img.style.transition = "none";
             img.style.transform = `translate3d(${startX}px, ${startY}px, 0) scale(${startScale})`;
-            img.style.opacity = "0.3";
+            img.style.opacity = "0.2";
 
+            // 2 KHIÊN RAF: Đảm bảo trình duyệt đã hoàn tất vẽ khung hình cũ rồi mới bay ra
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
-                    // Ép GPU bay ra giữa màn hình bằng transform (0% Layout Reflow)
-                    img.style.transition = "transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease";
+                    img.style.transition = "transform 0.38s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.38s ease";
                     img.style.transform = "translate3d(0px, 0px, 0px) scale(1) rotate(0deg) scaleX(1) scaleY(1)";
                     img.style.opacity = "1";
                     setTimeout(() => {
                         img.style.transition = "none";
                         v.classList.remove("pointer-events-none");
-                    }, 350);
+                        this.startLerpLoop(); // Kích hoạt động cơ vật lý sau khi mở xong
+                    }, 380);
                 });
             });
         } else {
             img.style.transition = "none";
-            this.apply(false);
+            this.applyDirect();
             v.classList.remove("pointer-events-none");
+            this.startLerpLoop();
         }
 
         this.update();
@@ -441,10 +452,11 @@ const viewer = {
     },
 
     close() {
+        this.stopLerpLoop();
         const v = $("#viewer"), img = $("#v-img");
         v.classList.add("pointer-events-none");
-        img.style.transition = "transform 0.25s cubic-bezier(0.4, 0, 1, 1), opacity 0.25s ease";
-        img.style.transform = `translate3d(${this.x}px, ${this.y + 50}px, 0) scale(0.8)`;
+        img.style.transition = "transform 0.28s cubic-bezier(0.4, 0, 1, 1), opacity 0.28s ease";
+        img.style.transform = `translate3d(${this.x}px, ${this.y + 60}px, 0) scale(${this.s * 0.7}) rotate(${this.r}deg)`;
         img.style.opacity = "0";
         v.classList.add("opacity-0");
         
@@ -452,31 +464,39 @@ const viewer = {
             v.classList.add("hidden");
             img.style.transform = "none";
             window.removeEventListener("keydown", this.key);
-        }, 250);
+        }, 280);
     },
 
-    nav(d) {
+    async nav(d) {
+        this.stopLerpLoop();
         this.cur = (this.cur + d + this.imgs.length) % this.imgs.length;
-        this.reset();
-        const i = $("#v-img");
-        i.style.opacity = "0";
-        i.style.transform = `translate3d(${d * 30}px, 0, 0) scale(0.95)`;
-        setTimeout(() => {
-            i.src = this.imgs[this.cur].url;
-            i.style.transition = "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease";
-            i.style.opacity = "1";
-            i.style.transform = "translate3d(0, 0, 0) scale(1)";
+        this.resetTargets();
+        
+        const img = $("#v-img");
+        img.style.transition = "transform 0.2s ease, opacity 0.2s ease";
+        img.style.opacity = "0";
+        img.style.transform = `translate3d(${d * 40}px, 0, 0) scale(0.92)`;
+        
+        setTimeout(async () => {
+            img.src = this.imgs[this.cur].url;
+            try { if (img.decode) await img.decode(); } catch(e){}
+            
+            img.style.transition = "transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease";
+            img.style.opacity = "1";
+            img.style.transform = "translate3d(0, 0, 0) scale(1)";
             this.update();
-            setTimeout(() => i.style.transition = "none", 300);
-        }, 150);
+            setTimeout(() => {
+                img.style.transition = "none";
+                this.startLerpLoop();
+            }, 350);
+        }, 200);
     },
 
     update() {
         $("#v-counter").innerText = `${this.cur + 1} / ${this.imgs.length}`;
         const dateEl = $("#v-date"), dateStr = this.imgs[this.cur].dateStr;
         if (dateStr && dateStr !== "Thời gian: Không rõ") {
-            dateEl.innerText = dateStr;
-            dateEl.classList.remove("hidden");
+            dateEl.innerText = dateStr; dateEl.classList.remove("hidden");
         } else {
             dateEl.classList.add("hidden");
         }
@@ -486,76 +506,97 @@ const viewer = {
     updateZoomIndicator() {
         const ind = document.getElementById("zoom-indicator");
         if (!ind) return;
-        ind.innerText = Math.round(this.s * 100) + "%";
+        ind.innerText = Math.round(this.ts * 100) + "%";
         ind.classList.add("show");
         clearTimeout(this.zoomTimeout);
         this.zoomTimeout = setTimeout(() => ind.classList.remove("show"), 1200);
     },
 
-    // HÀM APPLY SỬ DỤNG RAF THROTTLING CHỐNG NGHẼN GPU
-    apply(smooth = false) {
+    // =========================================================================
+    // ĐỘNG CƠ QUÁN TÍNH LERP (LINEAR INTERPOLATION PHYSICS ENGINE)
+    // =========================================================================
+    startLerpLoop() {
+        if (this.isLerp) return;
+        this.isLerp = true;
         const img = $("#v-img");
         if (!img) return;
-        if (smooth) {
-            img.style.transition = "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)";
-            img.style.transform = `translate3d(${this.x}px,${this.y}px,0) rotate(${this.r}deg) scale(${this.s}) scaleX(${this.fx}) scaleY(${this.fy})`;
-            this.updateZoomIndicator();
-            setTimeout(() => img.style.transition = "none", 300);
-        } else {
-            if (!this.ticking) {
-                requestAnimationFrame(() => {
-                    img.style.transform = `translate3d(${this.x}px,${this.y}px,0) rotate(${this.r}deg) scale(${this.s}) scaleX(${this.fx}) scaleY(${this.fy})`;
-                    this.ticking = false;
-                });
-                this.ticking = true;
-            }
-        }
+
+        const loop = () => {
+            if (!this.isLerp) return;
+            
+            // Công thức Lerp: Bước nhảy mượt mà 25% tới mục tiêu mỗi khung hình
+            this.x += (this.tx - this.x) * 0.25;
+            this.y += (this.ty - this.y) * 0.25;
+            this.s += (this.ts - this.s) * 0.25;
+            this.r += (this.tr - this.r) * 0.25;
+
+            // Dừng tính toán khi đã tới rất gần mục tiêu để tiết kiệm CPU
+            if (Math.abs(this.tx - this.x) < 0.05) this.x = this.tx;
+            if (Math.abs(this.ty - this.y) < 0.05) this.y = this.ty;
+            if (Math.abs(this.ts - this.s) < 0.005) this.s = this.ts;
+            if (Math.abs(this.tr - this.r) < 0.05) this.r = this.tr;
+
+            img.style.transform = `translate3d(${this.x.toFixed(2)}px, ${this.y.toFixed(2)}px, 0) rotate(${this.r.toFixed(2)}deg) scale(${this.s.toFixed(3)}) scaleX(${this.fx}) scaleY(${this.fy})`;
+            
+            this.animId = requestAnimationFrame(loop);
+        };
+        this.animId = requestAnimationFrame(loop);
+    },
+
+    stopLerpLoop() {
+        this.isLerp = false;
+        if (this.animId) cancelAnimationFrame(this.animId);
+    },
+
+    applyDirect() {
+        this.x = this.tx; this.y = this.ty; this.s = this.ts; this.r = this.tr;
+        const img = $("#v-img");
+        if (img) img.style.transform = `translate3d(${this.x}px, ${this.y}px, 0) rotate(${this.r}deg) scale(${this.s}) scaleX(${this.fx}) scaleY(${this.fy})`;
+    },
+
+    resetTargets() {
+        this.tx = 0; this.ty = 0; this.ts = 1; this.tr = 0; this.fx = 1; this.fy = 1;
+        this.updateZoomIndicator();
     },
 
     reset() {
-        this.x = 0; this.y = 0; this.s = 1; this.r = 0; this.fx = 1; this.fy = 1;
-        this.apply(true);
+        this.resetTargets();
     },
 
-    // TÍNH NĂNG 1:1 (ACTUAL SIZE / FIT SCREEN) HAY HO CHUẨN UX
     toggleOneToOne() {
         const img = $("#v-img");
         if (!img) return;
-        // Nếu đang ở 100% thì phóng ra kích thước thực (hoặc 200%), ngược lại reset về Fit Screen
-        if (Math.abs(this.s - 1) < 0.05 && (this.x !== 0 || this.y !== 0)) {
+        if (Math.abs(this.ts - 1) < 0.05 && (this.tx !== 0 || this.ty !== 0)) {
             this.reset();
-        } else if (Math.abs(this.s - 1) < 0.05) {
-            // Phóng to dựa theo độ phân giải gốc của ảnh
+        } else if (Math.abs(this.ts - 1) < 0.05) {
             const ratio = img.naturalWidth ? (img.naturalWidth / img.clientWidth) : 2;
-            this.s = Math.max(1.5, Math.min(4, ratio));
-            this.apply(true);
+            this.ts = Math.max(1.5, Math.min(4, ratio));
+            this.updateZoomIndicator();
         } else {
             this.reset();
         }
     },
 
-    rotate(d) { this.r += d; this.apply(true); },
-    flipH() { this.fx *= -1; this.apply(true); },
-    flipV() { this.fy *= -1; this.apply(true); },
+    rotate(d) { this.tr += d; },
+    flipH() { this.fx *= -1; },
+    flipV() { this.fy *= -1; },
     
     zoom(d, clientX = window.innerWidth / 2, clientY = window.innerHeight / 2) {
-        const oldS = this.s;
-        const newS = Math.min(Math.max(0.2, this.s + d), 10); // Giới hạn zoom từ 20% đến 1000%
+        const oldS = this.ts;
+        const newS = Math.min(Math.max(0.15, this.ts + d), 12); // Zoom từ 15% đến 1200%
         if (oldS === newS) return;
 
-        // Thuật toán zoom hướng thẳng vào tâm điểm chuột / ngón tay
+        // Zoom hướng tâm chuột / ngón tay siêu mượt
         const vw = window.innerWidth / 2, vh = window.innerHeight / 2;
         const mx = clientX - vw, my = clientY - vh;
-        this.x += (mx - this.x) * (1 - newS / oldS);
-        this.y += (my - this.y) * (1 - newS / oldS);
-        this.s = newS;
+        this.tx += (mx - this.tx) * (1 - newS / oldS);
+        this.ty += (my - this.ty) * (1 - newS / oldS);
+        this.ts = newS;
         
-        this.apply(false);
         this.updateZoomIndicator();
     },
 
     download() { window.open(this.imgs[this.cur].url, "_blank"); },
-    
     openSource() {
         let url = this.imgs[this.cur].url;
         if (url.includes("images.weserv.nl")) {
@@ -572,19 +613,17 @@ const viewer = {
         if (e.key === "0") viewer.toggleOneToOne();
     },
 
-    // TRUNG TÂM BẮT SỰ KIỆN: HỖ TRỢ CHUỘT PC & MULTI-TOUCH MOBILE (PE)
+    // BẮT SỰ KIỆN TỐI ƯU HÓA: ĐIỀU KHIỂN TỌA ĐỘ MỤC TIÊU (TARGETS)
     initEvents() {
         const c = $("#v-container");
         if (!c) return;
 
-        // 1. Zoom bằng con lăn chuột PC
         c.addEventListener("wheel", (e) => {
             e.preventDefault();
-            const delta = e.deltaY * -0.0015 * Math.max(1, this.s * 0.5);
+            const delta = e.deltaY * -0.0018 * Math.max(0.8, this.ts * 0.6);
             this.zoom(delta, e.clientX, e.clientY);
         }, { passive: false });
 
-        // 2. Kéo ảnh bằng chuột PC
         c.addEventListener("mousedown", (e) => {
             if (e.button !== 0) return;
             this.isDrag = true;
@@ -594,10 +633,10 @@ const viewer = {
         window.addEventListener("mousemove", (e) => {
             if (!this.isDrag) return;
             e.preventDefault();
-            this.x += (e.clientX - this.lx) / Math.max(1, Math.abs(this.r) === 90 ? 1 : 1);
-            this.y += (e.clientY - this.ly);
+            // Cập nhật mục tiêu thay vì gán DOM trực tiếp -> Chống lag cho máy yếu!
+            this.tx += (e.clientX - this.lx);
+            this.ty += (e.clientY - this.ly);
             this.lx = e.clientX; this.ly = e.clientY;
-            this.apply(false);
         });
         window.addEventListener("mouseup", () => {
             if (this.isDrag) {
@@ -606,28 +645,24 @@ const viewer = {
             }
         });
 
-        // 3. Double-click PC để Zoom 1:1
         c.addEventListener("dblclick", (e) => {
             e.preventDefault();
             this.toggleOneToOne();
         });
 
-        // 4. CẢM ỨNG ĐA ĐIỂM CHO MOBILE (PE) - PINCH TO ZOOM & DOUBLE TAP
+        // CẢM ỨNG ĐA ĐIỂM ĐIỆN THOẠI (PE)
         c.addEventListener("touchstart", (e) => {
             if (e.touches.length === 1) {
                 this.isDrag = true;
                 this.lx = e.touches[0].clientX;
                 this.ly = e.touches[0].clientY;
-                
-                // Nhận diện Double-tap trên Mobile
                 const now = Date.now();
-                if (now - this.lastTap < 300) {
+                if (now - this.lastTap < 280) {
                     this.toggleOneToOne();
                     this.isDrag = false;
                 }
                 this.lastTap = now;
             } else if (e.touches.length === 2) {
-                // Chế độ 2 ngón tay (Pinch to zoom)
                 this.isDrag = false;
                 this.touchDist = Math.hypot(
                     e.touches[0].clientX - e.touches[1].clientX,
@@ -639,11 +674,10 @@ const viewer = {
         c.addEventListener("touchmove", (e) => {
             if (this.isDrag && e.touches.length === 1) {
                 e.preventDefault();
-                this.x += e.touches[0].clientX - this.lx;
-                this.y += e.touches[0].clientY - this.ly;
+                this.tx += e.touches[0].clientX - this.lx;
+                this.ty += e.touches[0].clientY - this.ly;
                 this.lx = e.touches[0].clientX;
                 this.ly = e.touches[0].clientY;
-                this.apply(false);
             } else if (e.touches.length === 2) {
                 e.preventDefault();
                 const newDist = Math.hypot(
@@ -651,10 +685,10 @@ const viewer = {
                     e.touches[0].clientY - e.touches[1].clientY
                 );
                 if (this.touchDist > 0) {
-                    const delta = (newDist - this.touchDist) * 0.01;
+                    const delta = (newDist - this.touchDist) * 0.012;
                     const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
                     const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                    this.zoom(delta * Math.max(1, this.s * 0.5), midX, midY);
+                    this.zoom(delta * Math.max(1, this.ts * 0.5), midX, midY);
                 }
                 this.touchDist = newDist;
             }
