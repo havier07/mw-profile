@@ -36,7 +36,7 @@ const utils = {
 };
 
 const app = {
-    data: {}, photos: {}, history: JSON.parse(localStorage.getItem("mw_h") || "[]"),
+    data: {}, avatars: {}, photos: {}, history: JSON.parse(localStorage.getItem("mw_h") || "[]"),
     curId: null, viewerLines: [], curMode: "JSON",
 
     currentUids: [], 
@@ -170,6 +170,7 @@ const app = {
     card(d, isSilent = false) {
         const uid = d.uid;
         this.photos[uid] = d.photos || [];
+        this.avatars[uid] = d.avatarInfo || { url: d.avatar, dateStr: "Thời gian: Không rõ", tip: "Ảnh đại diện" };
 
         const card = document.createElement("div");
         
@@ -206,7 +207,7 @@ const app = {
             </div>
             <div class="flex flex-col md:flex-row gap-8">
                 <div class="flex flex-col items-center shrink-0">
-                    <div class="relative w-44 h-44 rounded-[2.5rem] p-1 border-2 border-white/10 overflow-hidden shadow-2xl bg-[#0b101e] cursor-pointer group-avatar transition-transform hover:scale-105" onclick="viewer.open(this, '${uid}', 0)">
+                    <div class="relative w-44 h-44 rounded-[2.5rem] p-1 border-2 border-white/10 overflow-hidden shadow-2xl bg-[#0b101e] cursor-pointer group-avatar transition-transform hover:scale-105" onclick="viewer.openAvatar(this, '${uid}')">
                         <img src="${d.avatar}" class="w-full h-full object-cover rounded-[2.3rem]">
                         <div class="absolute inset-0 bg-black/30 opacity-0 group-avatar:hover:opacity-100 transition flex items-center justify-center"><i class="fa-solid fa-expand text-white text-2xl"></i></div>
                     </div>
@@ -373,27 +374,30 @@ const viewer = {
     isDrag: false, lx: 0, ly: 0,
     loop() { if (this.isDrag) requestAnimationFrame(this.loop.bind(this)); },
 
-    // 1. CHUYÊN XỬ LÝ AVATAR: Luôn mở được 100%, độc lập với Album
-    openAvatar(el, url) {
-        if (!url) return;
-        this.open(el, [{ url: url, dateStr: "Ảnh đại diện", tip: "Avatar" }], 0);
+    // 1. CHUYÊN XỬ LÝ AVATAR: Gọi bằng UID từ kho app.avatars
+    openAvatar(el, uid) {
+        const info = app.avatars[uid];
+        if (!info || !info.url) return;
+        this.open(el, [info], 0); // Đóng gói thành mảng chuẩn 1 phần tử cho Viewer
     },
 
-    // 2. CHUYÊN XỬ LÝ ALBUM: Tự động tra cứu trong kho ảnh theo UID
+    // 2. CHUYÊN XỬ LÝ ALBUM: Gọi bằng UID từ kho app.photos
     openGallery(el, uid, idx) {
         const list = app.photos[uid] || [];
         if (!list.length) return;
         this.open(el, list, idx);
     },
 
-    // 3. HÀM LÕI HIỆU ỨNG: Xử lý hiệu ứng thu phóng DOM mượt mà
+    // 3. HÀM LÕI HIỆU ỨNG: Nhận vào danh sách ảnh đã chuẩn hóa 100%
     open(el, imgList, idx) {
         this.imgs = imgList;
         this.cur = idx;
-        if (!this.imgs || !this.imgs[this.cur]) return;
+        if (!this.imgs || !this.imgs[this.cur] || !this.imgs[this.cur].url) return;
 
         const v = $("#viewer"), img = $("#v-img");
         const rect = el.getBoundingClientRect();
+        
+        // Gán đúng thuộc tính .url, CHẤM DỨT triệt để lỗi màn hình trống!
         img.src = this.imgs[this.cur].url;
         img.style.transition = "none";
         img.style.transformOrigin = "top left";
