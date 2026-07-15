@@ -81,7 +81,6 @@ const app = {
         dataList.forEach((d) => {
             this.card(d, isSilent);
             
-            // Nếu chỉ là làm mới ngầm thì không cần đẩy lại vào lịch sử
             if (!isSilent) this.addHist(d.uid, d.nameRaw);
         });
     },
@@ -239,7 +238,7 @@ const app = {
                 </div>
             </div>
             ${(d.photos && d.photos.length) ? `<div class="mt-8 pt-6 border-t border-white/5"><h4 class="text-xs font-bold text-slate-500 uppercase mb-4 flex items-center gap-2"><i class="fa-solid fa-images"></i> Thư viện ảnh (${d.photos.length}) <span class="text-[10px] font-normal normal-case opacity-50 ml-auto hidden md:inline">Kéo để cuộn</span></h4><div class="gallery-scroll flex gap-4 pb-4 snap-x" id="gallery-${uid}">${d.photos.map((ph,i) => `
-                <div class="w-28 h-28 shrink-0 rounded-2xl overflow-hidden cursor-pointer border border-white/10 hover:border-sky-400 transition relative group snap-start" onclick="viewer.open(this, '${uid}', ${i})" data-tip="${ph.tip}">
+                <div class="w-28 h-28 shrink-0 rounded-2xl overflow-hidden cursor-pointer border border-white/10 hover:border-sky-400 transition relative group snap-start" onclick="viewer.openGallery(this, '${uid}', ${i})" data-tip="${ph.tip}">
                     <img src="${ph.url}" class="w-full h-full object-cover transition duration-700 group-hover:scale-110" loading="lazy">
                 </div>`).join('')}</div></div>` : ''}
         `;
@@ -368,31 +367,62 @@ const app = {
 };
 
 const viewer = {
-    imgs: [], cur: 0, x: 0, y: 0, s: 1, r: 0, fx: 1, fy: 1, isDrag: false, lx: 0, ly: 0,
+    imgs: [],
+    cur: 0,
+    x: 0, y: 0, s: 1, r: 0, fx: 1, fy: 1,
+    isDrag: false, lx: 0, ly: 0,
     loop() { if (this.isDrag) requestAnimationFrame(this.loop.bind(this)); },
 
-    open(el, uid, idx) {
-        this.imgs = app.photos[uid];
-        if (!this.imgs || this.imgs.length === 0) {
-            if (Array.isArray(uid)) this.imgs = uid.map((u) => ({ url: u, dateStr: "", tip: "" }));
-            else this.imgs = app.photos[uid] || [];
-        }
+    // 1. CHUYÊN XỬ LÝ AVATAR: Luôn mở được 100%, độc lập với Album
+    openAvatar(el, url) {
+        if (!url) return;
+        this.open(el, [{ url: url, dateStr: "Ảnh đại diện", tip: "Avatar" }], 0);
+    },
+
+    // 2. CHUYÊN XỬ LÝ ALBUM: Tự động tra cứu trong kho ảnh theo UID
+    openGallery(el, uid, idx) {
+        const list = app.photos[uid] || [];
+        if (!list.length) return;
+        this.open(el, list, idx);
+    },
+
+    // 3. HÀM LÕI HIỆU ỨNG: Xử lý hiệu ứng thu phóng DOM mượt mà
+    open(el, imgList, idx) {
+        this.imgs = imgList;
         this.cur = idx;
-        const v = $("#viewer"), img = $("#v-img"), rect = el.getBoundingClientRect();
+        if (!this.imgs || !this.imgs[this.cur]) return;
+
+        const v = $("#viewer"), img = $("#v-img");
+        const rect = el.getBoundingClientRect();
         img.src = this.imgs[this.cur].url;
-        img.style.transition = "none"; img.style.transformOrigin = "top left"; img.style.position = "fixed";
-        img.style.left = rect.left + "px"; img.style.top = rect.top + "px"; img.style.width = rect.width + "px"; img.style.height = rect.height + "px";
-        v.classList.remove("hidden"); v.classList.remove("opacity-0");
+        img.style.transition = "none";
+        img.style.transformOrigin = "top left";
+        img.style.position = "fixed";
+        img.style.left = rect.left + "px";
+        img.style.top = rect.top + "px";
+        img.style.width = rect.width + "px";
+        img.style.height = rect.height + "px";
+        v.classList.remove("hidden");
+        v.classList.remove("opacity-0");
 
         requestAnimationFrame(() => {
             img.style.transition = "all 0.4s cubic-bezier(0.19, 1, 0.22, 1)";
-            img.style.left = "0"; img.style.top = "0"; img.style.width = "100%"; img.style.height = "100%"; img.style.objectFit = "contain";
+            img.style.left = "0";
+            img.style.top = "0";
+            img.style.width = "100%";
+            img.style.height = "100%";
+            img.style.objectFit = "contain";
+
             setTimeout(() => {
-                img.style.position = "static"; img.style.transform = "none"; img.style.transformOrigin = "center center";
-                this.reset(); $("#viewer").classList.remove("pointer-events-none");
+                img.style.position = "static";
+                img.style.transform = "none";
+                img.style.transformOrigin = "center center";
+                this.reset();
+                $("#viewer").classList.remove("pointer-events-none");
             }, 400);
         });
-        this.update(); window.addEventListener("keydown", this.key);
+        this.update();
+        window.addEventListener("keydown", this.key);
     },
     close() {
         $("#viewer").classList.add("opacity-0"); setTimeout(() => $("#viewer").classList.add("hidden"), 300);
