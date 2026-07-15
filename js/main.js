@@ -372,113 +372,299 @@ const viewer = {
     cur: 0,
     x: 0, y: 0, s: 1, r: 0, fx: 1, fy: 1,
     isDrag: false, lx: 0, ly: 0,
-    loop() { if (this.isDrag) requestAnimationFrame(this.loop.bind(this)); },
+    ticking: false, // Cờ khóa RAF Throttling chống nghẽn GPU
+    touchDist: 0,   // Lưu khoảng cách 2 ngón tay cho Mobile PE
+    lastTap: 0,     // Theo dõi Double-tap trên Mobile
 
-    // 1. CHUYÊN XỬ LÝ AVATAR: Gọi bằng UID từ kho app.avatars
+    // 1. CHUYÊN XỬ LÝ AVATAR
     openAvatar(el, uid) {
         const info = app.avatars[uid];
         if (!info || !info.url) return;
-        this.open(el, [info], 0); // Đóng gói thành mảng chuẩn 1 phần tử cho Viewer
+        this.open(el, [info], 0);
     },
 
-    // 2. CHUYÊN XỬ LÝ ALBUM: Gọi bằng UID từ kho app.photos
+    // 2. CHUYÊN XỬ LÝ ALBUM
     openGallery(el, uid, idx) {
         const list = app.photos[uid] || [];
         if (!list.length) return;
         this.open(el, list, idx);
     },
 
-    // 3. HÀM LÕI HIỆU ỨNG: Nhận vào danh sách ảnh đã chuẩn hóa 100%
+    // 3. HÀM LÕI MỞ ẢNH TỐI ƯU FLIP (100% HARDWARE ACCELERATED)
     open(el, imgList, idx) {
         this.imgs = imgList;
         this.cur = idx;
         if (!this.imgs || !this.imgs[this.cur] || !this.imgs[this.cur].url) return;
 
         const v = $("#viewer"), img = $("#v-img");
-        const rect = el.getBoundingClientRect();
-        
-        // Gán đúng thuộc tính .url, CHẤM DỨT triệt để lỗi màn hình trống!
+        const rect = el ? el.getBoundingClientRect() : null;
+
+        // Reset toàn bộ thông số biến đổi về chuẩn
+        this.x = 0; this.y = 0; this.s = 1; this.r = 0; this.fx = 1; this.fy = 1;
         img.src = this.imgs[this.cur].url;
-        img.style.transition = "none";
-        img.style.transformOrigin = "top left";
-        img.style.position = "fixed";
-        img.style.left = rect.left + "px";
-        img.style.top = rect.top + "px";
-        img.style.width = rect.width + "px";
-        img.style.height = rect.height + "px";
+        
         v.classList.remove("hidden");
         v.classList.remove("opacity-0");
+        v.classList.add("pointer-events-none");
 
-        requestAnimationFrame(() => {
-            img.style.transition = "all 0.4s cubic-bezier(0.19, 1, 0.22, 1)";
-            img.style.left = "0";
-            img.style.top = "0";
-            img.style.width = "100%";
-            img.style.height = "100%";
-            img.style.objectFit = "contain";
+        if (rect && el) {
+            // THUẬT TOÁN FLIP: Tính toán tọa độ và tỷ lệ thu nhỏ từ ảnh Thumb ra giữa màn hình
+            const vw = window.innerWidth, vh = window.innerHeight;
+            const startX = (rect.left + rect.width / 2) - (vw / 2);
+            const startY = (rect.top + rect.height / 2) - (vh / 2);
+            const startScale = Math.max(0.1, rect.width / Math.min(vw, 800));
 
-            setTimeout(() => {
-                img.style.position = "static";
-                img.style.transform = "none";
-                img.style.transformOrigin = "center center";
-                this.reset();
-                $("#viewer").classList.remove("pointer-events-none");
-            }, 400);
-        });
+            img.style.transition = "none";
+            img.style.transform = `translate3d(${startX}px, ${startY}px, 0) scale(${startScale})`;
+            img.style.opacity = "0.3";
+
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    // Ép GPU bay ra giữa màn hình bằng transform (0% Layout Reflow)
+                    img.style.transition = "transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease";
+                    img.style.transform = "translate3d(0px, 0px, 0px) scale(1) rotate(0deg) scaleX(1) scaleY(1)";
+                    img.style.opacity = "1";
+                    setTimeout(() => {
+                        img.style.transition = "none";
+                        v.classList.remove("pointer-events-none");
+                    }, 350);
+                });
+            });
+        } else {
+            img.style.transition = "none";
+            this.apply(false);
+            v.classList.remove("pointer-events-none");
+        }
+
         this.update();
         window.addEventListener("keydown", this.key);
     },
+
     close() {
-        $("#viewer").classList.add("opacity-0"); setTimeout(() => $("#viewer").classList.add("hidden"), 300);
-        window.removeEventListener("keydown", this.key); $("#viewer").classList.add("pointer-events-none");
+        const v = $("#viewer"), img = $("#v-img");
+        v.classList.add("pointer-events-none");
+        img.style.transition = "transform 0.25s cubic-bezier(0.4, 0, 1, 1), opacity 0.25s ease";
+        img.style.transform = `translate3d(${this.x}px, ${this.y + 50}px, 0) scale(0.8)`;
+        img.style.opacity = "0";
+        v.classList.add("opacity-0");
+        
+        setTimeout(() => {
+            v.classList.add("hidden");
+            img.style.transform = "none";
+            window.removeEventListener("keydown", this.key);
+        }, 250);
     },
+
     nav(d) {
-        this.cur = (this.cur + d + this.imgs.length) % this.imgs.length; this.reset();
-        const i = $("#v-img"); i.style.opacity = 0;
-        setTimeout(() => { i.src = this.imgs[this.cur].url; i.style.opacity = 1; this.update(); }, 150);
+        this.cur = (this.cur + d + this.imgs.length) % this.imgs.length;
+        this.reset();
+        const i = $("#v-img");
+        i.style.opacity = "0";
+        i.style.transform = `translate3d(${d * 30}px, 0, 0) scale(0.95)`;
+        setTimeout(() => {
+            i.src = this.imgs[this.cur].url;
+            i.style.transition = "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease";
+            i.style.opacity = "1";
+            i.style.transform = "translate3d(0, 0, 0) scale(1)";
+            this.update();
+            setTimeout(() => i.style.transition = "none", 300);
+        }, 150);
     },
+
     update() {
         $("#v-counter").innerText = `${this.cur + 1} / ${this.imgs.length}`;
         const dateEl = $("#v-date"), dateStr = this.imgs[this.cur].dateStr;
-        if (dateStr && dateStr !== "Thời gian: Không rõ") { dateEl.innerText = dateStr; dateEl.classList.remove("hidden"); } else { dateEl.classList.add("hidden"); }
+        if (dateStr && dateStr !== "Thời gian: Không rõ") {
+            dateEl.innerText = dateStr;
+            dateEl.classList.remove("hidden");
+        } else {
+            dateEl.classList.add("hidden");
+        }
         this.updateZoomIndicator();
     },
+
     updateZoomIndicator() {
         const ind = document.getElementById("zoom-indicator");
-        ind.innerText = Math.round(this.s * 100) + "%"; ind.classList.add("show");
-        clearTimeout(this.zoomTimeout); this.zoomTimeout = setTimeout(() => ind.classList.remove("show"), 1500);
+        if (!ind) return;
+        ind.innerText = Math.round(this.s * 100) + "%";
+        ind.classList.add("show");
+        clearTimeout(this.zoomTimeout);
+        this.zoomTimeout = setTimeout(() => ind.classList.remove("show"), 1200);
     },
+
+    // HÀM APPLY SỬ DỤNG RAF THROTTLING CHỐNG NGHẼN GPU
     apply(smooth = false) {
         const img = $("#v-img");
-        img.style.transition = smooth ? "transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)" : "none";
-        img.style.transform = `translate3d(${this.x}px,${this.y}px,0) rotate(${this.r}deg) scale(${this.s}) scaleX(${this.fx}) scaleY(${this.fy})`;
-        if (smooth) this.updateZoomIndicator();
+        if (!img) return;
+        if (smooth) {
+            img.style.transition = "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)";
+            img.style.transform = `translate3d(${this.x}px,${this.y}px,0) rotate(${this.r}deg) scale(${this.s}) scaleX(${this.fx}) scaleY(${this.fy})`;
+            this.updateZoomIndicator();
+            setTimeout(() => img.style.transition = "none", 300);
+        } else {
+            if (!this.ticking) {
+                requestAnimationFrame(() => {
+                    img.style.transform = `translate3d(${this.x}px,${this.y}px,0) rotate(${this.r}deg) scale(${this.s}) scaleX(${this.fx}) scaleY(${this.fy})`;
+                    this.ticking = false;
+                });
+                this.ticking = true;
+            }
+        }
     },
-    reset() { this.x = 0; this.y = 0; this.s = 1; this.r = 0; this.fx = 1; this.fy = 1; this.apply(true); },
-    rotate(d) { this.r += d; this.apply(true); }, flipH() { this.fx *= -1; this.apply(true); }, flipV() { this.fy *= -1; this.apply(true); },
-    zoom(d) { this.s = Math.max(0.5, this.s + d); this.apply(true); },
+
+    reset() {
+        this.x = 0; this.y = 0; this.s = 1; this.r = 0; this.fx = 1; this.fy = 1;
+        this.apply(true);
+    },
+
+    // TÍNH NĂNG 1:1 (ACTUAL SIZE / FIT SCREEN) HAY HO CHUẨN UX
+    toggleOneToOne() {
+        const img = $("#v-img");
+        if (!img) return;
+        // Nếu đang ở 100% thì phóng ra kích thước thực (hoặc 200%), ngược lại reset về Fit Screen
+        if (Math.abs(this.s - 1) < 0.05 && (this.x !== 0 || this.y !== 0)) {
+            this.reset();
+        } else if (Math.abs(this.s - 1) < 0.05) {
+            // Phóng to dựa theo độ phân giải gốc của ảnh
+            const ratio = img.naturalWidth ? (img.naturalWidth / img.clientWidth) : 2;
+            this.s = Math.max(1.5, Math.min(4, ratio));
+            this.apply(true);
+        } else {
+            this.reset();
+        }
+    },
+
+    rotate(d) { this.r += d; this.apply(true); },
+    flipH() { this.fx *= -1; this.apply(true); },
+    flipV() { this.fy *= -1; this.apply(true); },
+    
+    zoom(d, clientX = window.innerWidth / 2, clientY = window.innerHeight / 2) {
+        const oldS = this.s;
+        const newS = Math.min(Math.max(0.2, this.s + d), 10); // Giới hạn zoom từ 20% đến 1000%
+        if (oldS === newS) return;
+
+        // Thuật toán zoom hướng thẳng vào tâm điểm chuột / ngón tay
+        const vw = window.innerWidth / 2, vh = window.innerHeight / 2;
+        const mx = clientX - vw, my = clientY - vh;
+        this.x += (mx - this.x) * (1 - newS / oldS);
+        this.y += (my - this.y) * (1 - newS / oldS);
+        this.s = newS;
+        
+        this.apply(false);
+        this.updateZoomIndicator();
+    },
+
     download() { window.open(this.imgs[this.cur].url, "_blank"); },
+    
     openSource() {
         let url = this.imgs[this.cur].url;
-        if (url.includes("images.weserv.nl")) { const match = url.match(/url=([^&]+)/); if (match && match[1]) url = decodeURIComponent(match[1]); }
+        if (url.includes("images.weserv.nl")) {
+            const match = url.match(/url=([^&]+)/);
+            if (match && match[1]) url = decodeURIComponent(match[1]);
+        }
         window.open(url, "_blank");
     },
-    key(e) { if (e.key === "ArrowLeft") viewer.nav(-1); if (e.key === "ArrowRight") viewer.nav(1); if (e.key === "Escape") viewer.close(); },
+
+    key(e) {
+        if (e.key === "ArrowLeft") viewer.nav(-1);
+        if (e.key === "ArrowRight") viewer.nav(1);
+        if (e.key === "Escape") viewer.close();
+        if (e.key === "0") viewer.toggleOneToOne();
+    },
+
+    // TRUNG TÂM BẮT SỰ KIỆN: HỖ TRỢ CHUỘT PC & MULTI-TOUCH MOBILE (PE)
     initEvents() {
         const c = $("#v-container");
+        if (!c) return;
+
+        // 1. Zoom bằng con lăn chuột PC
         c.addEventListener("wheel", (e) => {
-            e.preventDefault(); const d = e.deltaY * -0.001; const oldS = this.s; const newS = Math.min(Math.max(0.5, this.s + d), 8);
-            const rect = c.getBoundingClientRect(); const mx = e.clientX - rect.left - rect.width / 2; const my = e.clientY - rect.top - rect.height / 2;
-            this.x += (mx - this.x) * (1 - newS / oldS); this.y += (my - this.y) * (1 - newS / oldS); this.s = newS;
-            this.apply(false); this.updateZoomIndicator();
+            e.preventDefault();
+            const delta = e.deltaY * -0.0015 * Math.max(1, this.s * 0.5);
+            this.zoom(delta, e.clientX, e.clientY);
+        }, { passive: false });
+
+        // 2. Kéo ảnh bằng chuột PC
+        c.addEventListener("mousedown", (e) => {
+            if (e.button !== 0) return;
+            this.isDrag = true;
+            this.lx = e.clientX; this.ly = e.clientY;
+            c.style.cursor = "grabbing";
         });
-        c.addEventListener("mousedown", (e) => { if (e.button !== 0) return; this.isDrag = true; this.lx = e.clientX; this.ly = e.clientY; c.style.cursor = "grabbing"; this.apply(false); });
-        window.addEventListener("mousemove", (e) => { if (!this.isDrag) return; e.preventDefault(); this.x += e.clientX - this.lx; this.y += e.clientY - this.ly; this.lx = e.clientX; this.ly = e.clientY; this.apply(false); });
-        window.addEventListener("mouseup", () => { this.isDrag = false; c.style.cursor = "grab"; this.apply(true); });
-        c.addEventListener("touchstart", (e) => { if (e.touches.length === 1) { this.isDrag = true; this.lx = e.touches[0].clientX; this.ly = e.touches[0].clientY; this.apply(false); } });
-        c.addEventListener("touchmove", (e) => { if (!this.isDrag) return; e.preventDefault(); this.x += e.touches[0].clientX - this.lx; this.y += e.touches[0].clientY - this.ly; this.lx = e.touches[0].clientX; this.ly = e.touches[0].clientY; this.apply(false); });
-        c.addEventListener("touchend", () => { this.isDrag = false; this.apply(true); });
-    },
+        window.addEventListener("mousemove", (e) => {
+            if (!this.isDrag) return;
+            e.preventDefault();
+            this.x += (e.clientX - this.lx) / Math.max(1, Math.abs(this.r) === 90 ? 1 : 1);
+            this.y += (e.clientY - this.ly);
+            this.lx = e.clientX; this.ly = e.clientY;
+            this.apply(false);
+        });
+        window.addEventListener("mouseup", () => {
+            if (this.isDrag) {
+                this.isDrag = false;
+                c.style.cursor = "grab";
+            }
+        });
+
+        // 3. Double-click PC để Zoom 1:1
+        c.addEventListener("dblclick", (e) => {
+            e.preventDefault();
+            this.toggleOneToOne();
+        });
+
+        // 4. CẢM ỨNG ĐA ĐIỂM CHO MOBILE (PE) - PINCH TO ZOOM & DOUBLE TAP
+        c.addEventListener("touchstart", (e) => {
+            if (e.touches.length === 1) {
+                this.isDrag = true;
+                this.lx = e.touches[0].clientX;
+                this.ly = e.touches[0].clientY;
+                
+                // Nhận diện Double-tap trên Mobile
+                const now = Date.now();
+                if (now - this.lastTap < 300) {
+                    this.toggleOneToOne();
+                    this.isDrag = false;
+                }
+                this.lastTap = now;
+            } else if (e.touches.length === 2) {
+                // Chế độ 2 ngón tay (Pinch to zoom)
+                this.isDrag = false;
+                this.touchDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+            }
+        }, { passive: false });
+
+        c.addEventListener("touchmove", (e) => {
+            if (this.isDrag && e.touches.length === 1) {
+                e.preventDefault();
+                this.x += e.touches[0].clientX - this.lx;
+                this.y += e.touches[0].clientY - this.ly;
+                this.lx = e.touches[0].clientX;
+                this.ly = e.touches[0].clientY;
+                this.apply(false);
+            } else if (e.touches.length === 2) {
+                e.preventDefault();
+                const newDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                if (this.touchDist > 0) {
+                    const delta = (newDist - this.touchDist) * 0.01;
+                    const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                    const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                    this.zoom(delta * Math.max(1, this.s * 0.5), midX, midY);
+                }
+                this.touchDist = newDist;
+            }
+        }, { passive: false });
+
+        c.addEventListener("touchend", () => {
+            this.isDrag = false;
+            this.touchDist = 0;
+        });
+    }
 };
 
 const bgAnim = {
