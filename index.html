@@ -115,10 +115,20 @@
         <div class="glass-panel w-full max-w-5xl h-[85vh] rounded-2xl flex flex-col shadow-2xl overflow-hidden scale-95 transition-transform duration-300 bg-[#0d1117] will-change-transform" id="json-box">
             <div class="flex justify-between items-center px-4 md:px-6 py-3 md:py-4 border-b border-white/10 bg-white/5 shrink-0">
                 <h3 class="text-sky-400 font-bold font-mono text-sm flex items-center gap-2 truncate" id="modal-title"><i class="fa-solid fa-code"></i> RAW DATA</h3>
-                <div class="flex gap-2 shrink-0">
-                    <button onclick="app.copyContent()" class="px-2 md:px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-300 transition flex items-center gap-2"><i class="fa-regular fa-copy"></i> <span class="hidden md:inline">Copy</span></button>
-                    <button onclick="app.dlContent()" class="px-2 md:px-3 py-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-xs font-bold text-green-400 transition flex items-center gap-2"><i class="fa-solid fa-download"></i> <span class="hidden md:inline">Tải về</span></button>
-                    <button onclick="app.closeModal()" class="ml-1 md:ml-2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-500/20 hover:text-red-400 transition"><i class="fa-solid fa-xmark"></i></button>
+                <div class="flex items-center gap-2">
+                    <button onclick="app.toggleAllJson(true)" class="px-3 py-1.5 bg-white/5 hover:bg-white/10 active:scale-95 text-slate-300 hover:text-white rounded-xl text-xs font-semibold border border-white/5 transition flex items-center gap-1.5" title="Bung mở tất cả">
+                        <i class="fa-solid fa-folder-open text-amber-400"></i> <span class="hidden sm:inline">Mở hết</span>
+                    </button>
+                    <button onclick="app.toggleAllJson(false)" class="px-3 py-1.5 bg-white/5 hover:bg-white/10 active:scale-95 text-slate-300 hover:text-white rounded-xl text-xs font-semibold border border-white/5 transition flex items-center gap-1.5" title="Thu gọn tất cả">
+                        <i class="fa-solid fa-folder-closed text-sky-400"></i> <span class="hidden sm:inline">Gom lại</span>
+                    </button>
+                    <div class="w-[1px] h-5 bg-white/10 mx-1"></div>
+                    <button onclick="app.copyContent()" class="px-3 py-1.5 bg-sky-500/20 hover:bg-sky-500/30 active:scale-95 text-sky-300 rounded-xl text-xs font-semibold border border-sky-500/30 transition flex items-center gap-1.5">
+                        <i class="fa-regular fa-copy"></i> Copy JSON
+                    </button>
+                    <button onclick="app.dlContent()" class="px-3 py-1.5 bg-green-500/20 hover:bg-green-500/30 active:scale-95 text-green-300 rounded-xl text-xs font-semibold border border-green-500/30 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-download"></i> Tải về
+                    </button>
                 </div>
             </div>
             <div class="flex-grow overflow-auto bg-[#1e1e1e] p-2 custom-scroll relative" id="json-viewer-container">

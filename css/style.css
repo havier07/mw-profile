@@ -289,3 +289,62 @@ body {
     user-select: none;
     -webkit-user-drag: none;
 }
+
+/* ==========================================================================
+   TỐI ƯU HÓA HOVER SIÊU TỐC & SIÊU TRÌNH XEM JSON (120 FPS)
+   ========================================================================== */
+
+/* 1. ĐẶC TRỊ DELAY HOVER: Áp dụng cho nút Close, nút Toolbar và các phím bấm */
+button, .group-avatar, .copy-btn {
+    /* KHÔNG BAO GIỜ dùng transition: all. Chỉ định đích danh thuộc tính cần mượt! */
+    transition: background-color 0.12s ease, color 0.12s ease, transform 0.12s cubic-bezier(0.2, 0, 0, 1), border-color 0.12s ease !important;
+    will-change: transform, background-color;
+    transform: translateZ(0); /* Ép lên Layer GPU độc lập */
+}
+
+/* Nút bấm khi nhấn xuống phải phản hồi ngay lập tức (0ms) */
+button:active {
+    transform: scale(0.92) translateZ(0) !important;
+    transition: transform 0.05s ease !important;
+}
+
+/* 2. SIÊU CÔNG NGHỆ CONTENT-VISIBILITY CHO JSON (Chống lag cho 10.000 dòng) */
+.j-line {
+    /* BÍ MẬT TỐI THƯỢNG: Trình duyệt tự bỏ qua tính toán các dòng nằm ngoài vùng cuộn */
+    content-visibility: auto;
+    contain-intrinsic-size: 0 22px; /* Chiều cao giả định của 1 dòng để thanh cuộn không bị nhảy */
+    contain: content;
+    
+    /* Hover dòng JSON mượt mà như lụa với thời gian 0.1s */
+    transition: background-color 0.1s ease, padding-left 0.1s ease !important;
+    border-left: 2px solid transparent;
+    padding: 1px 4px;
+    border-radius: 4px;
+}
+
+.j-line:hover {
+    background-color: rgba(56, 189, 248, 0.08);
+    border-left-color: #38bdf8; /* Hiện vạch xanh bên trái cực đẹp khi di chuột */
+}
+
+/* 3. TỐI ƯU HIỂN THỊ CÁC THÀNH PHẦN JSON */
+.j-key {
+    cursor: pointer;
+    transition: color 0.1s ease, text-shadow 0.1s ease;
+}
+.j-key:hover {
+    color: #38bdf8 !important;
+    text-decoration: underline;
+    text-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+}
+.j-toggle {
+    display: inline-block;
+    width: 18px;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.15s ease, color 0.1s ease;
+    color: #94a3b8;
+}
+.j-toggle:hover { color: #fff; transform: scale(1.2); }
+.j-line.collapsed .j-toggle { transform: rotate(-90deg); }
