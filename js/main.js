@@ -52,6 +52,7 @@ const app = {
         if (p) { $("#search-input").value = p; this.search(); }
         bgAnim.start();
 
+        // EVENT DELEGATION TỐI THƯỢNG CHO TOOLTIP (Không bao giờ rò rỉ bộ nhớ)
         const tipEl = document.getElementById("global-tooltip");
         document.addEventListener("mouseover", (e) => {
             const item = e.target.closest("[data-tip]");
@@ -80,7 +81,6 @@ const app = {
         $("#content-area").innerHTML = "";
         dataList.forEach((d) => {
             this.card(d, isSilent);
-            
             if (!isSilent) this.addHist(d.uid, d.nameRaw);
         });
     },
@@ -97,9 +97,8 @@ const app = {
 
         if (!uids.length) return this.toast("UID không hợp lệ", "error");
 
-        // 3. XÓA BỘ ĐẾM CŨ (nếu có) khi người dùng chủ động tìm UID mới
         if (this.refreshTimer) clearInterval(this.refreshTimer);
-        this.currentUids = uids; // Lưu lại UID đang xem
+        this.currentUids = uids;
 
         const cacheKey = "mw_cache_" + uids.join("_");
         const cachedData = localStorage.getItem(cacheKey);
@@ -130,7 +129,6 @@ const app = {
             localStorage.setItem(cacheKey, JSON.stringify(response.uiData));
             this.renderData(response.uiData, false);
             
-            // 4. KÍCH HOẠT LÀM MỚI TỰ ĐỘNG SAU KHI TRA CỨU THÀNH CÔNG (30000ms = 30s)
             this.refreshTimer = setInterval(() => this.silentRefresh(), 30000);
 
         } catch (e) {
@@ -146,7 +144,6 @@ const app = {
         if (!this.currentUids || !this.currentUids.length) return;
         try {
             const url = PROXY_URL + this.currentUids.join(",");
-            // Vẫn dùng fetchFast nhưng không thèm xử lý nếu bắt được lỗi (để im re)
             const response = await utils.fetchFast(url);
 
             if (!response.uiData || !response.uiData.length) return;
@@ -160,11 +157,8 @@ const app = {
             const cacheKey = "mw_cache_" + this.currentUids.join("_");
             localStorage.setItem(cacheKey, JSON.stringify(response.uiData));
 
-            // Gọi render nhưng báo cho hệ thống biết "Đây là render ngầm (isSilent = true)"
             this.renderData(response.uiData, true);
-        } catch (e) {
-            // Không làm gì cả. Đang làm mới ngầm mà mất mạng thì cứ kệ, giữ nguyên giao diện cũ
-        }
+        } catch (e) {}
     },
 
     card(d, isSilent = false) {
@@ -173,8 +167,6 @@ const app = {
         this.avatars[uid] = d.avatarInfo || { url: d.avatar, dateStr: "Thời gian: Không rõ", tip: "Ảnh đại diện" };
 
         const card = document.createElement("div");
-        
-        // CHÌA KHÓA NẰM Ở ĐÂY: Xóa đuôi "animate-enter" nếu là isSilent, tránh việc thẻ bị nhảy từ dưới lên mỗi 30s
         card.className = `glass-panel rounded-3xl p-6 relative overflow-hidden transition-all border-t border-white/10 group hover:shadow-sky-500/10 hover:shadow-2xl ${isSilent ? '' : 'animate-enter'}`;
         
         const isNu = String(d.gender).includes('venus');
@@ -245,12 +237,11 @@ const app = {
         `;
 
         $("#content-area").appendChild(card);
+        
+        // TỐI ƯU HÓA RENDER: Khởi tạo cuộn ngang đồng bộ không qua setTimeout để tránh nháy ảnh
         if (d.photos && d.photos.length) {
-            setTimeout(() => {
-                const galEl = document.getElementById(`gallery-${uid}`);
-                app.initGalleryDrag(galEl);
-                app.initTooltips(galEl);
-            }, 0);
+            const galEl = card.querySelector(`#gallery-${uid}`);
+            if (galEl) this.initGalleryDrag(galEl);
         }
     },
 
@@ -262,17 +253,6 @@ const app = {
         el.addEventListener("mouseleave", () => { isDown = false; el.classList.remove("active"); });
         el.addEventListener("mouseup", () => { isDown = false; el.classList.remove("active"); });
         el.addEventListener("mousemove", (e) => { if (!isDown) return; e.preventDefault(); const x = e.pageX - el.offsetLeft; const walk = (x - startX) * 2; el.scrollLeft = scrollLeft - walk; });
-    },
-
-    initTooltips(el) {
-        if (!el) return;
-        const tipEl = document.getElementById("global-tooltip");
-        const items = el.querySelectorAll("[data-tip]");
-        items.forEach((item) => {
-            item.addEventListener("mouseenter", () => { tipEl.innerText = item.getAttribute("data-tip"); tipEl.classList.remove("opacity-0"); });
-            item.addEventListener("mousemove", (e) => { const x = e.clientX + 15; const y = e.clientY + 15; tipEl.style.transform = `translate(${x}px, ${y}px)`; });
-            item.addEventListener("mouseleave", () => { tipEl.classList.add("opacity-0"); });
-        });
     },
 
     skeleton: (n) => Array(n).fill(0).map(() => `<div class="glass-panel rounded-3xl p-6 h-96 animate-pulse"><div class="flex gap-8"><div class="w-44 h-44 bg-white/5 rounded-[2.5rem] shrink-0"></div><div class="flex-grow space-y-4"><div class="h-10 bg-white/5 w-2/3 rounded-xl"></div><div class="h-6 bg-white/5 w-1/3 rounded-lg"></div><div class="h-32 bg-white/5 w-full rounded-2xl mt-4"></div></div></div></div>`).join(""),
@@ -293,9 +273,7 @@ const app = {
     },
 
     clearHistory() { this.history = []; localStorage.removeItem("mw_h"); this.renderHist(); },
-
     share(uid) { utils.copy(`${location.protocol}//${location.host}${location.pathname}?uid=${uid}`); },
-
     openApi(uid) { window.open(PROXY_URL + uid, "_blank"); },
 
     toast(msg, type) {
@@ -314,7 +292,6 @@ const app = {
         this.buildJson(null, this.data[uid], 0, true, "root", "");
         this.renderLinesFast();
         
-        // Hiển thị tiêu đề kèm số dòng cực đẹp
         $("#modal-title").innerHTML = `<i class="fa-solid fa-code text-sky-400"></i> JSON DATA <span class="text-xs font-mono font-normal text-slate-400 ml-3 bg-white/10 px-2.5 py-0.5 rounded-full border border-white/10">${this.viewerLines.length} lines</span>`;
         $("#json-viewer-container").scrollTop = 0;
         this.openModal();
@@ -324,6 +301,7 @@ const app = {
         const container = document.getElementById("code-viewer");
         if (!container) return;
         
+        // SỬA LỖI FLEX: Khi hiển thị dùng "flex", khi ẩn dùng "none"
         container.innerHTML = this.viewerLines.map((l, i) => `
             <div class="j-line ${l.collapsible && !l.open ? "collapsed" : ""}" id="jl-${l.id}" style="display:${l.visible ? "flex" : "none"}">
                 <span class="j-num-col">${i + 1}</span>
@@ -351,22 +329,16 @@ const app = {
         }, 300);
     },
 
-    renderLines() {
-        $("#code-viewer").innerHTML = this.viewerLines.map((l, i) => `<div class="j-line ${l.collapsible && !l.open ? "collapsed" : ""}" id="jl-${l.id}" style="display:${l.visible ? "block" : "none"}"><div class="j-num-col">${i + 1}</div><div class="j-content" style="padding-left:${l.depth * 20}px">${l.html}</div></div>`).join("");
-    },
-
     buildJson(key, val, depth, isLast, pId = "root", currentPath = "") {
         const id = Math.random().toString(36).substr(2, 9);
         const base = { id, pId, depth, visible: true, open: true, html: "" };
         const wrap = (c, v, attr = "") => `<span class="${c}" ${attr}>${v}</span>`;
         
-        // Tạo đường dẫn chuẩn JS (ví dụ: roleInfo.AvatarSkin[0])
         let newPath = currentPath;
         if (key !== null) {
             newPath = currentPath ? (typeof key === "number" ? `${currentPath}[${key}]` : `${currentPath}.${key}`) : String(key);
         }
 
-        // Tính năng Click to Copy Path tích hợp ngay trong Key
         const kHtml = key !== null 
             ? `${wrap("j-punc", '"')}${wrap("j-key text-sky-300 font-semibold", key, `title="Click để copy path: ${newPath}" onclick="app.copyJsonPath(event, '${newPath}')"`)}${wrap("j-punc", '": ')}` 
             : "";
@@ -389,7 +361,6 @@ const app = {
             if (!keys.length) {
                 this.viewerLines.push({ ...base, html: `${kHtml}${wrap("j-punc text-slate-400", open + close)}${comma}` });
             } else {
-                // Thêm số lượng phần tử nhỏ bên cạnh khi thu gọn (ví dụ: ... [5 items] })
                 const itemCount = `<span class="text-[10px] text-slate-500 ml-1 font-sans font-normal">(${keys.length} ${isArr ? 'items' : 'keys'})</span>`;
                 const tog = `<span class="j-toggle inline-block w-4 text-center cursor-pointer text-slate-400 hover:text-white mr-1" onclick="app.toggleLine('${id}')">▼</span>`;
                 const col = `<span class="j-collapsed-content cursor-pointer text-slate-400 hover:text-sky-300 bg-white/5 px-1.5 py-0.5 rounded ml-1" onclick="app.toggleLine('${id}')">...${itemCount} ${close}${comma}</span>`;
@@ -411,6 +382,7 @@ const app = {
         this.toast(`Đã copy path: ${path}`, "success");
     },
 
+    // SỬA LỖI HIỂN THỊ FLEX: Đảm bảo khi bấm mở lại, dòng code dùng 'flex' thay vì 'block'
     toggleLine(id) {
         const p = this.viewerLines.find((l) => l.id === id);
         if (!p) return;
@@ -419,14 +391,13 @@ const app = {
         const el = document.getElementById(`jl-${id}`);
         if (el) el.classList.toggle("collapsed", !p.open);
         
-        // Chạy lặp siêu tối ưu để ẩn/hiện các nhánh con
         const setVis = (pid, vis) => {
             for (let i = 0; i < this.viewerLines.length; i++) {
                 const l = this.viewerLines[i];
                 if (l.pId === pid) {
                     l.visible = vis;
                     const childEl = document.getElementById(`jl-${l.id}`);
-                    if (childEl) childEl.style.display = vis ? "block" : "none";
+                    if (childEl) childEl.style.display = vis ? "flex" : "none";
                     if (l.collapsible && l.open && vis) setVis(l.id, true);
                     else if (l.collapsible) setVis(l.id, false);
                 }
@@ -435,6 +406,7 @@ const app = {
         setVis(id, p.open);
     },
 
+    // SỬA LỖI HIỂN THỊ FLEX CHO NÚT BUNG MỞ / THU GỌN TOÀN BỘ
     toggleAllJson(expand = true) {
         this.viewerLines.forEach(l => {
             if (l.collapsible) {
@@ -445,7 +417,7 @@ const app = {
             if (l.pId !== "root") {
                 l.visible = expand;
                 const el = document.getElementById(`jl-${l.id}`);
-                if (el) el.style.display = expand ? "block" : "none";
+                if (el) el.style.display = expand ? "flex" : "none";
             }
         });
         this.toast(expand ? "Đã bung mở toàn bộ JSON" : "Đã thu gọn toàn bộ JSON", "success");
@@ -464,15 +436,11 @@ const app = {
 const viewer = {
     imgs: [],
     cur: 0,
-    
-    // Tọa độ thực tế đang hiển thị trên màn hình
     x: 0, y: 0, s: 1, r: 0, fx: 1, fy: 1,
-    // Tọa độ mục tiêu (Dùng cho thuật toán quán tính Lerp)
     tx: 0, ty: 0, ts: 1, tr: 0,
-    
     isDrag: false, lx: 0, ly: 0,
-    animId: null,   // ID vòng lặp vật lý
-    isLerp: false,  // Cờ kích hoạt quán tính
+    animId: null,
+    isLerp: false,
     touchDist: 0, lastTap: 0,
 
     openAvatar(el, uid) {
@@ -487,7 +455,6 @@ const viewer = {
         this.open(el, list, idx);
     },
 
-    // HÀM MỞ ẢNH TỐI THƯỢNG: KẾT HỢP IMG.DECODE() & FLIP ANIMATION
     async open(el, imgList, idx) {
         this.imgs = imgList;
         this.cur = idx;
@@ -496,15 +463,11 @@ const viewer = {
         const v = $("#viewer"), img = $("#v-img");
         const rect = el ? el.getBoundingClientRect() : null;
 
-        // Reset toàn bộ tọa độ về 0
         this.x = this.tx = 0; this.y = this.ty = 0;
         this.s = this.ts = 1; this.r = this.tr = 0; this.fx = 1; this.fy = 1;
         
-        // 1. TẢI VÀ GIẢI MÃ ẢNH TRƯỚC TRONG VRAM (Chống khựng 100% cho máy yếu)
         img.src = this.imgs[this.cur].url;
-        try {
-            if (img.decode) await img.decode();
-        } catch (e) { /* Bỏ qua nếu ảnh lỗi hoặc trình duyệt cũ */ }
+        try { if (img.decode) await img.decode(); } catch (e) {}
 
         v.classList.remove("hidden");
         v.classList.remove("opacity-0");
@@ -516,12 +479,10 @@ const viewer = {
             const startY = (rect.top + rect.height / 2) - (vh / 2);
             const startScale = Math.max(0.05, rect.width / Math.min(vw, 800));
 
-            // Đặt ảnh ngay tại vị trí Thumbnail
             img.style.transition = "none";
             img.style.transform = `translate3d(${startX}px, ${startY}px, 0) scale(${startScale})`;
             img.style.opacity = "0.2";
 
-            // 2 KHIÊN RAF: Đảm bảo trình duyệt đã hoàn tất vẽ khung hình cũ rồi mới bay ra
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
                     img.style.transition = "transform 0.38s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.38s ease";
@@ -530,7 +491,7 @@ const viewer = {
                     setTimeout(() => {
                         img.style.transition = "none";
                         v.classList.remove("pointer-events-none");
-                        this.startLerpLoop(); // Kích hoạt động cơ vật lý sau khi mở xong
+                        this.startLerpLoop();
                     }, 380);
                 });
             });
@@ -606,9 +567,6 @@ const viewer = {
         this.zoomTimeout = setTimeout(() => ind.classList.remove("show"), 1200);
     },
 
-    // =========================================================================
-    // ĐỘNG CƠ QUÁN TÍNH LERP (LINEAR INTERPOLATION PHYSICS ENGINE)
-    // =========================================================================
     startLerpLoop() {
         if (this.isLerp) return;
         this.isLerp = true;
@@ -618,13 +576,11 @@ const viewer = {
         const loop = () => {
             if (!this.isLerp) return;
             
-            // Công thức Lerp: Bước nhảy mượt mà 25% tới mục tiêu mỗi khung hình
             this.x += (this.tx - this.x) * 0.25;
             this.y += (this.ty - this.y) * 0.25;
             this.s += (this.ts - this.s) * 0.25;
             this.r += (this.tr - this.r) * 0.25;
 
-            // Dừng tính toán khi đã tới rất gần mục tiêu để tiết kiệm CPU
             if (Math.abs(this.tx - this.x) < 0.05) this.x = this.tx;
             if (Math.abs(this.ty - this.y) < 0.05) this.y = this.ty;
             if (Math.abs(this.ts - this.s) < 0.005) this.s = this.ts;
@@ -653,9 +609,7 @@ const viewer = {
         this.updateZoomIndicator();
     },
 
-    reset() {
-        this.resetTargets();
-    },
+    reset() { this.resetTargets(); },
 
     toggleOneToOne() {
         const img = $("#v-img");
@@ -677,10 +631,9 @@ const viewer = {
     
     zoom(d, clientX = window.innerWidth / 2, clientY = window.innerHeight / 2) {
         const oldS = this.ts;
-        const newS = Math.min(Math.max(0.15, this.ts + d), 12); // Zoom từ 15% đến 1200%
+        const newS = Math.min(Math.max(0.15, this.ts + d), 12);
         if (oldS === newS) return;
 
-        // Zoom hướng tâm chuột / ngón tay siêu mượt
         const vw = window.innerWidth / 2, vh = window.innerHeight / 2;
         const mx = clientX - vw, my = clientY - vh;
         this.tx += (mx - this.tx) * (1 - newS / oldS);
@@ -707,7 +660,6 @@ const viewer = {
         if (e.key === "0") viewer.toggleOneToOne();
     },
 
-    // BẮT SỰ KIỆN TỐI ƯU HÓA: ĐIỀU KHIỂN TỌA ĐỘ MỤC TIÊU (TARGETS)
     initEvents() {
         const c = $("#v-container");
         if (!c) return;
@@ -727,7 +679,6 @@ const viewer = {
         window.addEventListener("mousemove", (e) => {
             if (!this.isDrag) return;
             e.preventDefault();
-            // Cập nhật mục tiêu thay vì gán DOM trực tiếp -> Chống lag cho máy yếu!
             this.tx += (e.clientX - this.lx);
             this.ty += (e.clientY - this.ly);
             this.lx = e.clientX; this.ly = e.clientY;
@@ -744,7 +695,6 @@ const viewer = {
             this.toggleOneToOne();
         });
 
-        // CẢM ỨNG ĐA ĐIỂM ĐIỆN THOẠI (PE)
         c.addEventListener("touchstart", (e) => {
             if (e.touches.length === 1) {
                 this.isDrag = true;
@@ -799,14 +749,13 @@ const bgAnim = {
     start() {
         const c = document.getElementById("star-canvas"), x = c.getContext("2d");
         let w, h, s = [], lastTime = 0;
-        const fps = 30; // KHÓA CỨNG 30 FPS: Cứu tinh cho GPU và hiệu ứng kính mờ!
+        const fps = 30;
         const interval = 1000 / fps;
 
         const init = () => {
             w = c.width = window.innerWidth;
             h = c.height = window.innerHeight;
             s = [];
-            // Giảm nhẹ số lượng sao xuống 40 (mobile) và 100 (PC) là đủ đẹp
             const count = w < 768 ? 40 : 100;
             for (let i = 0; i < count; i++) {
                 s.push({
@@ -823,7 +772,7 @@ const bgAnim = {
         const loop = (currentTime) => {
             requestAnimationFrame(loop);
             const delta = currentTime - lastTime;
-            if (delta < interval) return; // Throttling: Bỏ qua nếu chưa đủ thời gian 30 FPS
+            if (delta < interval) return;
             lastTime = currentTime - (delta % interval);
 
             x.clearRect(0, 0, w, h);
@@ -833,7 +782,6 @@ const bgAnim = {
                 p.y -= p.dy;
                 if (p.y < 0) p.y = h;
                 
-                // TỐI ƯU HÓA: Dùng thẳng chuỗi rgba, KHÔNG đổi x.globalAlpha liên tục
                 const alpha = Math.max(0.1, Math.min(1, Math.abs(p.a))).toFixed(2);
                 x.fillStyle = `rgba(255, 255, 255, ${alpha})`;
                 x.fillRect(p.x, p.y, p.r, p.r);
