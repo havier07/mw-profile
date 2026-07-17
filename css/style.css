@@ -129,6 +129,9 @@ button:active {
 .j-toggle:hover { color: #fff; transform: scale(1.25); }
 .j-line.collapsed .j-toggle { transform: rotate(-90deg); }
 
+.j-collapsed-content { display: none !important; }
+.j-line.collapsed .j-collapsed-content { display: inline-block !important; }
+
 @media (max-width: 768px) {
     .j-line { font-size: 12px; line-height: 1.5; contain-intrinsic-size: 0 18px; }
     .j-num-col { width: 36px; padding-right: 8px; margin-right: 8px; }
