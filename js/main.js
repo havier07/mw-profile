@@ -311,14 +311,11 @@ const app = {
         this.curMode = "JSON";
         this.viewerLines = [];
         
-        // 1. Dựng cấu trúc dữ liệu ngầm (Mất < 5ms vì không chạm vào DOM)
         this.buildJson(null, this.data[uid], 0, true, "root", "");
-        
-        // 2. Render DOM siêu tốc với DocumentFragment
         this.renderLinesFast();
         
-        // 3. Cập nhật tiêu đề kèm thống kê số dòng cực chất
-        $("#modal-title").innerHTML = `<i class="fa-solid fa-code text-sky-400"></i> JSON DATA <span class="text-xs font-mono font-normal text-slate-400 ml-2 bg-white/5 px-2 py-0.5 rounded border border-white/5">${this.viewerLines.length} lines</span>`;
+        // Hiển thị tiêu đề kèm số dòng cực đẹp
+        $("#modal-title").innerHTML = `<i class="fa-solid fa-code text-sky-400"></i> JSON DATA <span class="text-xs font-mono font-normal text-slate-400 ml-3 bg-white/10 px-2.5 py-0.5 rounded-full border border-white/10">${this.viewerLines.length} lines</span>`;
         $("#json-viewer-container").scrollTop = 0;
         this.openModal();
     },
@@ -327,11 +324,10 @@ const app = {
         const container = document.getElementById("code-viewer");
         if (!container) return;
         
-        // Dùng map join trực tiếp kết hợp CSS content-visibility giúp render 5000 dòng mất < 15ms
         container.innerHTML = this.viewerLines.map((l, i) => `
-            <div class="j-line ${l.collapsible && !l.open ? "collapsed" : ""}" id="jl-${l.id}" style="display:${l.visible ? "block" : "none"}; padding-left:${l.depth * 18}px">
-                <span class="j-num-col select-none text-slate-600 mr-3 inline-block w-8 text-right font-mono text-xs">${i + 1}</span>
-                <span class="j-content inline-block">${l.html}</span>
+            <div class="j-line ${l.collapsible && !l.open ? "collapsed" : ""}" id="jl-${l.id}" style="display:${l.visible ? "flex" : "none"}">
+                <span class="j-num-col">${i + 1}</span>
+                <span class="j-content" style="padding-left:${l.depth * 20}px">${l.html}</span>
             </div>
         `).join("");
     },
@@ -456,7 +452,7 @@ const app = {
     },
 
     copyContent() { utils.copy(JSON.stringify(this.data[this.curId], null, 4)); },
-    
+
     dlContent() {
         const c = JSON.stringify(this.data[this.curId], null, 4);
         const a = document.createElement("a");

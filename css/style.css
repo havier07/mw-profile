@@ -37,20 +37,6 @@ body {
     }
 }
 
-@media (max-width: 640px) {
-    .glass-panel {
-        background: rgba(15, 23, 42, 0.98);
-    }
-
-    .j-line {
-        padding-left: 35px !important;
-    }
-
-    .j-num-col {
-        width: 25px !important;
-    }
-}
-
 ::-webkit-scrollbar {
     width: 4px;
     height: 4px;
@@ -136,59 +122,6 @@ body {
     color: #d4d4d4;
 }
 
-.j-line {
-    display: block;
-    position: relative;
-    padding-left: 45px;
-}
-
-.j-line:hover {
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.j-num-col {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 35px;
-    text-align: right;
-    color: #6e7681;
-    border-right: 1px solid rgba(255, 255, 255, 0.1);
-    user-select: none;
-    opacity: 0.5;
-    font-size: 11px;
-    height: 100%;
-}
-
-.j-content {
-    white-space: pre-wrap;
-    word-break: break-all;
-}
-
-.j-key {
-    color: #9cdcfe;
-}
-
-.j-str {
-    color: #ce9178;
-}
-
-.j-num {
-    color: #b5cea8;
-}
-
-.j-bool {
-    color: #569cd6;
-}
-
-.j-null {
-    color: #569cd6;
-}
-
-.j-punc {
-    color: #d4d4d4;
-}
-
 .l-key-brak {
     color: #ffd700;
     opacity: 0.7;
@@ -200,41 +133,6 @@ body {
 
 .l-key-num {
     color: #b5cea8;
-}
-
-.j-toggle {
-    cursor: pointer;
-    display: inline-block;
-    width: 14px;
-    text-align: center;
-    color: #c5c5c5;
-    margin-right: 2px;
-    transition: 0.2s;
-    user-select: none;
-}
-
-.j-toggle:hover {
-    color: #fff;
-}
-
-.j-toggle.collapsed {
-    transform: rotate(-90deg);
-}
-
-.j-collapsed-content {
-    display: none;
-    color: #808080;
-    cursor: pointer;
-    font-style: italic;
-    padding: 0 4px;
-}
-
-.j-line.collapsed .j-collapsed-content {
-    display: inline;
-}
-
-.j-line.collapsed .j-open-brace {
-    display: inline;
 }
 
 .gallery-scroll {
@@ -291,44 +189,66 @@ body {
 }
 
 /* ==========================================================================
-   TỐI ƯU HÓA HOVER SIÊU TỐC & SIÊU TRÌNH XEM JSON (120 FPS)
+   SIÊU TRÌNH XEM JSON HOÀN CHỈNH (ALL-IN-ONE: PC & MOBILE PE - 120 FPS)
    ========================================================================== */
 
-/* 1. ĐẶC TRỊ DELAY HOVER: Áp dụng cho nút Close, nút Toolbar và các phím bấm */
+/* 1. TỐI ƯU HOVER SIÊU TỐC 0ms CHO TẤT CẢ NÚT BẤM VÀ TƯƠNG TÁC */
 button, .group-avatar, .copy-btn {
-    /* KHÔNG BAO GIỜ dùng transition: all. Chỉ định đích danh thuộc tính cần mượt! */
     transition: background-color 0.12s ease, color 0.12s ease, transform 0.12s cubic-bezier(0.2, 0, 0, 1), border-color 0.12s ease !important;
     will-change: transform, background-color;
-    transform: translateZ(0); /* Ép lên Layer GPU độc lập */
+    transform: translateZ(0);
 }
 
-/* Nút bấm khi nhấn xuống phải phản hồi ngay lập tức (0ms) */
 button:active {
     transform: scale(0.92) translateZ(0) !important;
     transition: transform 0.05s ease !important;
 }
 
-/* 2. SIÊU CÔNG NGHỆ CONTENT-VISIBILITY CHO JSON (Chống lag cho 10.000 dòng) */
+/* 2. BỐ CỤC DÒNG CODE CHUẨN FLEXBOX (KHÔNG BAO GIỜ BỊ ĐÈ CHỮ) */
 .j-line {
-    /* BÍ MẬT TỐI THƯỢNG: Trình duyệt tự bỏ qua tính toán các dòng nằm ngoài vùng cuộn */
-    content-visibility: auto;
-    contain-intrinsic-size: 0 22px; /* Chiều cao giả định của 1 dòng để thanh cuộn không bị nhảy */
+    display: flex !important;
+    align-items: flex-start;
+    font-family: 'Fira Code', 'Courier New', monospace;
+    font-size: 13.5px;
+    line-height: 1.6;
+    content-visibility: auto; /* Kháng lag tuyệt đối cho 10.000 dòng */
+    contain-intrinsic-size: 0 22px;
     contain: content;
-    
-    /* Hover dòng JSON mượt mà như lụa với thời gian 0.1s */
-    transition: background-color 0.1s ease, padding-left 0.1s ease !important;
+    transition: background-color 0.1s ease !important;
     border-left: 2px solid transparent;
-    padding: 1px 4px;
-    border-radius: 4px;
+    border-radius: 0 4px 4px 0;
 }
 
 .j-line:hover {
-    background-color: rgba(56, 189, 248, 0.08);
-    border-left-color: #38bdf8; /* Hiện vạch xanh bên trái cực đẹp khi di chuột */
+    background-color: rgba(56, 189, 248, 0.07);
+    border-left-color: #38bdf8;
 }
 
-/* 3. TỐI ƯU HIỂN THỊ CÁC THÀNH PHẦN JSON */
+/* 3. CỘT SỐ THỨ TỰ (SÁNG ĐẸP, CÓ VẠCH NGĂN CÁCH RÕ RÀNG) */
+.j-num-col {
+    flex-shrink: 0;
+    width: 48px;
+    text-align: right;
+    padding-right: 14px;
+    margin-right: 12px;
+    color: #94a3b8; /* Slate-400 sáng thanh lịch */
+    border-right: 1px solid rgba(255, 255, 255, 0.15);
+    user-select: none;
+    font-weight: 400;
+}
+
+/* 4. CỘT NỘI DUNG CODE (THỤT LỀ ĐỘC LẬP) */
+.j-content {
+    flex-grow: 1;
+    min-width: 0;
+    word-break: break-all;
+    padding-right: 16px;
+}
+
+/* 5. TỐI ƯU FONT CHỮ & MÀU SẮC (GIẢM ĐỘ ĐẬM CHO THANH THOÁT) */
 .j-key {
+    color: #7dd3fc;
+    font-weight: 500;
     cursor: pointer;
     transition: color 0.1s ease, text-shadow 0.1s ease;
 }
@@ -337,6 +257,13 @@ button:active {
     text-decoration: underline;
     text-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
 }
+
+.j-str  { color: #86efac; font-weight: 400; }
+.j-num  { color: #fde047; font-weight: 400; }
+.j-bool { color: #c084fc; font-weight: 400; }
+.j-null { color: #fda4af; font-weight: 400; }
+.j-punc { color: #cbd5e1; font-weight: 400; }
+
 .j-toggle {
     display: inline-block;
     width: 18px;
@@ -346,5 +273,26 @@ button:active {
     transition: transform 0.15s ease, color 0.1s ease;
     color: #94a3b8;
 }
-.j-toggle:hover { color: #fff; transform: scale(1.2); }
+.j-toggle:hover { color: #fff; transform: scale(1.25); }
 .j-line.collapsed .j-toggle { transform: rotate(-90deg); }
+
+/* ==========================================================================
+   TỐI ƯU RIÊNG CHO MÀN HÌNH ĐIỆN THOẠI (MOBILE PE RESPONSIVE)
+   ========================================================================== */
+@media (max-width: 768px) {
+    .j-line {
+        font-size: 12px; /* Thu nhỏ font một chút để hiện được nhiều code hơn */
+        line-height: 1.5;
+        contain-intrinsic-size: 0 18px;
+    }
+    
+    .j-num-col {
+        width: 36px; /* Bóp nhỏ cột số thứ tự trên mobile để nhường chỗ cho code */
+        padding-right: 8px;
+        margin-right: 8px;
+    }
+    
+    .j-content {
+        padding-right: 8px;
+    }
+}
