@@ -301,10 +301,15 @@ const app = {
         const container = document.getElementById("code-viewer");
         if (!container) return;
         
-        // SỬA LỖI FLEX: Khi hiển thị dùng "flex", khi ẩn dùng "none"
         container.innerHTML = this.viewerLines.map((l, i) => `
             <div class="j-line ${l.collapsible && !l.open ? "collapsed" : ""}" id="jl-${l.id}" style="display:${l.visible ? "flex" : "none"}">
-                <span class="j-num-col">${i + 1}</span>
+                <span class="j-num-col">
+                    <span class="j-num">${i + 1}</span>
+                    ${l.collapsible 
+                        ? `<span class="j-toggle" id="jt-${l.id}" onclick="app.toggleLine('${l.id}')" data-tip="Click để thu gọn"><i class="fa-solid fa-angle-down text-[11px]"></i></span>` 
+                        : `<span class="w-[18px] shrink-0"></span>` /* Thẻ giữ chỗ để số thứ tự luôn thẳng hàng tuyệt đối */
+                    }
+                </span>
                 <span class="j-content" style="padding-left:${l.depth * 20}px">${l.html}</span>
             </div>
         `).join("");
@@ -362,10 +367,10 @@ const app = {
                 this.viewerLines.push({ ...base, html: `${kHtml}${wrap("j-punc text-slate-400", open + close)}${comma}` });
             } else {
                 const itemCount = `<span class="text-[10px] text-slate-500 ml-1 font-sans font-normal">(${keys.length} ${isArr ? 'items' : 'keys'})</span>`;
-                const tog = `<span class="j-toggle inline-block w-4 text-center cursor-pointer text-slate-400 hover:text-white mr-1" onclick="app.toggleLine('${id}')">▼</span>`;
+                // Đã loại bỏ hoàn toàn biến 'tog' ra khỏi chuỗi html này!
                 const col = `<span class="j-collapsed-content cursor-pointer text-slate-400 hover:text-sky-300 bg-white/5 px-1.5 py-0.5 rounded ml-1" onclick="app.toggleLine('${id}')">...${itemCount} ${close}${comma}</span>`;
                 
-                this.viewerLines.push({ ...base, collapsible: true, html: `${tog}${kHtml}${wrap("j-punc text-slate-300 font-bold", open)}${col}` });
+                this.viewerLines.push({ ...base, collapsible: true, html: `${kHtml}${wrap("j-punc text-slate-300 font-bold", open)}${col}` });
                 
                 keys.forEach((k, i) => {
                     this.buildJson(isArr ? Number(k) : k, val[k], depth + 1, i === keys.length - 1, id, newPath);
@@ -382,7 +387,6 @@ const app = {
         this.toast(`Đã copy path: ${path}`, "success");
     },
 
-    // SỬA LỖI HIỂN THỊ FLEX: Đảm bảo khi bấm mở lại, dòng code dùng 'flex' thay vì 'block'
     toggleLine(id) {
         const p = this.viewerLines.find((l) => l.id === id);
         if (!p) return;
@@ -390,6 +394,15 @@ const app = {
         
         const el = document.getElementById(`jl-${id}`);
         if (el) el.classList.toggle("collapsed", !p.open);
+
+        // Cập nhật câu Tooltip theo trạng thái mới (Thu gọn <-> Bung mở)
+        const togEl = document.getElementById(`jt-${id}`);
+        if (togEl) {
+            const newTip = p.open ? "Click để thu gọn" : "Click để bung mở";
+            togEl.setAttribute("data-tip", newTip);
+            const tipEl = document.getElementById("global-tooltip");
+            if (tipEl && !tipEl.classList.contains("opacity-0")) tipEl.innerText = newTip;
+        }
         
         const setVis = (pid, vis) => {
             for (let i = 0; i < this.viewerLines.length; i++) {
