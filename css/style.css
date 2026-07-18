@@ -253,3 +253,30 @@ button:active {
         margin-bottom: -1px;
     }
 }
+
+/* ==========================================================================
+   UNIVERSAL LINK ENGINE & CONTEXTUAL STYLES
+   ========================================================================== */
+
+/* Màu sắc Header Tooltip theo từng loại file */
+.lt-bg-image { border-left: 4px solid #38bdf8 !important; }
+.lt-bg-video { border-left: 4px solid #f43f5e !important; }
+.lt-bg-audio { border-left: 4px solid #a855f7 !important; }
+.lt-bg-doc   { border-left: 4px solid #f59e0b !important; }
+.lt-bg-arc   { border-left: 4px solid #10b981 !important; }
+.lt-bg-api   { border-left: 4px solid #ec4899 !important; }
+.lt-bg-web   { border-left: 4px solid #64748b !important; }
+
+/* Hiệu ứng Bottom Sheet siêu mượt trên Mobile PE */
+@media (max-width: 768px) {
+    #link-menu-box {
+        border-radius: 28px 28px 0 0 !important;
+        max-width: 100% !important;
+        margin-bottom: -1px;
+        animation: slideUpModal 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+}
+@keyframes slideUpModal {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}

@@ -397,22 +397,57 @@ const app = {
     // HỆ THỐNG XỬ LÝ SMART LINK & INTERACTIVE TOOLTIP (VS CODE STYLE)
     // =========================================================================
     activeLinkUrl: null,
+    activeLinkType: null,
 
-    // 1. Phân biệt Ctrl+Click (Mở tab mới) và Click thường (Mở Action Menu)
+    // 1. Phân biệt Ctrl+Click và Click thường -> Tạo Action Menu Động
     handleLinkClick(e, url) {
         e.stopPropagation();
-        this.hideLinkTooltip(); // Ẩn tooltip khi đã bấm
+        this.hideLinkTooltip();
         
-        // Nếu giữ Ctrl (Windows/Linux) hoặc Command (Mac) -> Mở thẳng Tab mới!
         if (e.ctrlKey || e.metaKey) {
             window.open(url, "_blank");
             this.toast("Đã mở link trong Tab mới", "success");
             return;
         }
 
-        // Bấm thường -> Mở Action Menu Popup
         this.activeLinkUrl = url;
+        const info = linkEngine.classify(url);
+        this.activeLinkType = info;
+
+        // Tùy biến Header của Menu theo đúng loại tệp
         $("#lm-url-text").innerText = url;
+        $("#lm-icon").className = `fa-solid ${info.icon}`;
+        $("#lm-icon-box").className = `w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 border ${info.badgeBg.replace('text-', 'border-').replace('/20', '/30')} ${info.color} bg-white/5`;
+        $("#lm-type-badge").className = `px-1.5 py-0.5 rounded text-[10px] font-mono font-bold ${info.badgeBg}`;
+        $("#lm-type-badge").innerText = info.type;
+
+        // RENDER DANH SÁCH NÚT BẤM ĐỘNG THEO TỪNG LOẠI LINK
+        const list = $("#lm-action-list");
+        let html = "";
+        
+        // Nhóm nút cho HÌNH ẢNH
+        if (info.type === 'IMAGE') {
+            html += `<button onclick="app.lmAction('preview')" class="w-full px-4 py-3 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 active:scale-[0.98] flex items-center gap-3 transition text-left text-sky-300 font-bold border border-sky-500/20"><i class="fa-solid fa-expand w-5 text-center text-lg"></i> Xem ảnh toàn màn hình</button>`;
+            html += `<button onclick="app.lmAction('copy-img')" class="w-full px-4 py-3 rounded-xl hover:bg-white/10 active:scale-[0.98] flex items-center gap-3 transition text-left text-amber-300 font-semibold"><i class="fa-solid fa-image w-5 text-center text-lg"></i> Sao chép HÌNH ẢNH (Image)</button>`;
+        }
+        // Nhóm nút cho VIDEO / AUDIO
+        else if (info.type === 'VIDEO' || info.type === 'AUDIO') {
+            html += `<button onclick="app.lmAction('open')" class="w-full px-4 py-3 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 active:scale-[0.98] flex items-center gap-3 transition text-left text-rose-300 font-bold border border-rose-500/20"><i class="fa-solid fa-play w-5 text-center text-lg"></i> Phát ${info.label} này</button>`;
+        }
+        // Nhóm nút cho TÀI LIỆU / TẢI XUỐNG
+        else if (info.type === 'DOCUMENT' || info.type === 'ARCHIVE') {
+            html += `<button onclick="app.lmAction('download')" class="w-full px-4 py-3 rounded-xl bg-green-500/15 hover:bg-green-500/25 active:scale-[0.98] flex items-center gap-3 transition text-left text-green-300 font-bold border border-green-500/20"><i class="fa-solid fa-cloud-arrow-down w-5 text-center text-lg"></i> Tải xuống tệp máy chủ (${info.type})</button>`;
+        }
+
+        // Nhóm nút CHUNG luôn có cho mọi loại link
+        html += `<button onclick="app.lmAction('open')" class="w-full px-4 py-3 rounded-xl hover:bg-white/10 active:scale-[0.98] flex items-center gap-3 transition text-left text-slate-200"><i class="fa-solid fa-arrow-up-right-from-square w-5 text-center text-purple-400"></i> Mở liên kết trong Tab mới</button>`;
+        html += `<button onclick="app.lmAction('copy-url')" class="w-full px-4 py-3 rounded-xl hover:bg-white/10 active:scale-[0.98] flex items-center gap-3 transition text-left text-slate-200"><i class="fa-regular fa-copy w-5 text-center text-sky-400"></i> Sao chép đường dẫn (Copy URL)</button>`;
+        
+        if (info.type === 'IMAGE') {
+            html += `<button onclick="app.lmAction('download')" class="w-full px-4 py-3 rounded-xl hover:bg-white/10 active:scale-[0.98] flex items-center gap-3 transition text-left text-green-400"><i class="fa-solid fa-download w-5 text-center"></i> Tải ảnh về máy</button>`;
+        }
+
+        list.innerHTML = html;
         
         const ov = $("#link-menu-overlay"), box = $("#link-menu-box");
         ov.classList.remove("hidden");
@@ -431,7 +466,7 @@ const app = {
         setTimeout(() => ov.classList.add("hidden"), 200);
     },
 
-    // 2. Các hành động trong Action Menu
+    // 2. Thực thi lệnh từ Menu
     lmAction(action) {
         const url = this.activeLinkUrl;
         if (!url) return;
@@ -441,21 +476,23 @@ const app = {
             window.open(url, "_blank");
         } else if (action === 'copy-url') {
             utils.copy(url);
+        } else if (action === 'copy-img') {
+            // Gọi động cơ sao chép ảnh pixel
+            linkEngine.copyImageToClipboard(url);
         } else if (action === 'download') {
             window.open(url, "_blank");
         } else if (action === 'preview') {
-            // Mở trực tiếp trong Trình xem ảnh Fullscreen 120 FPS của chúng ta!
             viewer.open(document.body, [{ url: url, dateStr: "Xem trước liên kết", tip: "Link Preview" }], 0);
         }
     },
 
-    // 3. EVENT DELEGATION TỐI THƯỢNG CHO TOOLTIP XEM TRƯỚC ẢNH
+    // 3. TOOLTIP THÔNG MINH: Tự động tải dung lượng KB/MB và Icon theo loại
     initLinkTooltipEvents() {
         const tip = $("#link-tooltip");
         if (!tip) return;
         let timer = null;
 
-        document.addEventListener("mouseover", (e) => {
+        document.addEventListener("mouseover", async (e) => {
             const linkEl = e.target.closest(".j-link");
             if (!linkEl) return;
             
@@ -463,39 +500,60 @@ const app = {
             if (!url) return;
 
             clearTimeout(timer);
-            // Hiện tooltip với hiệu ứng Fade-in
             tip.classList.remove("hidden");
             setTimeout(() => tip.classList.remove("opacity-0"), 10);
 
-            // Gán dữ liệu ban đầu
-            const ext = url.split('.').pop().split(/[\?#]/)[0].toUpperCase();
-            $("#lt-title").innerText = `${ext.length <= 4 ? ext : 'IMG'} FILE`;
-            $("#lt-size").innerText = "Đang tải...";
-            $("#lt-spinner").classList.remove("hidden");
+            // Phân loại link ngay tức thì
+            const info = linkEngine.classify(url);
             
-            const img = $("#lt-img");
-            img.style.opacity = "0";
-            img.src = url;
+            // Cập nhật giao diện Tooltip theo màu ngữ cảnh
+            $("#lt-header").className = `px-3 py-2 bg-slate-800/80 border-b border-slate-700/60 font-mono font-bold flex justify-between items-center gap-2 ${info.bg}`;
+            $("#lt-icon").className = `fa-solid ${info.icon} ${info.color}`;
+            $("#lt-title").innerText = info.label;
+            $("#lt-title").className = `truncate ${info.color}`;
+            $("#lt-size").innerText = "Đang đo...";
+            
+            // Cập nhật chỉ dẫn dưới cùng
+            $("#lt-action-hint").innerHTML = `<i class="fa-solid fa-arrow-up-right-from-square"></i> Mở ${info.label.toLowerCase()}`;
 
-            // Tải ngầm ảnh bất đồng bộ để lấy kích thước thực (Dimensions)
-            const tempImg = new Image();
-            tempImg.src = url;
-            tempImg.onload = () => {
-                $("#lt-size").innerText = `${tempImg.naturalWidth} × ${tempImg.naturalHeight}`;
-                $("#lt-spinner").classList.add("hidden");
-                img.style.opacity = "1";
-            };
-            tempImg.onerror = () => {
-                $("#lt-size").innerText = "Liên kết Web / API";
-                $("#lt-spinner").classList.add("hidden");
-            };
+            const img = $("#lt-img"), fileIcon = $("#lt-file-icon"), spinner = $("#lt-spinner");
+            spinner.classList.remove("hidden");
+            img.classList.add("hidden", "opacity-0");
+            fileIcon.classList.add("hidden");
+
+            // Xử lý hiển thị Preview
+            if (info.type === 'IMAGE') {
+                img.src = url;
+                img.classList.remove("hidden");
+                const tempImg = new Image();
+                tempImg.src = url;
+                tempImg.onload = async () => {
+                    spinner.classList.add("hidden");
+                    img.classList.remove("opacity-0");
+                    const sizeStr = await linkEngine.getFileSize(url);
+                    $("#lt-size").innerText = `${tempImg.naturalWidth}×${tempImg.naturalHeight} (${sizeStr})`;
+                };
+                tempImg.onerror = () => {
+                    spinner.classList.add("hidden");
+                    $("#lt-size").innerText = "Ảnh bảo mật";
+                };
+            } else {
+                // Với Video, Audio, Tài liệu -> Hiện Icon khổng lồ sang trọng
+                spinner.classList.add("hidden");
+                fileIcon.classList.remove("hidden");
+                $("#lt-big-icon").className = `fa-solid ${info.icon} text-5xl ${info.color}`;
+                $("#lt-file-desc").innerText = url.split('/').pop().split(/[\?#]/)[0] || url;
+                
+                // Đo dung lượng bất đồng bộ qua HTTP HEAD
+                const sizeStr = await linkEngine.getFileSize(url);
+                $("#lt-size").innerText = sizeStr;
+            }
         });
 
         document.addEventListener("mousemove", (e) => {
             if (tip.classList.contains("hidden")) return;
-            // Di chuyển tooltip theo chuột nhưng tránh bị tràn khỏi cạnh phải màn hình
-            const x = Math.min(e.clientX + 18, window.innerWidth - 275);
-            const y = Math.min(e.clientY + 18, window.innerHeight - 240);
+            const x = Math.min(e.clientX + 18, window.innerWidth - 300);
+            const y = Math.min(e.clientY + 18, window.innerHeight - 250);
             tip.style.transform = `translate3d(${x}px, ${y}px, 0)`;
         });
 
@@ -936,6 +994,89 @@ const bgAnim = {
         init();
         requestAnimationFrame(loop);
     },
+};
+
+// =========================================================================
+// UNIVERSAL LINK ENGINE: PHÂN LOẠI, TÍNH DUNG LƯỢNG & SAO CHÉP ẢNH GỐC
+// =========================================================================
+const linkEngine = {
+    // 1. Phân loại thông minh 7 nhóm tệp
+    classify(url) {
+        const clean = url.split(/[\?#]/)[0].toLowerCase();
+        const ext = clean.includes('.') ? clean.split('.').pop() : '';
+        
+        if (/(png|jpg|jpeg|gif|webp|svg|bmp|ico)$/.test(ext) || url.includes('/map/') || url.includes('weserv.nl') || url.includes('imgur')) {
+            return { type: 'IMAGE', label: 'HÌNH ẢNH', icon: 'fa-image', color: 'text-sky-400', bg: 'lt-bg-image', badgeBg: 'bg-sky-500/20 text-sky-300' };
+        }
+        if (/(mp4|webm|ogg|mov|avi|flv)$/.test(ext) || url.includes('youtube.com') || url.includes('youtu.be') || url.includes('tiktok.com')) {
+            return { type: 'VIDEO', label: 'VIDEO STREAM', icon: 'fa-film', color: 'text-rose-400', bg: 'lt-bg-video', badgeBg: 'bg-rose-500/20 text-rose-300' };
+        }
+        if (/(mp3|wav|flac|aac|m4a|ogg)$/.test(ext) || url.includes('soundcloud') || url.includes('spotify')) {
+            return { type: 'AUDIO', label: 'ÂM THANH', icon: 'fa-music', color: 'text-purple-400', bg: 'lt-bg-audio', badgeBg: 'bg-purple-500/20 text-purple-300' };
+        }
+        if (/(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv|md)$/.test(ext)) {
+            return { type: 'DOCUMENT', label: 'TÀI LIỆU', icon: 'fa-file-lines', color: 'text-amber-400', bg: 'lt-bg-doc', badgeBg: 'bg-amber-500/20 text-amber-300' };
+        }
+        if (/(zip|rar|7z|tar|gz|apk|exe|dmg|iso)$/.test(ext)) {
+            return { type: 'ARCHIVE', label: 'TỆP TẢI XUỐNG', icon: 'fa-file-zipper', color: 'text-green-400', bg: 'lt-bg-arc', badgeBg: 'bg-green-500/20 text-green-300' };
+        }
+        if (/(json|xml|yaml|sql)$/.test(ext) || url.includes('/api/') || url.includes('api.')) {
+            return { type: 'API', label: 'DỮ LIỆU API', icon: 'fa-code', color: 'text-pink-400', bg: 'lt-bg-api', badgeBg: 'bg-pink-500/20 text-pink-300' };
+        }
+        return { type: 'WEB', label: 'LIÊN KẾT WEB', icon: 'fa-globe', color: 'text-slate-300', bg: 'lt-bg-web', badgeBg: 'bg-slate-500/20 text-slate-300' };
+    },
+
+    // 2. Thuật toán HTTP HEAD: Lấy chính xác dung lượng tệp (KB/MB) chỉ mất <5ms
+    async getFileSize(url) {
+        try {
+            const res = await fetch(url, { method: 'HEAD', mode: 'cors' });
+            const bytes = res.headers.get('content-length');
+            if (!bytes) return "Không rõ size";
+            const b = Number(bytes);
+            if (b < 1024) return `${b} B`;
+            if (b < 1048576) return `${(b / 1024).toFixed(1)} KB`;
+            return `${(b / 1048576).toFixed(2)} MB`;
+        } catch (e) {
+            return "Web / API Link"; // Nếu máy chủ chặn CORS HEAD
+        }
+    },
+
+    // 3. TÍNH NĂNG ĐỈNH CAO: Sao chép hình ảnh pixel trực tiếp vào Clipboard
+    async copyImageToClipboard(url) {
+        app.toast("Đang tải dữ liệu ảnh...", "info");
+        try {
+            // Tải blob ảnh gốc về thông qua fetch
+            const res = await fetch(url, { mode: 'cors' });
+            const blob = await res.blob();
+            
+            // Clipboard API của trình duyệt bắt buộc ảnh phải ở định dạng PNG
+            let pngBlob = blob;
+            if (blob.type !== 'image/png') {
+                pngBlob = await new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.crossOrigin = "Anonymous";
+                    img.onload = () => {
+                        const canvas = document.createElement("canvas");
+                        canvas.width = img.naturalWidth;
+                        canvas.height = img.naturalHeight;
+                        canvas.getContext("2d").drawImage(img, 0, 0);
+                        canvas.toBlob((b) => b ? resolve(b) : reject(), "image/png");
+                    };
+                    img.onerror = () => reject();
+                    img.src = URL.createObjectURL(blob);
+                });
+            }
+
+            // Ghi trực tiếp Blob ảnh vào Clipboard của hệ điều hành
+            const data = [new ClipboardItem({ [pngBlob.type]: pngBlob })];
+            await navigator.clipboard.write(data);
+            app.toast("Đã sao chép HÌNH ẢNH vào Clipboard!", "success");
+        } catch (e) {
+            // Fallback: Nếu máy chủ ảnh chặn CORS bạo lực, chuyển qua copy link ảnh
+            utils.copy(url);
+            app.toast("Máy chủ chặn ảnh gốc -> Đã sao chép LINK ảnh!", "success");
+        }
+    }
 };
 
 document.addEventListener("DOMContentLoaded", () => { 
