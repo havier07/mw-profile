@@ -225,12 +225,13 @@ button:active {
 
 /* 1. HIỆU ỨNG LINK TRONG JSON (Underline nhẹ, sáng bừng khi hover) */
 .j-link {
-    color: #38bdf8 !important; /* Sky-400 */
+    color: #38bdf8 !important;
     text-decoration: underline;
-    text-decoration-color: rgba(56, 189, 248, 0.35);
+    text-decoration-color: rgba(56, 189, 248, 0.4);
     text-underline-offset: 3px;
-    cursor: pointer;
-    transition: color 0.1s ease, text-decoration-color 0.1s ease, background-color 0.1s ease !important;
+    cursor: pointer !important;
+    pointer-events: auto !important; /* KHÓA CỨNG: Ép trình duyệt luôn nhận sự kiện chuột */
+    transition: color 0.1s ease, background-color 0.1s ease !important;
     border-radius: 3px;
     padding: 0 2px;
 }
@@ -238,7 +239,7 @@ button:active {
 .j-link:hover {
     color: #ffffff !important;
     text-decoration-color: #38bdf8;
-    background-color: rgba(56, 189, 248, 0.15);
+    background-color: rgba(56, 189, 248, 0.2);
 }
 
 /* 2. HIỆU ỨNG POPUP ACTION MENU (Mượt mà cho cả PC lẫn Mobile PE) */

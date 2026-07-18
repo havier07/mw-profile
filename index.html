@@ -151,19 +151,17 @@
         </div>
     </div>
 
-    <!-- 1. UNIVERSAL SMART LINK TOOLTIP (Hỗ trợ Ảnh, Video, Audio, Tài liệu, Web...) -->
-    <div id="link-tooltip" class="fixed z-[300] w-72 bg-[#0d1117]/95 border border-slate-700/80 rounded-2xl shadow-2xl backdrop-blur-md pointer-events-none opacity-0 transition-all duration-150 overflow-hidden hidden flex-col font-sans text-xs">
-        <!-- Header thay đổi màu theo loại tệp -->
-        <div class="px-3 py-2 bg-slate-800/60 border-b border-slate-700/60 text-slate-200 font-mono font-bold flex justify-between items-center gap-2" id="lt-header">
+    <!-- 1. UNIVERSAL SMART LINK TOOLTIP (Z-Index 9999 Tối Cao) -->
+    <div id="link-tooltip" class="fixed z-[9999] w-72 bg-[#0d1117]/98 border border-slate-700 rounded-2xl shadow-2xl backdrop-blur-md pointer-events-none opacity-0 transition-all duration-150 overflow-hidden hidden flex-col font-sans text-xs">
+        <div class="px-3 py-2 bg-slate-800/80 border-b border-slate-700 text-slate-200 font-mono font-bold flex justify-between items-center gap-2" id="lt-header">
             <span class="flex items-center gap-1.5 truncate" id="lt-title-box">
                 <i id="lt-icon" class="fa-solid fa-link text-sky-400"></i>
-                <span id="lt-title" class="truncate">WEB LINK</span>
+                <span id="lt-title" class="truncate font-bold">WEB LINK</span>
             </span>
             <span class="text-[10px] px-1.5 py-0.5 rounded bg-white/10 font-normal shrink-0 text-slate-300" id="lt-size">0 KB</span>
         </div>
         
-        <!-- Khung xem trước đa phương tiện (Media Preview) -->
-        <div id="lt-media-box" class="p-2 bg-black/60 flex items-center justify-center min-h-[120px] max-h-[180px] overflow-hidden relative">
+        <div id="lt-media-box" class="p-2 bg-black/80 flex items-center justify-center min-h-[120px] max-h-[180px] overflow-hidden relative">
             <div id="lt-spinner" class="absolute inset-0 flex items-center justify-center text-sky-400/50"><i class="fa-solid fa-circle-notch fa-spin text-2xl"></i></div>
             <img id="lt-img" class="max-w-full max-h-[160px] object-contain rounded border border-white/5 opacity-0 transition-opacity duration-300 relative z-10 hidden" src="">
             <div id="lt-file-icon" class="flex flex-col items-center justify-center py-6 gap-2 hidden z-10">
@@ -172,29 +170,23 @@
             </div>
         </div>
 
-        <!-- Footer hướng dẫn phím tắt -->
-        <div class="px-3 py-1.5 bg-slate-900/90 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
+        <div class="px-3 py-1.5 bg-slate-900 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
             <span id="lt-action-hint" class="text-sky-300 flex items-center gap-1"><i class="fa-solid fa-arrow-up-right-from-square"></i> Mở liên kết</span>
-            <kbd class="px-1.5 py-0.5 bg-white/10 rounded text-[10px] text-slate-300 font-mono border border-white/5 shadow-sm">ctrl + click</kbd>
+            <kbd class="px-1.5 py-0.5 bg-white/10 rounded text-[10px] text-slate-300 font-mono border border-white/5">ctrl + click</kbd>
         </div>
     </div>
 
-    <!-- 2. DYNAMIC ACTION MENU POPUP (Tự động biến hình nút bấm theo loại tệp) -->
-    <div id="link-menu-overlay" class="fixed inset-0 z-[350] bg-black/60 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200 flex items-end md:items-center justify-center p-4" onclick="app.closeLinkMenu(event)">
-        <div id="link-menu-box" class="bg-[#0f172a] border border-white/15 rounded-3xl md:rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl scale-95 transition-all duration-200 flex flex-col" onclick="event.stopPropagation()">
-            <!-- Header hiển thị link mini -->
-            <div class="p-4 bg-white/[0.03] border-b border-white/10 flex items-center gap-3">
+    <!-- 2. DYNAMIC ACTION MENU POPUP (Z-Index 9998 - Không bao giờ bị che) -->
+    <div id="link-menu-overlay" class="fixed inset-0 z-[9998] bg-black/70 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200 flex items-end md:items-center justify-center p-4" onclick="app.closeLinkMenu(event)">
+        <div id="link-menu-box" class="bg-[#0f172a] border border-white/20 rounded-3xl md:rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl scale-95 transition-all duration-200 flex flex-col" onclick="event.stopPropagation()">
+            <div class="p-4 bg-white/[0.04] border-b border-white/10 flex items-center gap-3">
                 <div id="lm-icon-box" class="w-11 h-11 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 shrink-0 text-xl"><i id="lm-icon" class="fa-solid fa-link"></i></div>
                 <div class="min-w-0 flex-grow">
-                    <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5"><span id="lm-type-badge" class="px-1.5 py-0.2 rounded text-[10px] bg-white/10 text-white font-mono">WEB</span> TÙY CHỌN LIÊN KẾT</div>
+                    <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5"><span id="lm-type-badge" class="px-1.5 py-0.5 rounded text-[10px] bg-white/10 text-white font-mono">WEB</span> TÙY CHỌN LIÊN KẾT</div>
                     <div class="text-xs text-sky-300 font-mono truncate mt-0.5" id="lm-url-text">http://...</div>
                 </div>
             </div>
-            <!-- Danh sách nút hành động (Được tạo tự động bằng JS) -->
-            <div id="lm-action-list" class="p-2 flex flex-col gap-1 font-medium text-sm text-slate-200 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                <!-- Nút bấm động sẽ được chèn vào đây -->
-            </div>
-            <!-- Nút đóng cho Mobile -->
+            <div id="lm-action-list" class="p-2 flex flex-col gap-1 font-medium text-sm text-slate-200 max-h-[60vh] overflow-y-auto custom-scrollbar"></div>
             <div class="p-2 border-t border-white/5 md:hidden">
                 <button onclick="app.closeLinkMenu()" class="w-full py-3 bg-white/5 rounded-xl font-bold text-slate-400 text-center active:scale-95 transition">Hủy bỏ</button>
             </div>
