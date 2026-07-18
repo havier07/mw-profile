@@ -151,6 +151,47 @@
         </div>
     </div>
 
+    <!-- 1. VS CODE SMART LINK TOOLTIP (Xem trước ảnh & Thông số) -->
+    <div id="link-tooltip" class="fixed z-[300] w-64 bg-[#0d1117]/95 border border-slate-700/80 rounded-xl shadow-2xl backdrop-blur-md pointer-events-none opacity-0 transition-opacity duration-150 overflow-hidden hidden flex-col font-sans text-xs">
+        <div class="px-3 py-2 bg-slate-800/50 border-b border-slate-700/60 text-slate-300 font-mono font-bold flex justify-between items-center" id="lt-header">
+            <span class="truncate pr-2" id="lt-title">Image Link</span>
+            <span class="text-[10px] text-sky-400 font-normal shrink-0" id="lt-size">Loading...</span>
+        </div>
+        <div class="p-2 bg-black/60 flex items-center justify-center min-h-[140px] max-h-[180px] overflow-hidden relative">
+            <div id="lt-spinner" class="absolute inset-0 flex items-center justify-center text-sky-400/50"><i class="fa-solid fa-circle-notch fa-spin text-2xl"></i></div>
+            <img id="lt-img" class="max-w-full max-h-[160px] object-contain rounded border border-white/5 opacity-0 transition-opacity duration-300 relative z-10" src="">
+        </div>
+        <div class="px-3 py-1.5 bg-slate-900/80 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+            <span class="text-sky-300"><i class="fa-solid fa-arrow-up-right-from-square mr-1"></i> Follow link</span>
+            <kbd class="px-1.5 py-0.5 bg-white/10 rounded text-[10px] text-slate-300 font-mono">ctrl + click</kbd>
+        </div>
+    </div>
+
+    <!-- 2. ACTION MENU POPUP (Menu tùy chọn khi Click link trên PC & Mobile PE) -->
+    <div id="link-menu-overlay" class="fixed inset-0 z-[350] bg-black/60 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200 flex items-end md:items-center justify-center p-4" onclick="app.closeLinkMenu(event)">
+        <div id="link-menu-box" class="bg-[#0f172a] border border-white/15 rounded-3xl md:rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl scale-95 transition-all duration-200 flex flex-col" onclick="event.stopPropagation()">
+            <!-- Header hiển thị link mini -->
+            <div class="p-4 bg-white/[0.03] border-b border-white/10 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 shrink-0"><i class="fa-solid fa-link text-lg"></i></div>
+                <div class="min-w-0 flex-grow">
+                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tùy chọn liên kết</div>
+                    <div class="text-xs text-sky-300 font-mono truncate" id="lm-url-text">http://...</div>
+                </div>
+            </div>
+            <!-- Danh sách nút hành động -->
+            <div class="p-2 flex flex-col gap-1 font-medium text-sm text-slate-200">
+                <button onclick="app.lmAction('preview')" class="w-full px-4 py-3 rounded-xl hover:bg-white/10 active:scale-[0.98] flex items-center gap-3 transition text-left text-sky-300 font-bold"><i class="fa-solid fa-expand w-5 text-center text-lg"></i> Xem ảnh toàn màn hình</button>
+                <button onclick="app.lmAction('open')" class="w-full px-4 py-3 rounded-xl hover:bg-white/10 active:scale-[0.98] flex items-center gap-3 transition text-left"><i class="fa-solid fa-arrow-up-right-from-square w-5 text-center text-purple-400"></i> Mở trong Tab mới</button>
+                <button onclick="app.lmAction('copy-url')" class="w-full px-4 py-3 rounded-xl hover:bg-white/10 active:scale-[0.98] flex items-center gap-3 transition text-left"><i class="fa-regular fa-copy w-5 text-center text-amber-400"></i> Sao chép liên kết</button>
+                <button onclick="app.lmAction('download')" class="w-full px-4 py-3 rounded-xl hover:bg-white/10 active:scale-[0.98] flex items-center gap-3 transition text-left text-green-400"><i class="fa-solid fa-download w-5 text-center"></i> Tải ảnh về máy</button>
+            </div>
+            <!-- Nút đóng cho Mobile -->
+            <div class="p-2 border-t border-white/5 md:hidden">
+                <button onclick="app.closeLinkMenu()" class="w-full py-3 bg-white/5 rounded-xl font-bold text-slate-400 text-center">Hủy bỏ</button>
+            </div>
+        </div>
+    </div>
+
     <script src="./js/main.js"></script>
 </body>
 </html>

@@ -334,6 +334,9 @@ const app = {
         }, 300);
     },
 
+    // =========================================================================
+    // NÂNG CẤP BUILD JSON: QUÉT VÀ NHẬN DIỆN SMART LINK (HTTP/HTTPS)
+    // =========================================================================
     buildJson(key, val, depth, isLast, pId = "root", currentPath = "") {
         const id = Math.random().toString(36).substr(2, 9);
         const base = { id, pId, depth, visible: true, open: true, html: "" };
@@ -357,6 +360,16 @@ const app = {
             if (typeof val === "number") valClass = "j-num text-amber-300 font-bold";
             if (typeof val === "boolean") valClass = "j-bool text-purple-400 font-bold";
             
+            // TỰ ĐỘNG PHÁT HIỆN LINK HTTP / HTTPS (SMART LINK DETECTION)
+            if (typeof val === "string" && /^https?:\/\//i.test(val)) {
+                valClass = "j-link";
+                const cleanUrl = utils.escapeAttr(val);
+                // Bọc trong thẻ Click chuyên biệt, hỗ trợ Ctrl+Click và Tooltip Hover
+                valStr = `"${cleanUrl}"`;
+                this.viewerLines.push({ ...base, html: `${kHtml}<span class="${valClass}" data-url="${cleanUrl}" onclick="app.handleLinkClick(event, '${cleanUrl}')">${valStr}</span>${comma}` });
+                return;
+            }
+
             this.viewerLines.push({ ...base, html: `${kHtml}${wrap(valClass, valStr)}${comma}` });
         } else {
             const keys = Object.keys(val);
@@ -367,7 +380,6 @@ const app = {
                 this.viewerLines.push({ ...base, html: `${kHtml}${wrap("j-punc text-slate-400", open + close)}${comma}` });
             } else {
                 const itemCount = `<span class="text-[10px] text-slate-500 ml-1 font-sans font-normal">(${keys.length} ${isArr ? 'items' : 'keys'})</span>`;
-                // Đã loại bỏ hoàn toàn biến 'tog' ra khỏi chuỗi html này!
                 const col = `<span class="j-collapsed-content cursor-pointer text-slate-400 hover:text-sky-300 bg-white/5 px-1.5 py-0.5 rounded ml-1" onclick="app.toggleLine('${id}')">...${itemCount} ${close}${comma}</span>`;
                 
                 this.viewerLines.push({ ...base, collapsible: true, html: `${kHtml}${wrap("j-punc text-slate-300 font-bold", open)}${col}` });
@@ -379,6 +391,125 @@ const app = {
                 this.viewerLines.push({ id: `end-${id}`, pId: id, depth, visible: true, html: `${wrap("j-punc text-slate-300 font-bold", close)}${comma}` });
             }
         }
+    },
+
+    // =========================================================================
+    // HỆ THỐNG XỬ LÝ SMART LINK & INTERACTIVE TOOLTIP (VS CODE STYLE)
+    // =========================================================================
+    activeLinkUrl: null,
+
+    // 1. Phân biệt Ctrl+Click (Mở tab mới) và Click thường (Mở Action Menu)
+    handleLinkClick(e, url) {
+        e.stopPropagation();
+        this.hideLinkTooltip(); // Ẩn tooltip khi đã bấm
+        
+        // Nếu giữ Ctrl (Windows/Linux) hoặc Command (Mac) -> Mở thẳng Tab mới!
+        if (e.ctrlKey || e.metaKey) {
+            window.open(url, "_blank");
+            this.toast("Đã mở link trong Tab mới", "success");
+            return;
+        }
+
+        // Bấm thường -> Mở Action Menu Popup
+        this.activeLinkUrl = url;
+        $("#lm-url-text").innerText = url;
+        
+        const ov = $("#link-menu-overlay"), box = $("#link-menu-box");
+        ov.classList.remove("hidden");
+        setTimeout(() => {
+            ov.classList.remove("opacity-0");
+            box.classList.remove("scale-95");
+            box.classList.add("scale-100");
+        }, 10);
+    },
+
+    closeLinkMenu(e) {
+        if (e && e.target !== $("#link-menu-overlay")) return;
+        const ov = $("#link-menu-overlay"), box = $("#link-menu-box");
+        ov.classList.add("opacity-0");
+        box.classList.add("scale-95");
+        setTimeout(() => ov.classList.add("hidden"), 200);
+    },
+
+    // 2. Các hành động trong Action Menu
+    lmAction(action) {
+        const url = this.activeLinkUrl;
+        if (!url) return;
+        this.closeLinkMenu();
+
+        if (action === 'open') {
+            window.open(url, "_blank");
+        } else if (action === 'copy-url') {
+            utils.copy(url);
+        } else if (action === 'download') {
+            window.open(url, "_blank");
+        } else if (action === 'preview') {
+            // Mở trực tiếp trong Trình xem ảnh Fullscreen 120 FPS của chúng ta!
+            viewer.open(document.body, [{ url: url, dateStr: "Xem trước liên kết", tip: "Link Preview" }], 0);
+        }
+    },
+
+    // 3. EVENT DELEGATION TỐI THƯỢNG CHO TOOLTIP XEM TRƯỚC ẢNH
+    initLinkTooltipEvents() {
+        const tip = $("#link-tooltip");
+        if (!tip) return;
+        let timer = null;
+
+        document.addEventListener("mouseover", (e) => {
+            const linkEl = e.target.closest(".j-link");
+            if (!linkEl) return;
+            
+            const url = linkEl.getAttribute("data-url");
+            if (!url) return;
+
+            clearTimeout(timer);
+            // Hiện tooltip với hiệu ứng Fade-in
+            tip.classList.remove("hidden");
+            setTimeout(() => tip.classList.remove("opacity-0"), 10);
+
+            // Gán dữ liệu ban đầu
+            const ext = url.split('.').pop().split(/[\?#]/)[0].toUpperCase();
+            $("#lt-title").innerText = `${ext.length <= 4 ? ext : 'IMG'} FILE`;
+            $("#lt-size").innerText = "Đang tải...";
+            $("#lt-spinner").classList.remove("hidden");
+            
+            const img = $("#lt-img");
+            img.style.opacity = "0";
+            img.src = url;
+
+            // Tải ngầm ảnh bất đồng bộ để lấy kích thước thực (Dimensions)
+            const tempImg = new Image();
+            tempImg.src = url;
+            tempImg.onload = () => {
+                $("#lt-size").innerText = `${tempImg.naturalWidth} × ${tempImg.naturalHeight}`;
+                $("#lt-spinner").classList.add("hidden");
+                img.style.opacity = "1";
+            };
+            tempImg.onerror = () => {
+                $("#lt-size").innerText = "Liên kết Web / API";
+                $("#lt-spinner").classList.add("hidden");
+            };
+        });
+
+        document.addEventListener("mousemove", (e) => {
+            if (tip.classList.contains("hidden")) return;
+            // Di chuyển tooltip theo chuột nhưng tránh bị tràn khỏi cạnh phải màn hình
+            const x = Math.min(e.clientX + 18, window.innerWidth - 275);
+            const y = Math.min(e.clientY + 18, window.innerHeight - 240);
+            tip.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+        });
+
+        document.addEventListener("mouseout", (e) => {
+            const linkEl = e.target.closest(".j-link");
+            if (linkEl) this.hideLinkTooltip();
+        });
+    },
+
+    hideLinkTooltip() {
+        const tip = $("#link-tooltip");
+        if (!tip || tip.classList.contains("hidden")) return;
+        tip.classList.add("opacity-0");
+        setTimeout(() => tip.classList.add("hidden"), 150);
     },
 
     copyJsonPath(e, path) {
@@ -807,4 +938,8 @@ const bgAnim = {
     },
 };
 
-document.addEventListener("DOMContentLoaded", () => { app.init(); viewer.initEvents(); });
+document.addEventListener("DOMContentLoaded", () => { 
+    app.init(); 
+    viewer.initEvents(); 
+    app.initLinkTooltipEvents(); 
+});

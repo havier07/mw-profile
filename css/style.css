@@ -218,3 +218,38 @@ button:active {
     }
     .j-line.collapsed .j-toggle { opacity: 1 !important; }
 }
+
+/* ==========================================================================
+   SMART LINK VS CODE & INTERACTIVE TOOLTIP
+   ========================================================================== */
+
+/* 1. HIỆU ỨNG LINK TRONG JSON (Underline nhẹ, sáng bừng khi hover) */
+.j-link {
+    color: #38bdf8 !important; /* Sky-400 */
+    text-decoration: underline;
+    text-decoration-color: rgba(56, 189, 248, 0.35);
+    text-underline-offset: 3px;
+    cursor: pointer;
+    transition: color 0.1s ease, text-decoration-color 0.1s ease, background-color 0.1s ease !important;
+    border-radius: 3px;
+    padding: 0 2px;
+}
+
+.j-link:hover {
+    color: #ffffff !important;
+    text-decoration-color: #38bdf8;
+    background-color: rgba(56, 189, 248, 0.15);
+}
+
+/* 2. HIỆU ỨNG POPUP ACTION MENU (Mượt mà cho cả PC lẫn Mobile PE) */
+#link-menu-overlay { backdrop-filter: blur(4px); }
+#link-menu-box { transform: translateZ(0); will-change: transform; }
+
+/* Trên Mobile PE, biến Menu thành Bottom Sheet vuốt từ dưới lên cực tiện */
+@media (max-width: 768px) {
+    #link-menu-box {
+        border-radius: 24px 24px 0 0 !important;
+        max-width: 100% !important;
+        margin-bottom: -1px;
+    }
+}
