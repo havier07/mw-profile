@@ -32,7 +32,145 @@ const utils = {
         } catch (e) { app.toast("Lỗi quyền", "error"); }
         document.body.removeChild(t);
     },
-    escapeAttr: (t) => String(t).replace(/"/g, "&quot;").replace(/\n/g, "&#10;")
+    escapeAttr: (t) => String(t).replace(/"/g, "&quot;").replace(/\n/g, "&#10;"),
+
+    parseMood: (t) => {
+        if (!t || String(t).trim() === '') return null;
+        
+        // Loại bỏ rác backslash từ API
+        let clean = String(t).replace(/\\(30|[12][0-9]|[1-9])(?!\d)/g, ' ').replace(/\\(?=[\r\n]|$)/g, '');
+        
+        // 1. Tiền xử lý bảo mật (XSS) và bảo vệ cấu trúc Link
+        clean = clean
+            .replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" class="text-sky-400 hover:underline j-link" onclick="event.stopPropagation()">$1</a>')
+            .replace(/\n/g, "<br>");
+
+        let html = '';
+        let buffer = ''; // Khoang chứa chữ chờ được in ra
+
+        // 2. Trạng thái hiện tại của con trỏ (State)
+        let color = null;
+        let isBlink = false;
+        let isUnderline = false;
+
+        const COLOR_MAP = {
+            'K': '#0f172a', 'W': '#ffffff', 'R': '#ef4444', 'Y': '#eab308',
+            'B': '#3b82f6', 'G': '#22c55e', 'P': '#f472b6'
+        };
+
+        // Hàm Đóng gói (Flush): Xuất khoang chứa vào HTML khi có lệnh đổi thuộc tính
+        const flush = () => {
+            if (!buffer) return;
+            let styles = [];
+            let classes = [];
+
+            if (color) styles.push(`color:${color}`);
+            if (isUnderline) {
+                styles.push(`text-decoration:underline`);
+                if (color) styles.push(`text-decoration-color:${color}`);
+            }
+            if (isBlink) classes.push('blink-text');
+
+            if (styles.length === 0 && classes.length === 0) {
+                html += buffer; // Không có thuộc tính -> In trần (Chống dư thẻ span)
+            } else {
+                const styleAttr = styles.length > 0 ? ` style="${styles.join(';')}"` : '';
+                const classAttr = classes.length > 0 ? ` class="${classes.join(' ')}"` : '';
+                html += `<span${classAttr}${styleAttr}>${buffer}</span>`;
+            }
+            buffer = ''; // Làm sạch khoang chứa
+        };
+
+        let i = 0;
+        const len = clean.length;
+
+        // 3. Vòng lặp duyệt O(N) xử lý Logic siêu tốc
+        while (i < len) {
+            // Bước nhảy bảo vệ: Không xử lý mã màu nằm bên trong <a href="..."> hoặc <br>
+            if (clean[i] === '<') {
+                flush(); // Xuất chữ đang tồn đọng trước
+                let tag = '';
+                while (i < len && clean[i] !== '>') { tag += clean[i]; i++; }
+                tag += '>'; html += tag;
+                continue;
+            }
+
+            if (clean[i] !== '#') {
+                buffer += clean[i++];
+                continue;
+            }
+
+            // --- BẮT ĐẦU VÀO LUỒNG PHÂN TÍCH LỆNH CỦA GAME ---
+            const nextChar = i + 1 < len ? clean[i + 1] : '';
+
+            // Luật 1: Thoát ký tự '##' thành '#'
+            if (nextChar === '#') {
+                buffer += '#'; 
+                i += 2; 
+                continue;
+            }
+
+            // Đã là lệnh thì phải chốt lại đoạn văn bản trước đó
+            flush();
+            i++; // Bỏ qua dấu #
+            
+            if (i >= len) break; // Dấu # rác ở cuối cùng
+            
+            const cmd = clean[i];
+
+            // Luật 2: Bảng màu cố định
+            if (COLOR_MAP[cmd]) {
+                color = COLOR_MAP[cmd];
+                i++;
+            } 
+            // Luật 3: Phân tích Hex thông minh (Dừng ngay khi gặp ký tự không phải Hex)
+            else if (cmd === 'c' || cmd === 'C') {
+                i++;
+                let hex = '';
+                while (i < len && hex.length < 6 && /[0-9a-fA-F]/.test(clean[i])) {
+                    hex += clean[i];
+                    i++;
+                }
+                if (hex.length > 0) color = '#' + hex; // Nếu mã là #cFFcO thì hex = FFc. Chữ O sẽ nhảy sang vòng while tiếp theo!
+            } 
+            // Luật 4: Ẩn ID Icon hiện tại
+            else if (cmd === 'A') {
+                i++;
+                let iconId = '';
+                while (i < len && iconId.length < 3 && /[0-9]/.test(clean[i])) {
+                    iconId += clean[i];
+                    i++;
+                }
+                // (Sau này chèn thẻ <img> vào biến html ở đây)
+            } 
+            // Luật 5: Gạch chân (Ép nền màu đỏ nhạt, sẽ bị màu đứng sau ghi đè)
+            else if (cmd === 'L') {
+                isUnderline = true;
+                color = '#fca5a5';
+                i++;
+            } 
+            // Luật 6: Nhấp nháy
+            else if (cmd === 'b') {
+                isBlink = true;
+                i++;
+            } 
+            // Luật 7: Xóa trắng thuộc tính
+            else if (cmd === 'n') {
+                color = null;
+                isUnderline = false;
+                isBlink = false;
+                i++;
+            } 
+            // Luật 8: Ẩn #r hoặc các # không hợp lệ (Vô hiệu hóa #)
+            else {
+                i++;
+            }
+        }
+        
+        flush(); // Quét dọn nốt những chữ cuối cùng
+        return html;
+    }
 };
 
 // =========================================================================
@@ -100,7 +238,7 @@ const linkEngine = {
             }
             const data = [new ClipboardItem({ [pngBlob.type]: pngBlob })];
             await navigator.clipboard.write(data);
-            app.toast("Đã sao chép HÌNH ẢNH gốc vào Clipboard!", "success");
+            app.toast("Đã sao chép hình ảnh vào Clipboard!", "success");
         } catch (e) {
             utils.copy(url);
             app.toast("Đã sao chép LIÊN KẾT ảnh (Do máy chủ chặn CORS)", "success");
@@ -245,17 +383,21 @@ const app = {
         const isNu = String(d.gender).includes('venus');
         const bg = isNu ? "from-pink-500/10 via-purple-500/5 to-rose-500/10" : "from-sky-500/10 via-blue-500/5 to-cyan-500/10";
 
+        // KÍCH HOẠT LEXICAL SCANNER FRONTEND
+        const parsedName = utils.parseMood(d.nameRaw) || d.nameRaw;
+        const parsedMood = utils.parseMood(d.moodRaw) || "";
+
         let bioContent;
-        if (!d.moodH) {
+        if (!parsedMood) {
             if (!d.moodIcon || String(d.moodIcon).trim() === "" || d.moodIcon === "A100") {
                 bioContent = '<p class="text-slate-500 italic opacity-50 font-medium text-base">Chưa thiết lập</p>';
             } else {
                 bioContent = `<div class="flex gap-4 items-start"><div class="text-sky-400 font-mono font-bold text-lg border-r border-white/10 pr-4 pt-1">#${d.moodIcon}</div><div class="text-slate-500 italic opacity-50 font-medium text-base flex-grow">Chưa thiết lập</div></div>`;
             }
         } else if (d.moodIcon && String(d.moodIcon).trim() !== "" && d.moodIcon !== "A100") {
-            bioContent = `<div class="flex gap-4 items-start"><div class="text-sky-400 font-mono font-bold text-lg border-r border-white/10 pr-4 pt-1">#${d.moodIcon}</div><div class="text-slate-200 leading-relaxed font-medium text-base whitespace-pre-wrap flex-grow">${d.moodH}</div></div>`;
+            bioContent = `<div class="flex gap-4 items-start"><div class="text-sky-400 font-mono font-bold text-lg border-r border-white/10 pr-4 pt-1">#${d.moodIcon}</div><div class="text-slate-200 leading-relaxed font-medium text-base whitespace-pre-wrap flex-grow break-words">${parsedMood}</div></div>`;
         } else {
-            bioContent = `<p class="text-slate-200 leading-relaxed font-medium text-base whitespace-pre-wrap">${d.moodH}</p>`;
+            bioContent = `<p class="text-slate-200 leading-relaxed font-medium text-base whitespace-pre-wrap break-words">${parsedMood}</p>`;
         }
 
         const box = "bg-white/5 rounded-2xl p-4 border border-white/10 flex flex-col justify-between hover:bg-white/10 transition active:scale-95";
@@ -276,13 +418,13 @@ const app = {
                         <img src="${d.avatar}" class="w-full h-full object-cover rounded-[2.3rem]">
                         <div class="absolute inset-0 bg-black/30 opacity-0 group-avatar:hover:opacity-100 transition flex items-center justify-center"><i class="fa-solid fa-expand text-white text-2xl"></i></div>
                     </div>
-                    <h2 class="text-3xl font-bold text-white mt-4 mb-2 flex md:hidden items-center justify-center gap-2 whitespace-pre-wrap text-center"><span>${d.nameH}</span><i class="fa-regular fa-copy text-lg text-slate-600 hover:text-white copy-btn" data-copy="${utils.escapeAttr(d.nameRaw)}" onclick="utils.copy(this.getAttribute('data-copy'))"></i></h2>
+                    <h2 class="text-3xl font-bold text-white mt-4 mb-2 flex md:hidden items-center justify-center gap-2 whitespace-pre-wrap text-center"><span class="break-words max-w-full">${parsedName}</span><i class="fa-regular fa-copy text-lg text-slate-600 hover:text-white copy-btn shrink-0" data-copy="${utils.escapeAttr(d.nameRaw)}" onclick="utils.copy(this.getAttribute('data-copy'))"></i></h2>
                     <div class="mt-2 md:mt-4 flex items-center gap-2 bg-black/30 px-4 py-1.5 rounded-full border border-white/5">
                         <span class="font-mono font-bold text-sky-300 text-lg">${uid}</span><i class="fa-regular fa-copy text-slate-500 hover:text-white copy-btn" onclick="utils.copy('${uid}')"></i>
                     </div>
                 </div>
                 <div class="flex-grow min-w-0 pt-2">
-                    <h2 class="text-3xl md:text-4xl font-bold text-white mb-2 hidden md:flex items-center gap-3 whitespace-pre-wrap"><span>${d.nameH}</span><i class="fa-regular fa-copy text-lg text-slate-600 hover:text-white copy-btn" data-copy="${utils.escapeAttr(d.nameRaw)}" onclick="utils.copy(this.getAttribute('data-copy'))"></i></h2>
+                    <h2 class="text-3xl md:text-4xl font-bold text-white mb-2 hidden md:flex items-center gap-3 whitespace-pre-wrap"><span class="break-words min-w-0">${parsedName}</span><i class="fa-regular fa-copy text-lg text-slate-600 hover:text-white copy-btn shrink-0" data-copy="${utils.escapeAttr(d.nameRaw)}" onclick="utils.copy(this.getAttribute('data-copy'))"></i></h2>
                     
                     <div class="flex flex-nowrap gap-3 text-xs font-bold text-slate-300 mb-6 uppercase tracking-wider justify-center md:justify-start overflow-x-auto">
                         <span class="bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 whitespace-nowrap">${d.gender}</span>
@@ -334,7 +476,7 @@ const app = {
         const n = (name || "Unknown").replace(/<[^>]+>/g, "").trim();
         this.history = this.history.filter((h) => h.uid != uid);
         this.history.unshift({ uid, name: n });
-        if (this.history.length > 10) this.history.pop();
+        if (this.history.length > 30) this.history.pop();
         localStorage.setItem("mw_h", JSON.stringify(this.history));
         this.renderHist();
     },
@@ -499,7 +641,7 @@ const app = {
             
             if (info.type === 'IMAGE') {
                 html += `<button onclick="app.lmAction('preview')" class="w-full px-4 py-3 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 active:scale-[0.98] flex items-center gap-3 transition text-left text-sky-300 font-bold border border-sky-500/20"><i class="fa-solid fa-expand w-5 text-center text-lg"></i> Xem ảnh toàn màn hình</button>`;
-                html += `<button onclick="app.lmAction('copy-img')" class="w-full px-4 py-3 rounded-xl hover:bg-white/10 active:scale-[0.98] flex items-center gap-3 transition text-left text-amber-300 font-semibold"><i class="fa-solid fa-image w-5 text-center text-lg"></i> Sao chép HÌNH ẢNH gốc</button>`;
+                html += `<button onclick="app.lmAction('copy-img')" class="w-full px-4 py-3 rounded-xl hover:bg-white/10 active:scale-[0.98] flex items-center gap-3 transition text-left text-amber-300 font-semibold"><i class="fa-solid fa-image w-5 text-center text-lg"></i> Sao chép hình ảnh</button>`;
             } else if (info.type === 'VIDEO' || info.type === 'AUDIO') {
                 html += `<button onclick="app.lmAction('open')" class="w-full px-4 py-3 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 active:scale-[0.98] flex items-center gap-3 transition text-left text-rose-300 font-bold border border-rose-500/20"><i class="fa-solid fa-play w-5 text-center text-lg"></i> Phát ${info.label} này</button>`;
             } else if (info.type === 'DOCUMENT' || info.type === 'ARCHIVE') {
