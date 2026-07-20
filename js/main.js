@@ -424,10 +424,13 @@ card(d, isSilent = false) {
             bioContent = `<p class="text-slate-200 leading-relaxed font-medium text-base whitespace-pre-wrap break-words">${parsedMood}</p>`;
         }
 
-        const box = "bg-white/5 rounded-2xl p-4 border border-white/10 flex flex-col justify-between hover:bg-white/10 transition active:scale-95";
-        const row = "text-sm flex justify-between items-center py-0.5";
-        const lbl = "text-slate-400";
-        const val = "text-white font-medium truncate ml-2";
+        const box = "bg-white/[0.03] rounded-2xl p-4 border border-white/10 flex flex-col justify-between hover:bg-white/[0.07] hover:border-white/20 transition-all duration-200 active:scale-[0.98] group/box shadow-lg";
+        const row = "text-xs md:text-sm flex justify-between items-center py-1 border-b border-white/[0.03] last:border-0";
+        const lbl = "text-slate-400 flex items-center gap-2 truncate font-medium";
+        const val = "text-white font-semibold truncate ml-2 font-mono"; // font-mono giúp số liệu hiển thị sắc nét, đều đặn
+        
+        // Hàm tạo Icon nhanh với hiệu ứng Hover Phóng to nhẹ
+        const ico = (cls, color) => `<i class="fa-solid ${cls} ${color} w-4 text-center shrink-0 text-xs md:text-sm group-hover/box:scale-110 transition-transform duration-200"></i>`;
 
         card.innerHTML = `
             <div class="absolute inset-0 bg-gradient-to-br ${bg} -z-10"></div>
@@ -460,11 +463,75 @@ card(d, isSilent = false) {
                         ${bioContent}
                     </div>
                     
+                    <!-- LƯỚI 4 HỘP THỐNG KÊ ĐÃ NÂNG CẤP ICON & MÀU SẮC -->
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div class="${box}"><div class="text-xs font-bold text-purple-400 uppercase mb-2">Nhân Vật</div><div class="${row}"><span class="${lbl}">Model</span><span class="${val}">${d.model}</span></div><div class="${row}"><span class="${lbl}">Skin</span><span class="${val}" title="${d.skin}">${d.skin}</span></div><div class="text-[10px] text-purple-300/70 mt-2 text-right">DIY: ${d.diyTime}</div></div>
-                        <div class="${box}"><div class="text-xs font-bold text-sky-400 uppercase mb-2">Nhà Phát Triển</div><div class="${row}"><span class="${lbl}">Cấp</span><span class="${val} text-yellow-400 font-bold">${d.dLvl}</span></div><div class="${row}"><span class="${lbl}">Stat</span><span class="${val}">${d.dStat}</span></div><div class="${row}"><span class="${lbl}">Perm</span><span class="${val}">${d.dPerm}</span></div><div class="${row}"><span class="${lbl}">Tải</span><span class="${val} text-green-400">${d.dDl}</span></div><div class="text-[10px] text-sky-300/70 mt-2 text-right">Khung: ${d.dFrame}</div></div>
-                        <div class="${box}"><div class="text-xs font-bold text-yellow-400 uppercase mb-2">Expert</div><div class="${row}"><span class="${lbl}">Cấp</span><span class="${val} text-white font-bold">${d.eLvl}</span></div><div class="${row}"><span class="${lbl}">Stat</span><span class="${val}">${d.eStat}</span></div><div class="${row}"><span class="${lbl}">Điểm</span><span class="${val}">${d.eScore}/${d.eMax}</span></div><div class="${row}"><span class="${lbl}">Uy tín</span><span class="${val} text-blue-300">${d.ePt}</span></div><div class="text-[10px] text-yellow-200/50 mt-2 text-right">${d.eTime}</div></div>
-                        <div class="${box}"><div class="text-xs font-bold text-red-400 uppercase mb-2">Báo cáo & Uy tín</div><div class="flex-grow flex flex-col justify-center text-center py-2"><span class="text-3xl font-bold text-white leading-none mb-1">${d.repCount}</span><span class="text-[10px] text-red-200/50 uppercase tracking-wider">Lần bị tố cáo</span></div><div class="border-t border-white/10 mt-2 pt-2 text-[10px] flex justify-between text-slate-400"><span>WhiteList:</span><span class="text-green-300 ml-1 truncate">${d.wlTime}</span></div></div>
+                        
+                        <!-- 1. HỘP NHÂN VẬT -->
+                        <div class="${box}">
+                            <div class="text-xs font-bold text-purple-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 border-b border-purple-500/20 pb-1.5">
+                                <i class="fa-solid fa-user-astronaut text-purple-400 text-sm"></i> NHÂN VẬT
+                            </div>
+                            <div class="space-y-0.5 flex-grow">
+                                <div class="${row}"><span class="${lbl}">${ico('fa-cube', 'text-purple-400')} Model</span><span class="${val}">${d.model}</span></div>
+                                <div class="${row}"><span class="${lbl}">${ico('fa-shirt', 'text-pink-400')} Skin</span><span class="${val}" title="${d.skin}">${d.skin}</span></div>
+                            </div>
+                            <div class="text-[10px] text-purple-300/70 mt-3 pt-2 border-t border-white/5 flex items-center justify-between">
+                                <span class="flex items-center gap-1 truncate"><i class="fa-solid fa-clock text-indigo-400"></i> DIY:</span>
+                                <span class="font-mono truncate ml-1">${d.diyTime}</span>
+                            </div>
+                        </div>
+
+                        <!-- 2. HỘP NHÀ PHÁT TRIỂN -->
+                        <div class="${box}">
+                            <div class="text-xs font-bold text-sky-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 border-b border-sky-500/20 pb-1.5">
+                                <i class="fa-solid fa-code text-sky-400 text-sm"></i> NHÀ PHÁT TRIỂN
+                            </div>
+                            <div class="space-y-0.5 flex-grow">
+                                <div class="${row}"><span class="${lbl}">${ico('fa-layer-group', 'text-sky-400')} Cấp</span><span class="${val} text-yellow-400">${d.dLvl}</span></div>
+                                <div class="${row}"><span class="${lbl}">${ico('fa-chart-line', 'text-cyan-400')} Stat</span><span class="${val}">${d.dStat}</span></div>
+                                <div class="${row}"><span class="${lbl}">${ico('fa-key', 'text-blue-400')} Perm</span><span class="${val}">${d.dPerm}</span></div>
+                                <div class="${row}"><span class="${lbl}">${ico('fa-cloud-arrow-down', 'text-emerald-400')} Tải</span><span class="${val} text-green-400">${d.dDl}</span></div>
+                            </div>
+                            <div class="text-[10px] text-sky-300/70 mt-3 pt-2 border-t border-white/5 flex items-center justify-between">
+                                <span class="flex items-center gap-1 truncate"><i class="fa-solid fa-crop-simple text-teal-400"></i> Khung:</span>
+                                <span class="font-mono truncate ml-1">${d.dFrame}</span>
+                            </div>
+                        </div>
+
+                        <!-- 3. HỘP EXPERT -->
+                        <div class="${box}">
+                            <div class="text-xs font-bold text-yellow-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 border-b border-yellow-500/20 pb-1.5">
+                                <i class="fa-solid fa-user-graduate text-yellow-400 text-sm"></i> EXPERT
+                            </div>
+                            <div class="space-y-0.5 flex-grow">
+                                <div class="${row}"><span class="${lbl}">${ico('fa-medal', 'text-yellow-400')} Cấp</span><span class="${val} text-white">${d.eLvl}</span></div>
+                                <div class="${row}"><span class="${lbl}">${ico('fa-fire', 'text-orange-400')} Stat</span><span class="${val}">${d.eStat}</span></div>
+                                <div class="${row}"><span class="${lbl}">${ico('fa-bullseye', 'text-amber-400')} Điểm</span><span class="${val}">${d.eScore}/${d.eMax}</span></div>
+                                <div class="${row}"><span class="${lbl}">${ico('fa-gem', 'text-lime-400')} Uy tín</span><span class="${val} text-blue-300">${d.ePt}</span></div>
+                            </div>
+                            <div class="text-[10px] text-yellow-200/60 mt-3 pt-2 border-t border-white/5 flex items-center justify-between">
+                                <span class="flex items-center gap-1 truncate"><i class="fa-solid fa-calendar-check text-yellow-400/80"></i> Mời:</span>
+                                <span class="font-mono truncate ml-1">${d.eTime}</span>
+                            </div>
+                        </div>
+
+                        <!-- 4. HỘP BÁO CÁO & UY TÍN -->
+                        <div class="${box}">
+                            <div class="text-xs font-bold text-red-400 uppercase tracking-wider mb-2 flex items-center gap-1.5 border-b border-red-500/20 pb-1.5">
+                                <i class="fa-solid fa-shield-halved text-red-400 text-sm"></i> BÁO CÁO & UY TÍN
+                            </div>
+                            <div class="flex-grow flex flex-col justify-center items-center text-center py-2">
+                                <span class="text-3xl md:text-4xl font-bold font-mono text-white leading-none mb-1.5 tracking-tight group-hover/box:scale-105 transition-transform">${d.repCount}</span>
+                                <span class="text-[10px] text-red-200/60 uppercase tracking-wider flex items-center gap-1 font-semibold">
+                                    <i class="fa-solid fa-flag text-rose-400"></i> Lần bị tố cáo
+                                </span>
+                            </div>
+                            <div class="border-t border-white/5 mt-3 pt-2 text-[10px] flex items-center justify-between text-slate-400">
+                                <span class="flex items-center gap-1 shrink-0"><i class="fa-solid fa-list-check text-emerald-400"></i> WhiteList:</span>
+                                <span class="text-green-300 font-mono font-semibold ml-1 truncate">${d.wlTime}</span>
+                            </div>
+                        </div>
+
                     </div>
                     <div class="mt-4 text-right text-xs text-slate-500 font-medium italic">Cập nhật: <span class="text-slate-300 not-italic">${d.updateTimeStr}</span></div>
                 </div>
