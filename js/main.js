@@ -37,29 +37,22 @@ const utils = {
     parseMood: (t) => {
         if (!t || String(t).trim() === '') return null;
         
-        // Loại bỏ rác backslash từ API
-        let clean = String(t).replace(/\\(30|[12][0-9]|[1-9])(?!\d)/g, ' ').replace(/\\(?=[\r\n]|$)/g, '');
-        
-        // 1. Tiền xử lý bảo mật (XSS) và bảo vệ cấu trúc Link
-        clean = clean
+        let clean = String(t)
             .replace(/</g, "&lt;").replace(/>/g, "&gt;")
             .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" class="text-sky-400 hover:underline j-link" onclick="event.stopPropagation()">$1</a>')
             .replace(/\n/g, "<br>");
 
         let html = '';
-        let buffer = ''; // Khoang chứa chữ chờ được in ra
-
-        // 2. Trạng thái hiện tại của con trỏ (State)
+        let buffer = '';
         let color = null;
         let isBlink = false;
         let isUnderline = false;
 
         const COLOR_MAP = {
-            'K': '#0f172a', 'W': '#ffffff', 'R': '#ef4444', 'Y': '#eab308',
-            'B': '#3b82f6', 'G': '#22c55e', 'P': '#f472b6'
+            'K': '#000000', 'W': '#ffffff', 'R': '#ef4444', 'Y': '#eab308',
+            'B': '#3b82f6', 'G': '#22c55e'
         };
 
-        // Hàm Đóng gói (Flush): Xuất khoang chứa vào HTML khi có lệnh đổi thuộc tính
         const flush = () => {
             if (!buffer) return;
             let styles = [];
@@ -73,58 +66,62 @@ const utils = {
             if (isBlink) classes.push('blink-text');
 
             if (styles.length === 0 && classes.length === 0) {
-                html += buffer; // Không có thuộc tính -> In trần (Chống dư thẻ span)
+                html += buffer;
             } else {
                 const styleAttr = styles.length > 0 ? ` style="${styles.join(';')}"` : '';
                 const classAttr = classes.length > 0 ? ` class="${classes.join(' ')}"` : '';
                 html += `<span${classAttr}${styleAttr}>${buffer}</span>`;
             }
-            buffer = ''; // Làm sạch khoang chứa
+            buffer = '';
         };
 
         let i = 0;
         const len = clean.length;
 
-        // 3. Vòng lặp duyệt O(N) xử lý Logic siêu tốc
         while (i < len) {
-            // Bước nhảy bảo vệ: Không xử lý mã màu nằm bên trong <a href="..."> hoặc <br>
+            // Bước nhảy bảo vệ thẻ HTML: KHẮC PHỤC TRIỆT ĐỂ LỖI DƯ DẤU ">"
             if (clean[i] === '<') {
-                flush(); // Xuất chữ đang tồn đọng trước
+                flush();
                 let tag = '';
-                while (i < len && clean[i] !== '>') { tag += clean[i]; i++; }
-                tag += '>'; html += tag;
+                while (i < len && clean[i] !== '>') { 
+                    tag += clean[i]; 
+                    i++; 
+                }
+                if (i < len) {
+                    tag += clean[i]; // Cộng nốt dấu '>' vào tag
+                    i++; // VƯỢT QUA DẤU '>': Đây là mấu chốt để không bị in dư dấu >
+                }
+                html += tag;
                 continue;
             }
 
             if (clean[i] !== '#') {
-                buffer += clean[i++];
+                buffer += clean[i];
+                i++;
                 continue;
             }
 
-            // --- BẮT ĐẦU VÀO LUỒNG PHÂN TÍCH LỆNH CỦA GAME ---
+            // --- BẮT ĐẦU PHÂN TÍCH LỆNH GAME (#) ---
             const nextChar = i + 1 < len ? clean[i + 1] : '';
 
             // Luật 1: Thoát ký tự '##' thành '#'
             if (nextChar === '#') {
-                buffer += '#'; 
-                i += 2; 
+                buffer += '#';
+                i += 2;
                 continue;
             }
 
-            // Đã là lệnh thì phải chốt lại đoạn văn bản trước đó
             flush();
             i++; // Bỏ qua dấu #
             
-            if (i >= len) break; // Dấu # rác ở cuối cùng
+            if (i >= len) break;
             
             const cmd = clean[i];
 
-            // Luật 2: Bảng màu cố định
             if (COLOR_MAP[cmd]) {
                 color = COLOR_MAP[cmd];
                 i++;
             } 
-            // Luật 3: Phân tích Hex thông minh (Dừng ngay khi gặp ký tự không phải Hex)
             else if (cmd === 'c' || cmd === 'C') {
                 i++;
                 let hex = '';
@@ -132,9 +129,8 @@ const utils = {
                     hex += clean[i];
                     i++;
                 }
-                if (hex.length > 0) color = '#' + hex; // Nếu mã là #cFFcO thì hex = FFc. Chữ O sẽ nhảy sang vòng while tiếp theo!
+                if (hex.length > 0) color = '#' + hex;
             } 
-            // Luật 4: Ẩn ID Icon hiện tại
             else if (cmd === 'A') {
                 i++;
                 let iconId = '';
@@ -142,33 +138,28 @@ const utils = {
                     iconId += clean[i];
                     i++;
                 }
-                // (Sau này chèn thẻ <img> vào biến html ở đây)
             } 
-            // Luật 5: Gạch chân (Ép nền màu đỏ nhạt, sẽ bị màu đứng sau ghi đè)
             else if (cmd === 'L') {
                 isUnderline = true;
-                color = '#fca5a5';
+                //color = '#fca5a5';
                 i++;
             } 
-            // Luật 6: Nhấp nháy
             else if (cmd === 'b') {
                 isBlink = true;
                 i++;
             } 
-            // Luật 7: Xóa trắng thuộc tính
             else if (cmd === 'n') {
                 color = null;
                 isUnderline = false;
                 isBlink = false;
                 i++;
             } 
-            // Luật 8: Ẩn #r hoặc các # không hợp lệ (Vô hiệu hóa #)
             else {
-                i++;
+                i++; // Ẩn các dấu # rác
             }
         }
         
-        flush(); // Quét dọn nốt những chữ cuối cùng
+        flush();
         return html;
     }
 };
@@ -372,7 +363,7 @@ const app = {
         } catch (e) {}
     },
 
-    card(d, isSilent = false) {
+card(d, isSilent = false) {
         const uid = d.uid;
         this.photos[uid] = d.photos || [];
         this.avatars[uid] = d.avatarInfo || { url: d.avatar, dateStr: "Thời gian: Không rõ", tip: "Ảnh đại diện" };
@@ -383,9 +374,25 @@ const app = {
         const isNu = String(d.gender).includes('venus');
         const bg = isNu ? "from-pink-500/10 via-purple-500/5 to-rose-500/10" : "from-sky-500/10 via-blue-500/5 to-cyan-500/10";
 
-        // KÍCH HOẠT LEXICAL SCANNER FRONTEND
-        const parsedName = utils.parseMood(d.nameRaw) || d.nameRaw;
-        const parsedMood = utils.parseMood(d.moodRaw) || "";
+        // =====================================================================
+        // 1. CƠ CHẾ DỰ PHÒNG CHỐNG LỖI CACHE (BẮT ĐÚNG TÊN VÀ TIỂU SỬ GỐC)
+        // =====================================================================
+        const rawJson = this.data[uid] || {};
+        
+        // Ưu tiên 1: Lấy nameRaw từ Backend mới
+        // Ưu tiên 2: Móc trực tiếp từ Raw JSON
+        // Ưu tiên 3: Lấy nameH từ cache cũ
+        // Ưu tiên 4: Dùng UID làm tên
+        const finalNameRaw = d.nameRaw || rawJson.RoleInfo?.NickName || rawJson.NickName || d.nameH || String(uid);
+        
+        // Ưu tiên lấy tiểu sử tương tự
+        const finalMoodRaw = d.moodRaw !== undefined ? d.moodRaw : (rawJson.mood_text || d.moodH || "");
+
+        // =====================================================================
+        // 2. KÍCH HOẠT LEXICAL SCANNER FRONTEND LÊN DỮ LIỆU ĐÃ CHUẨN HÓA
+        // =====================================================================
+        const parsedName = utils.parseMood(finalNameRaw) || finalNameRaw;
+        const parsedMood = utils.parseMood(finalMoodRaw) || "";
 
         let bioContent;
         if (!parsedMood) {
