@@ -67,10 +67,7 @@
     </main>
 
     <!-- Toast -->
-    <div id="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full glass-panel shadow-2xl flex items-center gap-3 transition-all duration-300 translate-y-24 opacity-0 z-[300] border-l-4 border-sky-400 w-max max-w-[90vw]">
-        <i id="toast-icon" class="fa-solid fa-circle-info text-sky-400 shrink-0"></i>
-        <span id="toast-msg" class="font-semibold text-sm truncate">Thông báo</span>
-    </div>
+    <div id="toast-container" class="fixed bottom-6 right-6 md:right-8 z-[10000] flex flex-col gap-2.5 items-end pointer-events-none max-w-[92vw] md:max-w-sm"></div>
 
     <!-- Fullscreen Image Viewer -->
     <div id="viewer" class="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl hidden opacity-0 transition-opacity duration-300 select-none flex flex-col pointer-events-none">

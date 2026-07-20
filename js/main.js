@@ -23,13 +23,30 @@ const utils = {
             throw e;
         }
     },
-    copy: (txt) => {
+    copy: (txt, btnEl = null, label = "", e = null) => {
+        if (e && e.stopPropagation) e.stopPropagation();
         const t = document.createElement("textarea");
         t.value = txt; t.style.position = "fixed"; t.style.left = "-9999px";
         document.body.appendChild(t); t.focus(); t.select();
         try {
-            document.execCommand("copy") ? app.toast(`Đã sao chép`, "success") : app.toast("Lỗi sao chép", "error");
-        } catch (e) { app.toast("Lỗi quyền", "error"); }
+            const success = document.execCommand("copy");
+            if (success) {
+                const msg = label ? `Đã sao chép ${label}: ${txt}` : `Đã sao chép: ${txt}`;
+                app.toast(msg, "success");
+                
+                // HIỆU ỨNG TICK XANH LÁ TẠM THỜI MƯỢT MÀ CHO NÚT BẤM
+                if (btnEl) {
+                    const icon = btnEl.tagName === "I" ? btnEl : btnEl.querySelector("i");
+                    if (icon) {
+                        const oldCls = icon.className;
+                        icon.className = "fa-solid fa-check text-green-400 scale-125 transition-all duration-300";
+                        setTimeout(() => { icon.className = oldCls; }, 1500);
+                    }
+                }
+            } else {
+                app.toast("Lỗi sao chép vào Clipboard", "error");
+            }
+        } catch (err) { app.toast("Lỗi quyền truy cập Clipboard", "error"); }
         document.body.removeChild(t);
     },
     escapeAttr: (t) => String(t).replace(/"/g, "&quot;").replace(/\n/g, "&#10;"),
@@ -425,13 +442,13 @@ card(d, isSilent = false) {
                         <img src="${d.avatar}" class="w-full h-full object-cover rounded-[2.3rem]">
                         <div class="absolute inset-0 bg-black/30 opacity-0 group-avatar:hover:opacity-100 transition flex items-center justify-center"><i class="fa-solid fa-expand text-white text-2xl"></i></div>
                     </div>
-                    <h2 class="text-3xl font-bold text-white mt-4 mb-2 flex md:hidden items-center justify-center gap-2 whitespace-pre-wrap text-center"><span class="break-words max-w-full">${parsedName}</span><i class="fa-regular fa-copy text-lg text-slate-600 hover:text-white copy-btn shrink-0" data-copy="${utils.escapeAttr(d.nameRaw)}" onclick="utils.copy(this.getAttribute('data-copy'))"></i></h2>
+                    <h2 class="text-3xl font-bold text-white mt-4 mb-2 flex md:hidden items-center justify-center gap-2 whitespace-pre-wrap text-center"><span class="break-words max-w-full">${parsedName}</span><i class="fa-regular fa-copy text-lg text-slate-600 hover:text-white copy-btn shrink-0" data-copy="${utils.escapeAttr(d.nameRaw)}" onclick="utils.copy(this.getAttribute('data-copy'), this, 'Tên nhân vật', event)"></i></h2>
                     <div class="mt-2 md:mt-4 flex items-center gap-2 bg-black/30 px-4 py-1.5 rounded-full border border-white/5">
-                        <span class="font-mono font-bold text-sky-300 text-lg">${uid}</span><i class="fa-regular fa-copy text-slate-500 hover:text-white copy-btn" onclick="utils.copy('${uid}')"></i>
+                        <span class="font-mono font-bold text-sky-300 text-lg">${uid}</span><i class="fa-regular fa-copy text-slate-500 hover:text-white copy-btn" onclick="utils.copy('${uid}', this, 'UID', event)"></i>
                     </div>
                 </div>
                 <div class="flex-grow min-w-0 pt-2">
-                    <h2 class="text-3xl md:text-4xl font-bold text-white mb-2 hidden md:flex items-center gap-3 whitespace-pre-wrap"><span class="break-words min-w-0">${parsedName}</span><i class="fa-regular fa-copy text-lg text-slate-600 hover:text-white copy-btn shrink-0" data-copy="${utils.escapeAttr(d.nameRaw)}" onclick="utils.copy(this.getAttribute('data-copy'))"></i></h2>
+                    <h2 class="text-3xl md:text-4xl font-bold text-white mb-2 hidden md:flex items-center gap-3 whitespace-pre-wrap"><span class="break-words min-w-0">${parsedName}</span><i class="fa-regular fa-copy text-lg text-slate-600 hover:text-white copy-btn shrink-0" data-copy="${utils.escapeAttr(d.nameRaw)}" onclick="utils.copy(this.getAttribute('data-copy'), this, 'Tên nhân vật', event)"></i></h2>
                     
                     <div class="flex flex-nowrap gap-3 text-xs font-bold text-slate-300 mb-6 uppercase tracking-wider justify-center md:justify-start overflow-x-auto">
                         <span class="bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 whitespace-nowrap">${d.gender}</span>
@@ -479,6 +496,58 @@ card(d, isSilent = false) {
 
     skeleton: (n) => Array(n).fill(0).map(() => `<div class="glass-panel rounded-3xl p-6 h-96 animate-pulse"><div class="flex gap-8"><div class="w-44 h-44 bg-white/5 rounded-[2.5rem] shrink-0"></div><div class="flex-grow space-y-4"><div class="h-10 bg-white/5 w-2/3 rounded-xl"></div><div class="h-6 bg-white/5 w-1/3 rounded-lg"></div><div class="h-32 bg-white/5 w-full rounded-2xl mt-4"></div></div></div></div>`).join(""),
 
+// =========================================================================
+    // HỆ THỐNG TOAST XẾP CHỒNG (STACKED TOASTS - TỐI ĐA 3 POPUP)
+    // =========================================================================
+    activeToasts: [],
+
+    toast(msg, type = "success") {
+        const container = document.getElementById("toast-container");
+        if (!container) return;
+
+        // Nếu đã có 3 popup, tiêu diệt ngay lập tức popup cũ nhất (FIFO)
+        if (this.activeToasts.length >= 3) {
+            const oldest = this.activeToasts.shift();
+            if (oldest && oldest.el) {
+                oldest.el.classList.add("toast-leave");
+                setTimeout(() => oldest.el.remove(), 300);
+                clearTimeout(oldest.timer);
+            }
+        }
+
+        const toastId = Math.random().toString(36).substr(2, 9);
+        const el = document.createElement("div");
+        const isErr = type === "error";
+        const icon = isErr ? "fa-circle-exclamation text-rose-400" : "fa-circle-check text-green-400";
+        const border = isErr ? "border-l-rose-500" : "border-l-green-500";
+
+        el.className = `toast-item toast-enter glass-panel px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/15 border-l-4 ${border} bg-[#0f172a]/95 text-white text-xs md:text-sm font-semibold w-full md:w-auto backdrop-blur-md`;
+        el.innerHTML = `
+            <i class="fa-solid ${icon} text-base shrink-0"></i>
+            <span class="truncate flex-grow">${utils.escapeAttr(msg)}</span>
+            <button onclick="this.parentElement.remove()" class="text-slate-500 hover:text-white pl-1 transition"><i class="fa-solid fa-xmark"></i></button>
+        `;
+
+        container.appendChild(el);
+        
+        // Kích hoạt animation xuất hiện
+        el.offsetHeight; 
+        el.classList.remove("toast-enter");
+
+        const timer = setTimeout(() => {
+            el.classList.add("toast-leave");
+            setTimeout(() => {
+                el.remove();
+                this.activeToasts = this.activeToasts.filter(t => t.id !== toastId);
+            }, 300);
+        }, 3500);
+
+        this.activeToasts.push({ id: toastId, el, timer });
+    },
+
+    // =========================================================================
+    // QUẢN LÝ LỊCH SỬ VỚI FLIP ANIMATION & DUAL-ZONE BUTTONS
+    // =========================================================================
     addHist(uid, name) {
         const n = (name || "Unknown").replace(/<[^>]+>/g, "").trim();
         this.history = this.history.filter((h) => h.uid != uid);
@@ -488,23 +557,100 @@ card(d, isSilent = false) {
         this.renderHist();
     },
 
-    renderHist() {
-        const l = $("#history-list");
-        if (!this.history.length) { l.innerHTML = '<div class="col-span-2 text-center text-slate-500 italic text-xs py-2">Trống</div>'; return; }
-        l.innerHTML = this.history.map((h) => `<div class="px-3 py-2 hover:bg-white/10 cursor-pointer rounded-lg bg-white/5 border border-white/5 flex flex-col justify-center" onclick="app.search('${h.uid}')"><div class="font-bold text-sky-200 font-mono text-base">${h.uid}</div><div class="text-sm text-slate-400 truncate">${h.name}</div></div>`).join("");
+    // Xóa 1 phần tử lịch sử với hiệu ứng mượt mà
+    deleteHist(uid, e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        
+        const listEl = $("#history-list");
+        const itemEl = listEl ? listEl.querySelector(`.hist-item[data-uid="${uid}"]`) : null;
+
+        // 1. Ghi nhận vị trí tọa độ của tất cả ô lịch sử TRƯỚC KHI XÓA (FLIP - First)
+        const oldPositions = {};
+        if (listEl) {
+            listEl.querySelectorAll(".hist-item").forEach(item => {
+                oldPositions[item.dataset.uid] = item.getBoundingClientRect();
+            });
+        }
+
+        // 2. Cập nhật mảng dữ liệu & LocalStorage
+        this.history = this.history.filter(h => h.uid != uid);
+        localStorage.setItem("mw_h", JSON.stringify(this.history));
+        this.toast(`Đã xóa khỏi lịch sử: ${uid}`, "success");
+
+        // 3. Nếu tìm thấy ô DOM, tạo hiệu ứng thu nhỏ biến mất rồi mới xếp lại lưới
+        if (itemEl) {
+            itemEl.classList.add("removing");
+            setTimeout(() => {
+                this.renderHist(oldPositions);
+            }, 200);
+        } else {
+            this.renderHist(oldPositions);
+        }
     },
 
-    clearHistory() { this.history = []; localStorage.removeItem("mw_h"); this.renderHist(); },
+    renderHist(oldPositions = null) {
+        const l = $("#history-list");
+        if (!l) return;
+        if (!this.history.length) { 
+            l.innerHTML = '<div class="col-span-2 text-center text-slate-500 italic text-xs py-4">Trống</div>'; 
+            return; 
+        }
+
+        // RENDER GIAO DIỆN PHÂN VÙNG: Trái để tra cứu, Phải chứa nút Copy (trên) & Xóa (dưới)
+        l.innerHTML = this.history.map((h) => `
+            <div class="hist-item group relative overflow-hidden rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition flex items-stretch justify-between p-2 gap-2" data-uid="${h.uid}">
+                <!-- Vùng Trái: Click để Tra cứu -->
+                <div class="flex-grow min-w-0 flex flex-col justify-center cursor-pointer py-0.5" onclick="app.search('${h.uid}')" title="Click để tra cứu ${h.uid}">
+                    <div class="font-bold text-sky-300 font-mono text-sm md:text-base group-hover:text-sky-200 transition truncate">${h.uid}</div>
+                    <div class="text-xs text-slate-400 truncate">${utils.escapeAttr(h.name)}</div>
+                </div>
+                <!-- Vùng Phải: 2 Nút hành động cô lập -->
+                <div class="flex flex-col justify-between items-center gap-1 pl-2 border-l border-white/10 shrink-0">
+                    <button onclick="utils.copy('${h.uid}', this, 'UID', event)" class="w-7 h-6 rounded-lg bg-white/5 hover:bg-sky-500/20 text-slate-400 hover:text-sky-300 active:scale-90 transition flex items-center justify-center text-xs" title="Sao chép UID">
+                        <i class="fa-regular fa-copy"></i>
+                    </button>
+                    <button onclick="app.deleteHist('${h.uid}', event)" class="w-7 h-6 rounded-lg bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 active:scale-90 transition flex items-center justify-center text-xs" title="Xóa khỏi lịch sử">
+                        <i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+        `).join("");
+
+        // 4. THUẬT TOÁN FLIP: Tự động tính độ lệch và trượt mượt mà các ô còn lại vào chỗ trống
+        if (oldPositions) {
+            l.querySelectorAll(".hist-item").forEach(item => {
+                const uid = item.dataset.uid;
+                if (oldPositions[uid]) {
+                    const first = oldPositions[uid];
+                    const last = item.getBoundingClientRect();
+                    const deltaX = first.left - last.left;
+                    const deltaY = first.top - last.top;
+
+                    if (deltaX !== 0 || deltaY !== 0) {
+                        // Invert: Đưa ô về lại vị trí cũ ngay tức thì
+                        item.style.transition = "none";
+                        item.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0)`;
+                        
+                        // Buộc trình duyệt vẽ lại (Reflow)
+                        item.offsetHeight;
+
+                        // Play: Trượt mượt mà về vị trí mới trong lưới
+                        item.style.transition = "transform 0.35s cubic-bezier(0.2, 0, 0, 1)";
+                        item.style.transform = "translate3d(0, 0, 0)";
+                    }
+                }
+            });
+        }
+    },
+
+    clearHistory() { 
+        this.history = []; 
+        localStorage.removeItem("mw_h"); 
+        this.renderHist(); 
+        this.toast("Đã xóa toàn bộ lịch sử tra cứu", "info");
+    },
+
     share(uid) { utils.copy(`${location.protocol}//${location.host}${location.pathname}?uid=${uid}`); },
     openApi(uid) { window.open(PROXY_URL + uid, "_blank"); },
-
-    toast(msg, type) {
-        const t = $("#toast");
-        $("#toast-msg").innerText = msg;
-        $("#toast-icon").className = type === "error" ? "fa-solid fa-circle-exclamation text-red-400" : "fa-solid fa-circle-check text-green-400";
-        t.style.opacity = 1; t.style.transform = "translate(-50%,0)";
-        setTimeout(() => { t.style.opacity = 0; t.style.transform = "translate(-50%,24px)"; }, 3000);
-    },
 
     showJson(uid) {
         this.curId = uid;
