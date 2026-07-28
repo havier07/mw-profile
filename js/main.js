@@ -297,41 +297,64 @@ const app = {
     },
 
     // =========================================================================
-    // HỆ THỐNG RENDER THÔNG MINH (STALE-WHILE-REVALIDATE & SILENT DIFFING)
+    // HỆ THỐNG ĐỒNG BỘ TRẠNG THÁI TỰ ĐỘNG (REACTIVE FETCHING STATE)
     // =========================================================================
-    renderData(dataList, isSilent = false, showHighlight = false) {
+    setCardLoadingState(uids, isLoading = true) {
+        const list = Array.isArray(uids) ? uids : [uids];
+        list.forEach(uid => {
+            const card = document.getElementById(`profile-card-${uid}`);
+            if (!card) return;
+            
+            // Tìm nút Tải lại trên Card (Dựa vào thuộc tính onclick chứa chữ reloadProfile)
+            const btn = card.querySelector('button[onclick*="reloadProfile"]');
+            if (!btn) return;
+
+            const icon = btn.querySelector("i");
+            const text = btn.querySelector("span");
+
+            if (isLoading) {
+                btn.disabled = true;
+                btn.classList.add("opacity-60", "cursor-not-allowed", "ring-2", "ring-emerald-400/50");
+                if (icon) icon.className = "fa-solid fa-rotate-right fa-spin text-emerald-400";
+                if (text) text.innerText = "Đang tải...";
+            } else {
+                btn.disabled = false;
+                btn.classList.remove("opacity-60", "cursor-not-allowed", "ring-2", "ring-emerald-400/50");
+                if (icon) icon.className = "fa-solid fa-rotate-right transition-transform duration-300";
+                if (text) text.innerText = "Tải lại";
+            }
+        });
+    },
+
+    // TỰ ĐỘNG HIGHLIGHT MỖI KHI CÓ GIẢI PHÁP THAY THẾ DOM IM LẶNG
+    renderData(dataList, isSilent = false) {
         const container = $("#content-area");
         if (!container) return;
 
-        // Kiểm tra xem giao diện đang trống hoặc chỉ chứa Skeleton tải trang
         const hasOnlySkeletons = container.querySelector(".animate-pulse") !== null || container.innerHTML.trim() === "";
 
         if (hasOnlySkeletons || !isSilent) {
-            // RENDER LẦN ĐẦU (Hoặc khi không có cache): Vẽ mới toàn bộ kèm hiệu ứng animate-enter
+            // Render lần đầu: Vẽ mới kèm hiệu ứng bay lượn
             container.innerHTML = "";
             dataList.forEach((d) => {
-                this.card(d, isSilent);
+                this.card(d, false);
                 this.addHist(d.uid, d.nameRaw);
             });
         } else {
-            // SILENT DOM DIFFING (Dành cho Tải ngầm Cache & Tải tự động 30s):
-            // Thay thế im lặng từng thẻ Card mà không làm giật trang hay mất vị trí cuộn ảnh
+            // Render cập nhật: Thay thế im lặng + TỰ ĐỘNG HIỆN VIỀN XANH
             dataList.forEach((d) => {
                 const uid = d.uid;
                 const oldCard = document.getElementById(`profile-card-${uid}`);
                 
                 if (oldCard) {
-                    // Khóa chiều cao tạm thời chống Layout Shift
                     const oldHeight = oldCard.offsetHeight;
                     oldCard.style.minHeight = `${oldHeight}px`;
 
-                    const newCard = this.createCardElement(d, true); // isSilent = true -> Bỏ qua animate-enter
+                    const newCard = this.createCardElement(d, true);
                     
-                    // Nếu là tải ngầm sau Cache -> Kích hoạt viền sáng xanh lục xác thực dữ liệu
-                    if (showHighlight) {
-                        newCard.classList.add("flash-highlight");
-                        setTimeout(() => newCard.classList.remove("flash-highlight"), 1500);
-                    }
+                    // TỰ ĐỘNG BẬT VIỀN XANH MỖI KHI FETCH VÀ THAY THẾ CARD THÀNH CÔNG!
+                    newCard.classList.add("flash-highlight");
+                    setTimeout(() => newCard.classList.remove("flash-highlight"), 1500);
                     
                     oldCard.replaceWith(newCard);
                 } else {
@@ -363,10 +386,11 @@ const app = {
         const histBox = $("#history-box");
         if (histBox) histBox.classList.add("hidden");
 
-        // 1. STALE: Nếu có Cache, hiển thị tức thì không độ trễ (isSilent = false, showHighlight = false)
         if (cachedData) {
             try { 
-                this.renderData(JSON.parse(cachedData), false, false); 
+                this.renderData(JSON.parse(cachedData), false); 
+                // KÍCH HOẠT HIỆU ỨNG XOAY "ĐANG TẢI..." TRÊN NÚT TRONG LƯỢT FETCH NGẦM
+                this.setCardLoadingState(uids, true);
             } catch (e) { }
         } else {
             $("#content-area").innerHTML = this.skeleton(uids.length);
@@ -378,7 +402,6 @@ const app = {
         }
 
         try {
-            // 2. WHILE REVALIDATE: Ngầm gọi API lấy dữ liệu thực tế mới nhất
             const url = PROXY_URL + uids.join(",");
             const response = await utils.fetchFast(url);
 
@@ -392,19 +415,17 @@ const app = {
 
             localStorage.setItem(cacheKey, JSON.stringify(response.uiData));
 
-            // 3. SILENT UPDATE: Nếu ban đầu đã hiện Cache, bây giờ thay thế im lặng + bật viền sáng xanh lục!
-            if (cachedData) {
-                this.renderData(response.uiData, true, true); // isSilent = true, showHighlight = true
-            } else {
-                this.renderData(response.uiData, false, false); // Không có cache -> Hiện bình thường
-            }
+            // Cập nhật DOM: Nút xoay sẽ tự động biến mất và viền xanh tự động sáng lên!
+            this.renderData(response.uiData, Boolean(cachedData));
             
-            // Kích hoạt chu kỳ tự động làm mới ngầm mỗi 30 giây
             this.refreshTimer = setInterval(() => this.silentRefresh(), 30000);
 
         } catch (e) {
             if (!cachedData) {
                 $("#content-area").innerHTML = `<div class="text-center py-10 text-slate-400 animate-enter"><i class="fa-solid fa-server text-4xl mb-2 text-red-400"></i><br><span class="font-bold text-red-300">LỖI:</span> ${e.message}</div>`;
+            } else {
+                // Trả lại trạng thái bình thường cho nút bấm nếu lỗi mạng
+                this.setCardLoadingState(uids, false);
             }
             this.toast(e.message, "error");
         } finally {
@@ -417,6 +438,10 @@ const app = {
 
     async silentRefresh() {
         if (!this.currentUids || !this.currentUids.length) return;
+        
+        // Bật hiệu ứng xoay nút Tải lại trước khi fetch định kỳ
+        this.setCardLoadingState(this.currentUids, true);
+        
         try {
             const url = PROXY_URL + this.currentUids.join(",");
             const response = await utils.fetchFast(url);
@@ -432,9 +457,54 @@ const app = {
             const cacheKey = "mw_cache_" + this.currentUids.join("_");
             localStorage.setItem(cacheKey, JSON.stringify(response.uiData));
 
-            // Cập nhật định kỳ 30s: Thay thế im lặng nhưng KHÔNG bật viền sáng (showHighlight = false) để tránh làm phiền
-            this.renderData(response.uiData, true, false);
-        } catch (e) {}
+            // Tự động thay thế im lặng và sáng viền xanh lục!
+            this.renderData(response.uiData, true);
+        } catch (e) {
+            this.setCardLoadingState(this.currentUids, false);
+        }
+    },
+
+    async reloadProfile(uid, btnEl, e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        if (!uid) return;
+
+        // Kích hoạt trạng thái loading tự động
+        this.setCardLoadingState(uid, true);
+        this.toast(`Đang làm mới dữ liệu trực tiếp từ máy chủ game...`, "info");
+
+        try {
+            const forceUrl = `${PROXY_URL}${uid}&_force=${Date.now()}`;
+            const response = await utils.fetchFast(forceUrl);
+
+            if (!response.uiData || !response.uiData.length) {
+                throw new Error("Máy chủ game không phản hồi dữ liệu mới");
+            }
+
+            const newUiProfile = response.uiData[0];
+            
+            Object.values(response.rawJson).forEach((p) => {
+                const d = p.profile || p;
+                if (d.uin) this.data[d.uin] = d;
+            });
+
+            const cacheKey = "mw_cache_" + this.currentUids.join("_");
+            const cachedDataStr = localStorage.getItem(cacheKey);
+            if (cachedDataStr) {
+                try {
+                    let cachedList = JSON.parse(cachedDataStr);
+                    cachedList = cachedList.map(item => item.uid == uid ? newUiProfile : item);
+                    localStorage.setItem(cacheKey, JSON.stringify(cachedList));
+                } catch(err) {}
+            }
+
+            // Gọi renderData để tự động diff DOM, reset nút xoay và hiện viền xanh!
+            this.renderData([newUiProfile], true);
+            this.toast(`Đã cập nhật UID ${uid} thành công!`, "success");
+
+        } catch (err) {
+            this.toast(`Lỗi làm mới dữ liệu: ${err.message}`, "error");
+            this.setCardLoadingState(uid, false);
+        }
     },
 
     // =========================================================================
