@@ -305,7 +305,6 @@ const app = {
             const card = document.getElementById(`profile-card-${uid}`);
             if (!card) return;
             
-            // Tìm nút Tải lại trên Card (Dựa vào thuộc tính onclick chứa chữ reloadProfile)
             const btn = card.querySelector('button[onclick*="reloadProfile"]');
             if (!btn) return;
 
@@ -314,13 +313,21 @@ const app = {
 
             if (isLoading) {
                 btn.disabled = true;
-                btn.classList.add("opacity-60", "cursor-not-allowed", "ring-2", "ring-emerald-400/50");
-                if (icon) icon.className = "fa-solid fa-rotate-right fa-spin text-emerald-400";
+                btn.classList.add("opacity-70", "cursor-not-allowed", "ring-2", "ring-emerald-400/50", "bg-emerald-500/10");
+                if (icon) {
+                    // Loại bỏ transition dẻo để nhường toàn bộ sân khấu cho @keyframes xoay
+                    icon.classList.remove("transition-transform", "duration-300", "group-hover/btn:rotate-180");
+                    icon.classList.add("spin-smooth", "text-emerald-400");
+                }
                 if (text) text.innerText = "Đang tải...";
             } else {
                 btn.disabled = false;
-                btn.classList.remove("opacity-60", "cursor-not-allowed", "ring-2", "ring-emerald-400/50");
-                if (icon) icon.className = "fa-solid fa-rotate-right transition-transform duration-300";
+                btn.classList.remove("opacity-70", "cursor-not-allowed", "ring-2", "ring-emerald-400/50", "bg-emerald-500/10");
+                if (icon) {
+                    // Tắt động cơ xoay, trả lại hiệu ứng transition dẻo ban đầu
+                    icon.classList.remove("spin-smooth", "text-emerald-400");
+                    icon.classList.add("transition-transform", "duration-300", "group-hover/btn:rotate-180");
+                }
                 if (text) text.innerText = "Tải lại";
             }
         });
@@ -553,8 +560,8 @@ const app = {
             <div class="absolute inset-0 bg-gradient-to-br ${bg} -z-10"></div>
             <!-- CỤM NÚT CÔNG CỤ: THÊM NÚT FORCE RELOAD VÀO ĐẦU TIÊN -->
             <div class="flex gap-1.5 md:gap-2 z-20 justify-end md:absolute md:top-4 md:right-4 mb-6 md:mb-0 flex-wrap">
-                <button onclick="app.reloadProfile('${uid}', this, event)" class="px-2.5 md:px-3 py-1 bg-white/5 hover:bg-emerald-500/20 active:scale-95 rounded-lg text-xs font-bold text-emerald-400 border border-emerald-500/20 transition flex items-center gap-1.5 shrink-0 shadow-sm" title="Tải lại dữ liệu trực tiếp từ máy chủ game (Force Reload)">
-                    <i class="fa-solid fa-rotate-right transition-transform duration-300"></i> <span class="hidden sm:inline">Tải lại</span>
+                <button onclick="app.reloadProfile('${uid}', this, event)" class="px-2.5 md:px-3 py-1 bg-white/5 hover:bg-emerald-500/20 active:scale-95 rounded-lg text-xs font-bold text-emerald-400 border border-emerald-500/20 transition-all flex items-center gap-1.5 shrink-0 shadow-sm group/btn" title="Tải lại dữ liệu trực tiếp từ máy chủ game (Force Reload)">
+                    <i class="fa-solid fa-rotate-right transition-transform duration-300 group-hover/btn:rotate-180"></i> <span class="hidden sm:inline">Tải lại</span>
                 </button>
                 <button onclick="app.share('${uid}')" class="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-white/5 hover:bg-white/10 active:scale-95 flex items-center justify-center text-slate-300 hover:text-white transition shrink-0" title="Share"><i class="fa-solid fa-share-nodes"></i></button>
                 <button onclick="app.openApi('${uid}')" class="px-2.5 md:px-3 py-1 bg-white/5 hover:bg-white/10 active:scale-95 rounded-lg text-xs font-bold text-purple-400 border border-purple-500/20 transition flex items-center gap-1 shrink-0"><i class="fa-solid fa-server"></i> API</button>
@@ -593,7 +600,7 @@ const app = {
                             <div class="space-y-0.5 flex-grow">
                                 <div class="${row}"><span class="${lbl}">${ico('fa-cube', 'text-purple-400')} Model</span><span class="${val}">${d.model}</span></div>
                                 <div class="${row}"><span class="${lbl}">${ico('fa-shirt', 'text-pink-400')} Skin</span><span class="${val}" title="${d.skin}">${d.skin}</span></div>
-                                <div class="${row}" data-tip="Phòng trưng bày Skin, DIY, Thần thú & Skin công cụ"><span class="${lbl}">${ico('fa-wand-magic-sparkles', 'text-amber-400')} Mini Show</span><span class="${val}">${d.miniShow}</span></div>
+                                <div class="${row}" data-tip="Phòng trưng bày Skin, DIY, Thần thú & Skin công cụ"><span class="${lbl}">${ico('fa-wand-magic-sparkles', 'text-amber-400')} MiniShow</span><span class="${val}">${d.miniShow}</span></div>
                             </div>
                             <div class="text-[10px] text-purple-300/70 mt-3 pt-2 border-t border-white/5 flex items-center justify-between">
                                 <span class="flex items-center gap-1 truncate"><i class="fa-solid fa-clock text-indigo-400"></i> DIY:</span>

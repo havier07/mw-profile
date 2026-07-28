@@ -347,3 +347,19 @@ button:active {
 .flash-highlight {
     animation: flashBorder 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
+
+/* ==========================================================================
+   HARDWARE-ACCELERATED SMOOTH SPIN (Xoay 60 FPS siêu mượt bằng GPU)
+   ========================================================================== */
+@keyframes smoothSpin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+.spin-smooth {
+    /* Xoay 1 vòng trong 0.75 giây, tốc độ đều (linear) và vô tận */
+    animation: smoothSpin 0.75s linear infinite !important;
+    /* Ép trình duyệt đưa icon lên xử lý bằng card đồ họa (GPU) để không bao giờ bị giật */
+    will-change: transform;
+    display: inline-block;
+}
