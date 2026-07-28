@@ -585,6 +585,7 @@ const app = {
                     </div>
                     
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        
                         <div class="${box}">
                             <div class="text-xs font-bold text-purple-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 border-b border-purple-500/20 pb-1.5">
                                 <i class="fa-solid fa-user-astronaut text-purple-400 text-sm"></i> NHÂN VẬT
@@ -592,6 +593,7 @@ const app = {
                             <div class="space-y-0.5 flex-grow">
                                 <div class="${row}"><span class="${lbl}">${ico('fa-cube', 'text-purple-400')} Model</span><span class="${val}">${d.model}</span></div>
                                 <div class="${row}"><span class="${lbl}">${ico('fa-shirt', 'text-pink-400')} Skin</span><span class="${val}" title="${d.skin}">${d.skin}</span></div>
+                                <div class="${row}" data-tip="Phòng trưng bày Skin, DIY, Thần thú & Skin công cụ"><span class="${lbl}">${ico('fa-wand-magic-sparkles', 'text-amber-400')} Mini Show</span><span class="${val}">${d.miniShow}</span></div>
                             </div>
                             <div class="text-[10px] text-purple-300/70 mt-3 pt-2 border-t border-white/5 flex items-center justify-between">
                                 <span class="flex items-center gap-1 truncate"><i class="fa-solid fa-clock text-indigo-400"></i> DIY:</span>
@@ -606,7 +608,6 @@ const app = {
                             <div class="space-y-0.5 flex-grow">
                                 <div class="${row}"><span class="${lbl}">${ico('fa-layer-group', 'text-sky-400')} Cấp</span><span class="${val} text-yellow-400">${d.dLvl}</span></div>
                                 <div class="${row}"><span class="${lbl}">${ico('fa-chart-line', 'text-cyan-400')} Stat</span><span class="${val}">${d.dStat}</span></div>
-                                <div class="${row}"><span class="${lbl}">${ico('fa-key', 'text-blue-400')} Perm</span><span class="${val}">${d.dPerm}</span></div>
                                 <div class="${row}"><span class="${lbl}">${ico('fa-cloud-arrow-down', 'text-emerald-400')} Tải</span><span class="${val} text-green-400">${d.dDl}</span></div>
                             </div>
                             <div class="text-[10px] text-sky-300/70 mt-3 pt-2 border-t border-white/5 flex items-center justify-between">
