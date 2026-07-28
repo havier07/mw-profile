@@ -334,3 +334,16 @@ button:active {
     opacity: 0;
     transform: scale(0.8) !important;
 }
+
+/* ==========================================================================
+   SILENT RELOAD HIGHLIGHT FLASH (Báo hiệu tải thành công không chớp nháy)
+   ========================================================================== */
+@keyframes flashBorder {
+    0%   { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); border-color: rgba(255, 255, 255, 0.1); }
+    30%  { box-shadow: 0 0 35px 4px rgba(16, 185, 129, 0.45); border-color: rgba(52, 211, 153, 0.9); background-color: rgba(16, 185, 129, 0.05); }
+    100% { box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5); border-color: rgba(255, 255, 255, 0.1); }
+}
+
+.flash-highlight {
+    animation: flashBorder 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}

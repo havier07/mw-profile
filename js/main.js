@@ -380,34 +380,26 @@ const app = {
         } catch (e) {}
     },
 
-card(d, isSilent = false) {
+    // =========================================================================
+    // HỆ THỐNG TẠO CARD & FORCE RELOAD IM LẶNG (ENTERPRISE GRADE)
+    // =========================================================================
+    createCardElement(d, isSilent = false) {
         const uid = d.uid;
         this.photos[uid] = d.photos || [];
         this.avatars[uid] = d.avatarInfo || { url: d.avatar, dateStr: "Thời gian: Không rõ", tip: "Ảnh đại diện" };
 
         const card = document.createElement("div");
-        card.className = `glass-panel rounded-3xl p-6 relative overflow-hidden transition-all border-t border-white/10 group hover:shadow-sky-500/10 hover:shadow-2xl ${isSilent ? '' : 'animate-enter'}`;
+        // ĐỊNH DANH ID ĐỘC NHẤT ĐỂ THAY THẾ IM LẶNG KHÔNG GÂY CHỚP NHÁY
+        card.id = `profile-card-${uid}`;
+        card.className = `glass-panel rounded-3xl p-6 relative overflow-hidden transition-all duration-300 border-t border-white/10 group hover:shadow-sky-500/10 hover:shadow-2xl ${isSilent ? '' : 'animate-enter'}`;
         
         const isNu = String(d.gender).includes('venus');
         const bg = isNu ? "from-pink-500/10 via-purple-500/5 to-rose-500/10" : "from-sky-500/10 via-blue-500/5 to-cyan-500/10";
 
-        // =====================================================================
-        // 1. CƠ CHẾ DỰ PHÒNG CHỐNG LỖI CACHE (BẮT ĐÚNG TÊN VÀ TIỂU SỬ GỐC)
-        // =====================================================================
         const rawJson = this.data[uid] || {};
-        
-        // Ưu tiên 1: Lấy nameRaw từ Backend mới
-        // Ưu tiên 2: Móc trực tiếp từ Raw JSON
-        // Ưu tiên 3: Lấy nameH từ cache cũ
-        // Ưu tiên 4: Dùng UID làm tên
         const finalNameRaw = d.nameRaw || rawJson.RoleInfo?.NickName || rawJson.NickName || d.nameH || String(uid);
-        
-        // Ưu tiên lấy tiểu sử tương tự
         const finalMoodRaw = d.moodRaw !== undefined ? d.moodRaw : (rawJson.mood_text || d.moodH || "");
 
-        // =====================================================================
-        // 2. KÍCH HOẠT LEXICAL SCANNER FRONTEND LÊN DỮ LIỆU ĐÃ CHUẨN HÓA
-        // =====================================================================
         const parsedName = utils.parseMood(finalNameRaw) || finalNameRaw;
         const parsedMood = utils.parseMood(finalMoodRaw) || "";
 
@@ -427,17 +419,19 @@ card(d, isSilent = false) {
         const box = "bg-white/[0.03] rounded-2xl p-4 border border-white/10 flex flex-col justify-between hover:bg-white/[0.07] hover:border-white/20 transition-all duration-200 active:scale-[0.98] group/box shadow-lg";
         const row = "text-xs md:text-sm flex justify-between items-center py-1 border-b border-white/[0.03] last:border-0";
         const lbl = "text-slate-400 flex items-center gap-2 truncate font-medium";
-        const val = "text-white font-semibold truncate ml-2 font-mono"; // font-mono giúp số liệu hiển thị sắc nét, đều đặn
-        
-        // Hàm tạo Icon nhanh với hiệu ứng Hover Phóng to nhẹ
+        const val = "text-white font-semibold truncate ml-2 font-mono";
         const ico = (cls, color) => `<i class="fa-solid ${cls} ${color} w-4 text-center shrink-0 text-xs md:text-sm group-hover/box:scale-110 transition-transform duration-200"></i>`;
 
         card.innerHTML = `
             <div class="absolute inset-0 bg-gradient-to-br ${bg} -z-10"></div>
-            <div class="flex gap-2 z-20 justify-end md:absolute md:top-4 md:right-4 mb-6 md:mb-0">
-                <button onclick="app.share('${uid}')" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-300 hover:text-white transition" title="Share"><i class="fa-solid fa-share-nodes"></i></button>
-                <button onclick="app.openApi('${uid}')" class="px-3 py-1 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-bold text-purple-400 border border-purple-500/20 transition"><i class="fa-solid fa-server"></i> API</button>
-                <button onclick="app.showJson('${uid}')" class="px-3 py-1 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-bold text-sky-400 border border-sky-500/20 transition"><i class="fa-solid fa-code"></i> JSON</button>
+            <!-- CỤM NÚT CÔNG CỤ: THÊM NÚT FORCE RELOAD VÀO ĐẦU TIÊN -->
+            <div class="flex gap-1.5 md:gap-2 z-20 justify-end md:absolute md:top-4 md:right-4 mb-6 md:mb-0 flex-wrap">
+                <button onclick="app.reloadProfile('${uid}', this, event)" class="px-2.5 md:px-3 py-1 bg-white/5 hover:bg-emerald-500/20 active:scale-95 rounded-lg text-xs font-bold text-emerald-400 border border-emerald-500/20 transition flex items-center gap-1.5 shrink-0 shadow-sm" title="Tải lại dữ liệu trực tiếp từ máy chủ game (Force Reload)">
+                    <i class="fa-solid fa-rotate-right transition-transform duration-300"></i> <span class="hidden sm:inline">Tải lại</span>
+                </button>
+                <button onclick="app.share('${uid}')" class="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-white/5 hover:bg-white/10 active:scale-95 flex items-center justify-center text-slate-300 hover:text-white transition shrink-0" title="Share"><i class="fa-solid fa-share-nodes"></i></button>
+                <button onclick="app.openApi('${uid}')" class="px-2.5 md:px-3 py-1 bg-white/5 hover:bg-white/10 active:scale-95 rounded-lg text-xs font-bold text-purple-400 border border-purple-500/20 transition flex items-center gap-1 shrink-0"><i class="fa-solid fa-server"></i> API</button>
+                <button onclick="app.showJson('${uid}')" class="px-2.5 md:px-3 py-1 bg-white/5 hover:bg-white/10 active:scale-95 rounded-lg text-xs font-bold text-sky-400 border border-sky-500/20 transition flex items-center gap-1 shrink-0"><i class="fa-solid fa-code"></i> JSON</button>
             </div>
             <div class="flex flex-col md:flex-row gap-8">
                 <div class="flex flex-col items-center shrink-0">
@@ -463,10 +457,7 @@ card(d, isSilent = false) {
                         ${bioContent}
                     </div>
                     
-                    <!-- LƯỚI 4 HỘP THỐNG KÊ ĐÃ NÂNG CẤP ICON & MÀU SẮC -->
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        
-                        <!-- 1. HỘP NHÂN VẬT -->
                         <div class="${box}">
                             <div class="text-xs font-bold text-purple-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 border-b border-purple-500/20 pb-1.5">
                                 <i class="fa-solid fa-user-astronaut text-purple-400 text-sm"></i> NHÂN VẬT
@@ -481,7 +472,6 @@ card(d, isSilent = false) {
                             </div>
                         </div>
 
-                        <!-- 2. HỘP NHÀ PHÁT TRIỂN -->
                         <div class="${box}">
                             <div class="text-xs font-bold text-sky-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 border-b border-sky-500/20 pb-1.5">
                                 <i class="fa-solid fa-code text-sky-400 text-sm"></i> NHÀ PHÁT TRIỂN
@@ -498,7 +488,6 @@ card(d, isSilent = false) {
                             </div>
                         </div>
 
-                        <!-- 3. HỘP EXPERT -->
                         <div class="${box}">
                             <div class="text-xs font-bold text-yellow-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 border-b border-yellow-500/20 pb-1.5">
                                 <i class="fa-solid fa-user-graduate text-yellow-400 text-sm"></i> EXPERT
@@ -515,7 +504,6 @@ card(d, isSilent = false) {
                             </div>
                         </div>
 
-                        <!-- 4. HỘP BÁO CÁO & UY TÍN -->
                         <div class="${box}">
                             <div class="text-xs font-bold text-red-400 uppercase tracking-wider mb-2 flex items-center gap-1.5 border-b border-red-500/20 pb-1.5">
                                 <i class="fa-solid fa-shield-halved text-red-400 text-sm"></i> BÁO CÁO & UY TÍN
@@ -542,15 +530,98 @@ card(d, isSilent = false) {
                 </div>`).join('')}</div></div>` : ''}
         `;
 
-        $("#content-area").appendChild(card);
-        
-        // TỐI ƯU HÓA RENDER: Khởi tạo cuộn ngang đồng bộ không qua setTimeout để tránh nháy ảnh
         if (d.photos && d.photos.length) {
             const galEl = card.querySelector(`#gallery-${uid}`);
             if (galEl) this.initGalleryDrag(galEl);
         }
+        return card;
     },
 
+    card(d, isSilent = false) {
+        const cardEl = this.createCardElement(d, isSilent);
+        $("#content-area").appendChild(cardEl);
+    },
+
+    // =========================================================================
+    // ĐỘNG CƠ FORCE RELOAD: CÀO DATA TRỰC TIẾP TỪ MÁY CHỦ MINI WORLD
+    // =========================================================================
+    async reloadProfile(uid, btnEl, e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        if (!uid) return;
+
+        // 1. Phản hồi thị giác lập tức: Khóa nút, Xoay icon, Đổi nhãn
+        const iconEl = btnEl ? btnEl.querySelector("i") : null;
+        const textEl = btnEl ? btnEl.querySelector("span") : null;
+        const oldIconCls = iconEl ? iconEl.className : "fa-solid fa-rotate-right";
+        
+        if (btnEl) {
+            btnEl.disabled = true;
+            btnEl.classList.add("opacity-60", "cursor-not-allowed", "ring-2", "ring-emerald-400/50");
+        }
+        if (iconEl) iconEl.className = "fa-solid fa-rotate-right fa-spin text-emerald-400";
+        if (textEl) textEl.innerText = "Đang tải...";
+
+        this.toast(`Đang làm mới dữ liệu trực tiếp từ máy chủ game...`, "info");
+
+        try {
+            // 2. CACHE-BUSTING: Nối thêm tham số thời gian để buộc Worker & Trình duyệt cào data mới
+            const forceUrl = `${PROXY_URL}${uid}&_force=${Date.now()}`;
+            const response = await utils.fetchFast(forceUrl);
+
+            if (!response.uiData || !response.uiData.length) {
+                throw new Error("Máy chủ game không phản hồi dữ liệu mới");
+            }
+
+            const newUiProfile = response.uiData[0];
+            
+            // 3. Cập nhật bộ nhớ trực tiếp (Memory Data)
+            Object.values(response.rawJson).forEach((p) => {
+                const d = p.profile || p;
+                if (d.uin) this.data[d.uin] = d;
+            });
+
+            // 4. Đồng bộ hóa bộ nhớ đệm (LocalStorage Cache) để lần reload trang sau có ngay data mới
+            const cacheKey = "mw_cache_" + this.currentUids.join("_");
+            const cachedDataStr = localStorage.getItem(cacheKey);
+            if (cachedDataStr) {
+                try {
+                    let cachedList = JSON.parse(cachedDataStr);
+                    cachedList = cachedList.map(item => item.uid == uid ? newUiProfile : item);
+                    localStorage.setItem(cacheKey, JSON.stringify(cachedList));
+                } catch(err) {}
+            }
+
+            // 5. THAY THẾ IM LẶNG: Đổi thẻ Card cũ thành Card mới mà không làm giật trang
+            const oldCard = document.getElementById(`profile-card-${uid}`);
+            if (oldCard) {
+                // Khóa tạm chiều cao để chống nhảy trang (Layout Shift)
+                const oldHeight = oldCard.offsetHeight;
+                oldCard.style.minHeight = `${oldHeight}px`;
+
+                const newCard = this.createCardElement(newUiProfile, true);
+                
+                // Thêm viền sáng nhấp nháy báo hiệu đã tải xong data mới
+                newCard.classList.add("flash-highlight");
+                oldCard.replaceWith(newCard);
+
+                setTimeout(() => { newCard.classList.remove("flash-highlight"); }, 1500);
+            } else {
+                this.search(this.currentUids.join(","));
+            }
+
+            this.toast(`Đã cập nhật UID ${uid} thành công!`, "success");
+
+        } catch (err) {
+            this.toast(`Lỗi làm mới dữ liệu: ${err.message}`, "error");
+            if (btnEl) {
+                btnEl.disabled = false;
+                btnEl.classList.remove("opacity-60", "cursor-not-allowed", "ring-2", "ring-emerald-400/50");
+            }
+            if (iconEl) iconEl.className = oldIconCls;
+            if (textEl) textEl.innerText = "Tải lại";
+        }
+    },
+    
     initGalleryDrag(el) {
         if (!el) return;
         let isDown = false, startX, scrollLeft;
