@@ -336,16 +336,28 @@ button:active {
 }
 
 /* ==========================================================================
-   SILENT RELOAD HIGHLIGHT FLASH (Báo hiệu tải thành công không chớp nháy)
+   REACTIVE CARD HIGHLIGHTS (Hiệu ứng viền sáng trong lúc tải & sau khi tải)
    ========================================================================== */
-@keyframes flashBorder {
-    0%   { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); border-color: rgba(255, 255, 255, 0.1); }
-    30%  { box-shadow: 0 0 35px 4px rgba(16, 185, 129, 0.45); border-color: rgba(52, 211, 153, 0.9); background-color: rgba(16, 185, 129, 0.05); }
-    100% { box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5); border-color: rgba(255, 255, 255, 0.1); }
+
+/* 1. TRONG LÚC TẢI: Viền xanh nhịp nhàng thở (Breathing Glow), giữ liên tục khi fetch */
+@keyframes borderPulse {
+    0%, 100% { border-color: rgba(52, 211, 153, 0.35); box-shadow: 0 0 15px 0 rgba(16, 185, 129, 0.15); }
+    50%      { border-color: rgba(52, 211, 153, 0.85); box-shadow: 0 0 28px 2px rgba(16, 185, 129, 0.35); }
 }
 
-.flash-highlight {
-    animation: flashBorder 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+.card-fetching {
+    animation: borderPulse 1.3s infinite ease-in-out !important;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* 2. SAU KHI TẢI XONG: Viền sáng mờ dần êm ái trong 0.45 giây (Visual Settling) */
+@keyframes fetchSuccessFade {
+    0%   { border-color: rgba(52, 211, 153, 0.9); box-shadow: 0 0 30px 4px rgba(16, 185, 129, 0.4); background-color: rgba(16, 185, 129, 0.04); }
+    100% { border-color: rgba(255, 255, 255, 0.1); box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5); background-color: transparent; }
+}
+
+.card-fetch-success {
+    animation: fetchSuccessFade 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
 
 /* ==========================================================================

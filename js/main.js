@@ -297,7 +297,7 @@ const app = {
     },
 
     // =========================================================================
-    // HỆ THỐNG ĐỒNG BỘ TRẠNG THÁI TỰ ĐỘNG (REACTIVE FETCHING STATE)
+    // HỆ THỐNG ĐỒNG BỘ TRẠNG THÁI TỰ ĐỘNG (XOAY 360° & VIỀN SÁNG CARD)
     // =========================================================================
     setCardLoadingState(uids, isLoading = true) {
         const list = Array.isArray(uids) ? uids : [uids];
@@ -305,6 +305,15 @@ const app = {
             const card = document.getElementById(`profile-card-${uid}`);
             if (!card) return;
             
+            // 1. QUẢN LÝ VIỀN SÁNG CỦA TOÀN BỘ THẺ CARD
+            if (isLoading) {
+                card.classList.remove("card-fetch-success");
+                card.classList.add("card-fetching"); // Bật viền xanh thở liên tục suốt lúc fetch
+            } else {
+                card.classList.remove("card-fetching"); // Tắt viền thở nếu fetch lỗi/dừng
+            }
+
+            // 2. QUẢN LÝ NÚT TẢI LẠI (XOAY 360° LIÊN TỤC BẰNG GPU)
             const btn = card.querySelector('button[onclick*="reloadProfile"]');
             if (!btn) return;
 
@@ -315,16 +324,14 @@ const app = {
                 btn.disabled = true;
                 btn.classList.add("opacity-70", "cursor-not-allowed", "ring-2", "ring-emerald-400/50", "bg-emerald-500/10");
                 if (icon) {
-                    // Loại bỏ transition dẻo để nhường toàn bộ sân khấu cho @keyframes xoay
                     icon.classList.remove("transition-transform", "duration-300", "group-hover/btn:rotate-180");
-                    icon.classList.add("spin-smooth", "text-emerald-400");
+                    icon.classList.add("spin-smooth", "text-emerald-400"); // Xoay tròn 360 độ liên tục vô tận
                 }
                 if (text) text.innerText = "Đang tải...";
             } else {
                 btn.disabled = false;
                 btn.classList.remove("opacity-70", "cursor-not-allowed", "ring-2", "ring-emerald-400/50", "bg-emerald-500/10");
                 if (icon) {
-                    // Tắt động cơ xoay, trả lại hiệu ứng transition dẻo ban đầu
                     icon.classList.remove("spin-smooth", "text-emerald-400");
                     icon.classList.add("transition-transform", "duration-300", "group-hover/btn:rotate-180");
                 }
@@ -333,7 +340,7 @@ const app = {
         });
     },
 
-    // TỰ ĐỘNG HIGHLIGHT MỖI KHI CÓ GIẢI PHÁP THAY THẾ DOM IM LẶNG
+    // RENDER THÔNG MINH: CHUYỂN TIẾP TRẠNG THÁI LẮNG ĐỌNG 0.45s
     renderData(dataList, isSilent = false) {
         const container = $("#content-area");
         if (!container) return;
@@ -341,14 +348,13 @@ const app = {
         const hasOnlySkeletons = container.querySelector(".animate-pulse") !== null || container.innerHTML.trim() === "";
 
         if (hasOnlySkeletons || !isSilent) {
-            // Render lần đầu: Vẽ mới kèm hiệu ứng bay lượn
             container.innerHTML = "";
             dataList.forEach((d) => {
                 this.card(d, false);
                 this.addHist(d.uid, d.nameRaw);
             });
         } else {
-            // Render cập nhật: Thay thế im lặng + TỰ ĐỘNG HIỆN VIỀN XANH
+            // SILENT DIFFING: Khi có data mới, thay thế Card và kích hoạt hiệu ứng mờ dần 0.45s
             dataList.forEach((d) => {
                 const uid = d.uid;
                 const oldCard = document.getElementById(`profile-card-${uid}`);
@@ -359,9 +365,9 @@ const app = {
 
                     const newCard = this.createCardElement(d, true);
                     
-                    // TỰ ĐỘNG BẬT VIỀN XANH MỖI KHI FETCH VÀ THAY THẾ CARD THÀNH CÔNG!
-                    newCard.classList.add("flash-highlight");
-                    setTimeout(() => newCard.classList.remove("flash-highlight"), 1500);
+                    // THAY THẾ DOM IM LẶNG KÈM HIỆU ỨNG LẮNG ĐỌNG THỊ GIÁC (DECAY FEEDBACK 0.45s)
+                    newCard.classList.add("card-fetch-success");
+                    setTimeout(() => newCard.classList.remove("card-fetch-success"), 450); // Đúng 0.45 giây sẽ tắt hẳn
                     
                     oldCard.replaceWith(newCard);
                 } else {
