@@ -296,18 +296,56 @@ const app = {
         });
     },
 
-    renderData(dataList, isSilent = false) {
-        $("#content-area").innerHTML = "";
-        dataList.forEach((d) => {
-            this.card(d, isSilent);
-            if (!isSilent) this.addHist(d.uid, d.nameRaw);
-        });
+    // =========================================================================
+    // HỆ THỐNG RENDER THÔNG MINH (STALE-WHILE-REVALIDATE & SILENT DIFFING)
+    // =========================================================================
+    renderData(dataList, isSilent = false, showHighlight = false) {
+        const container = $("#content-area");
+        if (!container) return;
+
+        // Kiểm tra xem giao diện đang trống hoặc chỉ chứa Skeleton tải trang
+        const hasOnlySkeletons = container.querySelector(".animate-pulse") !== null || container.innerHTML.trim() === "";
+
+        if (hasOnlySkeletons || !isSilent) {
+            // RENDER LẦN ĐẦU (Hoặc khi không có cache): Vẽ mới toàn bộ kèm hiệu ứng animate-enter
+            container.innerHTML = "";
+            dataList.forEach((d) => {
+                this.card(d, isSilent);
+                this.addHist(d.uid, d.nameRaw);
+            });
+        } else {
+            // SILENT DOM DIFFING (Dành cho Tải ngầm Cache & Tải tự động 30s):
+            // Thay thế im lặng từng thẻ Card mà không làm giật trang hay mất vị trí cuộn ảnh
+            dataList.forEach((d) => {
+                const uid = d.uid;
+                const oldCard = document.getElementById(`profile-card-${uid}`);
+                
+                if (oldCard) {
+                    // Khóa chiều cao tạm thời chống Layout Shift
+                    const oldHeight = oldCard.offsetHeight;
+                    oldCard.style.minHeight = `${oldHeight}px`;
+
+                    const newCard = this.createCardElement(d, true); // isSilent = true -> Bỏ qua animate-enter
+                    
+                    // Nếu là tải ngầm sau Cache -> Kích hoạt viền sáng xanh lục xác thực dữ liệu
+                    if (showHighlight) {
+                        newCard.classList.add("flash-highlight");
+                        setTimeout(() => newCard.classList.remove("flash-highlight"), 1500);
+                    }
+                    
+                    oldCard.replaceWith(newCard);
+                } else {
+                    this.card(d, true);
+                }
+                this.addHist(d.uid, d.nameRaw);
+            });
+        }
     },
 
     async search(val) {
         const inp = $("#search-input");
-        const btn = inp.nextElementSibling;
-        let raw = val || inp.value.trim();
+        const btn = inp ? inp.nextElementSibling : null;
+        let raw = val || (inp ? inp.value.trim() : "");
         let uids = raw.split(/[,\s]+/).map((s) => {
             s = s.trim();
             if (!/^\d+$/.test(s)) return null;
@@ -322,18 +360,25 @@ const app = {
         const cacheKey = "mw_cache_" + uids.join("_");
         const cachedData = localStorage.getItem(cacheKey);
 
-        $("#history-box").classList.add("hidden");
+        const histBox = $("#history-box");
+        if (histBox) histBox.classList.add("hidden");
 
+        // 1. STALE: Nếu có Cache, hiển thị tức thì không độ trễ (isSilent = false, showHighlight = false)
         if (cachedData) {
-            try { this.renderData(JSON.parse(cachedData), false); } catch (e) { }
+            try { 
+                this.renderData(JSON.parse(cachedData), false, false); 
+            } catch (e) { }
         } else {
             $("#content-area").innerHTML = this.skeleton(uids.length);
         }
 
-        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
-        btn.disabled = true;
+        if (btn) {
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+            btn.disabled = true;
+        }
 
         try {
+            // 2. WHILE REVALIDATE: Ngầm gọi API lấy dữ liệu thực tế mới nhất
             const url = PROXY_URL + uids.join(",");
             const response = await utils.fetchFast(url);
 
@@ -346,16 +391,27 @@ const app = {
             });
 
             localStorage.setItem(cacheKey, JSON.stringify(response.uiData));
-            this.renderData(response.uiData, false);
+
+            // 3. SILENT UPDATE: Nếu ban đầu đã hiện Cache, bây giờ thay thế im lặng + bật viền sáng xanh lục!
+            if (cachedData) {
+                this.renderData(response.uiData, true, true); // isSilent = true, showHighlight = true
+            } else {
+                this.renderData(response.uiData, false, false); // Không có cache -> Hiện bình thường
+            }
             
+            // Kích hoạt chu kỳ tự động làm mới ngầm mỗi 30 giây
             this.refreshTimer = setInterval(() => this.silentRefresh(), 30000);
 
         } catch (e) {
-            if (!cachedData) $("#content-area").innerHTML = `<div class="text-center py-10 text-slate-400 animate-enter"><i class="fa-solid fa-server text-4xl mb-2 text-red-400"></i><br><span class="font-bold text-red-300">LỖI:</span> ${e.message}</div>`;
+            if (!cachedData) {
+                $("#content-area").innerHTML = `<div class="text-center py-10 text-slate-400 animate-enter"><i class="fa-solid fa-server text-4xl mb-2 text-red-400"></i><br><span class="font-bold text-red-300">LỖI:</span> ${e.message}</div>`;
+            }
             this.toast(e.message, "error");
         } finally {
-            btn.innerHTML = "TRA CỨU";
-            btn.disabled = false;
+            if (btn) {
+                btn.innerHTML = "TRA CỨU";
+                btn.disabled = false;
+            }
         }
     },
 
@@ -376,7 +432,8 @@ const app = {
             const cacheKey = "mw_cache_" + this.currentUids.join("_");
             localStorage.setItem(cacheKey, JSON.stringify(response.uiData));
 
-            this.renderData(response.uiData, true);
+            // Cập nhật định kỳ 30s: Thay thế im lặng nhưng KHÔNG bật viền sáng (showHighlight = false) để tránh làm phiền
+            this.renderData(response.uiData, true, false);
         } catch (e) {}
     },
 
@@ -621,7 +678,7 @@ const app = {
             if (textEl) textEl.innerText = "Tải lại";
         }
     },
-    
+
     initGalleryDrag(el) {
         if (!el) return;
         let isDown = false, startX, scrollLeft;
