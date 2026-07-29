@@ -71,56 +71,83 @@ const utils = {
         const len = clean.length;
 
         while (i < len) {
-            // Bước nhảy bảo vệ thẻ HTML: KHẮC PHỤC TRIỆT ĐỂ LỖI DƯ DẤU ">"
             if (clean[i] === '<') {
                 flush();
                 let tag = '';
-                while (i < len && clean[i] !== '>') { tag += clean[i]; i++; }
-                if (i < len) { tag += clean[i]; i++; }
+                while (i < len && clean[i] !== '>') { 
+                    tag += clean[i]; 
+                    i++; 
+                }
+                if (i < len) {
+                    tag += clean[i];
+                    i++;
+                }
                 html += tag;
                 continue;
             }
 
-            if (clean[i] !== '#') { buffer += clean[i]; i++; continue; }
+            if (clean[i] !== '#') {
+                buffer += clean[i];
+                i++;
+                continue;
+            }
 
-            // --- BẮT ĐẦU PHÂN TÍCH LỆNH GAME (#) ---
             const nextChar = i + 1 < len ? clean[i + 1] : '';
-
-            // Luật 1: Thoát ký tự '##' thành '#'
-            if (nextChar === '#') { buffer += '#'; i += 2; continue; }
+            if (nextChar === '#') {
+                buffer += '#';
+                i += 2;
+                continue;
+            }
 
             flush();
-            i++; // Bỏ qua dấu #
-            
+            i++;
             if (i >= len) break;
-            
             const cmd = clean[i];
 
-            if (COLOR_MAP[cmd]) { color = COLOR_MAP[cmd]; i++; } 
+            if (COLOR_MAP[cmd]) {
+                color = COLOR_MAP[cmd];
+                i++;
+            } 
             else if (cmd === 'c' || cmd === 'C') {
                 i++;
                 let hex = '';
-                while (i < len && hex.length < 6 && /[0-9a-fA-F]/.test(clean[i])) { hex += clean[i]; i++; }
+                while (i < len && hex.length < 6 && /[0-9a-fA-F]/.test(clean[i])) {
+                    hex += clean[i];
+                    i++;
+                }
                 if (hex.length > 0) color = '#' + hex;
             } 
             else if (cmd === 'A') {
                 i++;
                 let iconId = '';
-                while (i < len && iconId.length < 3 && /[0-9]/.test(clean[i])) { iconId += clean[i]; i++; }
+                while (i < len && iconId.length < 3 && /[0-9]/.test(clean[i])) {
+                    iconId += clean[i];
+                    i++;
+                }
             } 
-            else if (cmd === 'L') { isUnderline = true; i++; } 
-            else if (cmd === 'b') { isBlink = true; i++; } 
-            else if (cmd === 'n') { color = null; isUnderline = false; isBlink = false; i++; } 
-            else { i++; }
+            else if (cmd === 'L') {
+                isUnderline = true;
+                i++;
+            } 
+            else if (cmd === 'b') {
+                isBlink = true;
+                i++;
+            } 
+            else if (cmd === 'n') {
+                color = null;
+                isUnderline = false;
+                isBlink = false;
+                i++;
+            } 
+            else {
+                i++;
+            }
         }
         
         flush();
         return html;
     },
 
-    // =========================================================================
-    // UTILS: STRUCTURED LINE STREAMER (SỐ DÒNG + HIGHLIGHT + 0MS ZERO LAG)
-    // =========================================================================
     copy: (txt, btnEl = null, label = "", e = null) => {
         if (e && e.stopPropagation) e.stopPropagation();
         const t = document.createElement("textarea");
@@ -132,7 +159,6 @@ const utils = {
                 const msg = label ? `Đã sao chép ${label}` : `Đã sao chép nội dung`;
                 app.toast(msg, "success");
                 
-                // HIỆU ỨNG TICK XANH LÁ SVG TẠM THỜI MƯỢT MÀ CHUẨN XÁC
                 if (btnEl) {
                     const oldHTML = btnEl.innerHTML;
                     btnEl.innerHTML = '<svg class="w-3.5 h-3.5 inline-block text-green-400 scale-125 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>';
@@ -149,82 +175,7 @@ const utils = {
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;"),
-
-    renderFastJson: (data) => {
-        const rawStr = JSON.stringify(data, null, 2);
-        if (!rawStr) return "";
-
-        // Icon SVG thuần: Không bị quét bởi FontAwesome JS -> Không bao giờ gây đơ web
-        const svgCopy = '<svg class="w-3.5 h-3.5 inline-block pointer-events-none text-slate-400 group-hover/cbtn:text-sky-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>';
-
-        const lines = rawStr.split("\n");
-        const out = [];
-
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-            const lineNum = i + 1; // SỐ THỨ TỰ DÒNG (1, 2, 3...)
-            const sepIdx = line.indexOf('": ');
-
-            let lineContentHtml = "";
-
-            // 1. DÒNG CHỨA CẶP "KEY": VALUE
-            if (sepIdx > -1) {
-                const indent = line.slice(0, line.indexOf('"'));
-                const rawKey = line.slice(line.indexOf('"') + 1, sepIdx);
-                const valPart = line.slice(sepIdx + 3).trim();
-
-                const keyHtml = `${indent}<span class="text-sky-300 font-semibold">"${utils.escapeHtml(rawKey)}"</span><span class="text-slate-400">: </span>`;
-
-                // Kiểm tra dấu phẩy `,` kết thúc
-                const hasComma = valPart.endsWith(',');
-                const rawVal = hasComma ? valPart.slice(0, -1) : valPart;
-                const commaHtml = hasComma ? '<span class="text-slate-500 font-bold">,</span>' : '';
-
-                // A. NẾU VALUE LÀ CHUỖI VĂN BẢN (STRING) -> CÓ NÚT COPY SAU DẤU PHẨY/NHÁY KÉP
-                if (rawVal.startsWith('"') && rawVal.endsWith('"')) {
-                    const cleanStr = rawVal.slice(1, -1).replace(/\\n/g, "\n").replace(/\\r/g, "").replace(/\\"/g, '"');
-                    const displayStr = utils.escapeHtml(cleanStr);
-                    const isMultiline = cleanStr.includes("\n");
-
-                    // NÚT COPY: Luôn nằm sát ngay sau dấu phẩy (hoặc dấu " kết thúc)
-                    const copyBtn = `<button onclick="utils.copy('${utils.escapeAttr(cleanStr)}', this, '${utils.escapeAttr(rawKey)}', event)" class="json-copy-btn group/cbtn inline-flex items-center justify-center w-5 h-5 ml-1.5 rounded bg-white/5 hover:bg-sky-500/20 active:scale-90 transition align-middle cursor-pointer" title="Sao chép: ${rawKey}">${svgCopy}</button>`;
-
-                    if (isMultiline) {
-                        // BOUNDING BOX CHỮ NHẬT CHO VĂN BẢN NHIỀU DÒNG
-                        const boxHtml = `<span class="json-bounding-box bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-emerald-300 font-mono text-xs md:text-sm shadow-inner my-0.5">"${displayStr}"</span>`;
-                        lineContentHtml = `${keyHtml}${boxHtml}${commaHtml}${copyBtn}`;
-                    } else {
-                        // VĂN BẢN 1 DÒNG
-                        lineContentHtml = `${keyHtml}<span class="text-emerald-300">"${displayStr}"</span>${commaHtml}${copyBtn}`;
-                    }
-                } 
-                // B. NẾU VALUE LÀ SỐ, BOOLEAN, NULL -> KHÔNG CÓ NÚT COPY
-                else {
-                    let cls = "text-amber-400 font-bold";
-                    if (rawVal === "true" || rawVal === "false") cls = "text-purple-400 font-bold";
-                    else if (rawVal === "null") cls = "text-rose-400 font-bold";
-                    else if (rawVal === "{" || rawVal === "[") cls = "text-slate-300 font-bold";
-
-                    lineContentHtml = `${keyHtml}<span class="${cls}">${rawVal}</span>${commaHtml}`;
-                }
-            } 
-            // 2. CÁC DÒNG NGOẶC HOẶC PHẦN TỬ KHÁC
-            else {
-                lineContentHtml = `<span class="text-slate-300">${utils.escapeHtml(line)}</span>`;
-            }
-
-            // ĐÓNG GÓI CHUẨN IDE: CỘT SỐ DÒNG (.j-num-col) + CỘT CODE (.j-content) TRONG KHUNG (.j-line)
-            out.push(`
-                <div class="j-line">
-                    <span class="j-num-col"><span class="j-num">${lineNum}</span></span>
-                    <span class="j-content">${lineContentHtml}</span>
-                </div>
-            `);
-        }
-
-        return out.join("");
-    },
+        .replace(/"/g, "&quot;")
 };
 
 // =========================================================================
@@ -303,9 +254,8 @@ const linkEngine = {
 const app = {
     data: {}, avatars: {}, photos: {}, history: JSON.parse(localStorage.getItem("mw_h") || "[]"),
     curId: null, viewerLines: [], curMode: "JSON",
-
-    currentUids: [], 
-    refreshTimer: null,
+    currentUids: [], refreshTimer: null,
+    renderChunkId: null,
 
     init() {
         this.renderHist();
@@ -317,8 +267,9 @@ const app = {
         if (p) { $("#search-input").value = p; this.search(); }
         bgAnim.start();
 
-        // EVENT DELEGATION TỐI THƯỢNG CHO TOOLTIP (Không bao giờ rò rỉ bộ nhớ)
+        // rAF THROTTLED TOOLTIP (Không gây nghẽn sự kiện cảm ứng trên Mobile PE)
         const tipEl = document.getElementById("global-tooltip");
+        let tipReq = null;
         document.addEventListener("mouseover", (e) => {
             const item = e.target.closest("[data-tip]");
             if (item && tipEl) {
@@ -328,9 +279,12 @@ const app = {
         });
         document.addEventListener("mousemove", (e) => {
             if (tipEl && !tipEl.classList.contains("opacity-0")) {
-                tipEl.style.transform = `translate(${e.clientX + 15}px, ${e.clientY + 15}px)`;
+                if (tipReq) cancelAnimationFrame(tipReq);
+                tipReq = requestAnimationFrame(() => {
+                    tipEl.style.transform = `translate3d(${e.clientX + 15}px, ${e.clientY + 15}px, 0)`;
+                });
             }
-        });
+        }, { passive: true });
         document.addEventListener("mouseout", (e) => {
             const item = e.target.closest("[data-tip]");
             if (item && tipEl) tipEl.classList.add("opacity-0");
@@ -343,7 +297,7 @@ const app = {
     },
 
     // =========================================================================
-    // HỆ THỐNG ĐỒNG BỘ TRẠNG THÁI TỰ ĐỘNG (XOAY TRƠN TRU 100%)
+    // HỆ THỐNG ĐỒNG BỘ TRẠNG THÁI TỰ ĐỘNG (XOAY 360° & VIỀN SÁNG CARD)
     // =========================================================================
     setCardLoadingState(uids, isLoading = true) {
         const list = Array.isArray(uids) ? uids : [uids];
@@ -351,7 +305,6 @@ const app = {
             const card = document.getElementById(`profile-card-${uid}`);
             if (!card) return;
             
-            // 1. Quản lý viền sáng thở của Card
             if (isLoading) {
                 card.classList.remove("card-fetch-success");
                 card.classList.add("card-fetching");
@@ -359,7 +312,6 @@ const app = {
                 card.classList.remove("card-fetching");
             }
 
-            // 2. Quản lý icon xoay mượt mà không xung đột
             const btn = card.querySelector('button[onclick*="reloadProfile"]');
             if (!btn) return;
 
@@ -370,16 +322,14 @@ const app = {
                 btn.disabled = true;
                 btn.classList.add("opacity-70", "cursor-not-allowed", "ring-2", "ring-emerald-400/50", "bg-emerald-500/10");
                 if (icon) {
-                    // Gỡ sạch toàn bộ class transition và hover gây xung đột
                     icon.classList.remove("group-hover/btn:rotate-180", "transition-transform", "duration-300");
-                    icon.classList.add("spin-active", "text-emerald-400"); // Kích hoạt xoay GPU mượt mà
+                    icon.classList.add("spin-active", "text-emerald-400");
                 }
                 if (text) text.innerText = "Đang tải...";
             } else {
                 btn.disabled = false;
                 btn.classList.remove("opacity-70", "cursor-not-allowed", "ring-2", "ring-emerald-400/50", "bg-emerald-500/10");
                 if (icon) {
-                    // Tắt xoay GPU, trả lại độ dẻo transition hover ban đầu
                     icon.classList.remove("spin-active", "text-emerald-400");
                     icon.classList.add("transition-transform", "duration-300", "group-hover/btn:rotate-180");
                 }
@@ -401,7 +351,6 @@ const app = {
                 this.addHist(d.uid, d.nameRaw);
             });
         } else {
-            // SILENT DIFFING: Cập nhật DOM im lặng + Kích hoạt hiệu ứng lắng đọng 0.45s
             dataList.forEach((d) => {
                 const uid = d.uid;
                 const oldCard = document.getElementById(`profile-card-${uid}`);
@@ -411,8 +360,6 @@ const app = {
                     oldCard.style.minHeight = `${oldHeight}px`;
 
                     const newCard = this.createCardElement(d, true);
-                    
-                    // Thêm class lắng đọng, viền sáng sẽ mờ dần trong đúng 0.45 giây sau khi nút tải dừng!
                     newCard.classList.add("card-fetch-success");
                     setTimeout(() => newCard.classList.remove("card-fetch-success"), 450);
                     
@@ -449,7 +396,6 @@ const app = {
         if (cachedData) {
             try { 
                 this.renderData(JSON.parse(cachedData), false); 
-                // KÍCH HOẠT HIỆU ỨNG XOAY "ĐANG TẢI..." TRÊN NÚT TRONG LƯỢT FETCH NGẦM
                 this.setCardLoadingState(uids, true);
             } catch (e) { }
         } else {
@@ -475,16 +421,13 @@ const app = {
 
             localStorage.setItem(cacheKey, JSON.stringify(response.uiData));
 
-            // Cập nhật DOM: Nút xoay sẽ tự động biến mất và viền xanh tự động sáng lên!
             this.renderData(response.uiData, Boolean(cachedData));
-            
             this.refreshTimer = setInterval(() => this.silentRefresh(), 30000);
 
         } catch (e) {
             if (!cachedData) {
                 $("#content-area").innerHTML = `<div class="text-center py-10 text-slate-400 animate-enter"><i class="fa-solid fa-server text-4xl mb-2 text-red-400"></i><br><span class="font-bold text-red-300">LỖI:</span> ${e.message}</div>`;
             } else {
-                // Trả lại trạng thái bình thường cho nút bấm nếu lỗi mạng
                 this.setCardLoadingState(uids, false);
             }
             this.toast(e.message, "error");
@@ -533,13 +476,10 @@ const app = {
         this.setCardLoadingState(uid, true);
         this.toast(`Đang làm mới dữ liệu trực tiếp từ máy chủ game...`, "info");
 
-        // BÍ QUYẾT UI/UX: Tạo bộ đếm tối thiểu 600ms (đúng bằng 1 vòng xoay 360° của CSS)
         const minSpinTime = new Promise(resolve => setTimeout(resolve, 600));
 
         try {
             const forceUrl = `${PROXY_URL}${uid}&_force=${Date.now()}`;
-            
-            // Chạy song song: Vừa cào data, vừa bắt buộc phải đợi icon xoay hết ít nhất 1 vòng tròn
             const [response] = await Promise.all([
                 utils.fetchFast(forceUrl),
                 minSpinTime
@@ -566,7 +506,6 @@ const app = {
                 } catch(err) {}
             }
 
-            // Gọi renderData -> Thẻ cũ thay bằng thẻ mới, viền sáng từ từ mờ đi trong 0.45s
             this.renderData([newUiProfile], true);
             this.toast(`Đã cập nhật UID ${uid} thành công!`, "success");
 
@@ -585,7 +524,6 @@ const app = {
         this.avatars[uid] = d.avatarInfo || { url: d.avatar, dateStr: "Thời gian: Không rõ", tip: "Ảnh đại diện" };
 
         const card = document.createElement("div");
-        // ĐỊNH DANH ID ĐỘC NHẤT ĐỂ THAY THẾ IM LẶNG KHÔNG GÂY CHỚP NHÁY
         card.id = `profile-card-${uid}`;
         card.className = `glass-panel rounded-3xl p-6 relative overflow-hidden transition-all duration-300 border-t border-white/10 group hover:shadow-sky-500/10 hover:shadow-2xl ${isSilent ? '' : 'animate-enter'}`;
         
@@ -620,7 +558,6 @@ const app = {
 
         card.innerHTML = `
             <div class="absolute inset-0 bg-gradient-to-br ${bg} -z-10"></div>
-            <!-- CỤM NÚT CÔNG CỤ: THÊM NÚT FORCE RELOAD VÀO ĐẦU TIÊN -->
             <div class="flex gap-1.5 md:gap-2 z-20 justify-end md:absolute md:top-4 md:right-4 mb-6 md:mb-0 flex-wrap">
                 <button onclick="app.reloadProfile('${uid}', this, event)" class="px-2.5 md:px-3 py-1 bg-white/5 hover:bg-emerald-500/20 active:scale-95 rounded-lg text-xs font-bold text-emerald-400 border border-emerald-500/20 transition-all flex items-center gap-1.5 shrink-0 shadow-sm group/btn" title="Tải lại dữ liệu trực tiếp từ máy chủ game (Force Reload)">
                     <i class="fa-solid fa-rotate-right transition-transform duration-300 group-hover/btn:rotate-180"></i> <span class="hidden sm:inline">Tải lại</span>
@@ -654,7 +591,6 @@ const app = {
                     </div>
                     
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        
                         <div class="${box}">
                             <div class="text-xs font-bold text-purple-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 border-b border-purple-500/20 pb-1.5">
                                 <i class="fa-solid fa-user-astronaut text-purple-400 text-sm"></i> NHÂN VẬT
@@ -739,90 +675,10 @@ const app = {
         $("#content-area").appendChild(cardEl);
     },
 
-    // =========================================================================
-    // ĐỘNG CƠ FORCE RELOAD: CÀO DATA TRỰC TIẾP TỪ MÁY CHỦ MINI WORLD
-    // =========================================================================
-    async reloadProfile(uid, btnEl, e) {
-        if (e && e.stopPropagation) e.stopPropagation();
-        if (!uid) return;
-
-        // 1. Phản hồi thị giác lập tức: Khóa nút, Xoay icon, Đổi nhãn
-        const iconEl = btnEl ? btnEl.querySelector("i") : null;
-        const textEl = btnEl ? btnEl.querySelector("span") : null;
-        const oldIconCls = iconEl ? iconEl.className : "fa-solid fa-rotate-right";
-        
-        if (btnEl) {
-            btnEl.disabled = true;
-            btnEl.classList.add("opacity-60", "cursor-not-allowed", "ring-2", "ring-emerald-400/50");
-        }
-        if (iconEl) iconEl.className = "fa-solid fa-rotate-right fa-spin text-emerald-400";
-        if (textEl) textEl.innerText = "Đang tải...";
-
-        this.toast(`Đang làm mới dữ liệu trực tiếp từ máy chủ game...`, "info");
-
-        try {
-            // 2. CACHE-BUSTING: Nối thêm tham số thời gian để buộc Worker & Trình duyệt cào data mới
-            const forceUrl = `${PROXY_URL}${uid}&_force=${Date.now()}`;
-            const response = await utils.fetchFast(forceUrl);
-
-            if (!response.uiData || !response.uiData.length) {
-                throw new Error("Máy chủ game không phản hồi dữ liệu mới");
-            }
-
-            const newUiProfile = response.uiData[0];
-            
-            // 3. Cập nhật bộ nhớ trực tiếp (Memory Data)
-            Object.values(response.rawJson).forEach((p) => {
-                const d = p.profile || p;
-                if (d.uin) this.data[d.uin] = d;
-            });
-
-            // 4. Đồng bộ hóa bộ nhớ đệm (LocalStorage Cache) để lần reload trang sau có ngay data mới
-            const cacheKey = "mw_cache_" + this.currentUids.join("_");
-            const cachedDataStr = localStorage.getItem(cacheKey);
-            if (cachedDataStr) {
-                try {
-                    let cachedList = JSON.parse(cachedDataStr);
-                    cachedList = cachedList.map(item => item.uid == uid ? newUiProfile : item);
-                    localStorage.setItem(cacheKey, JSON.stringify(cachedList));
-                } catch(err) {}
-            }
-
-            // 5. THAY THẾ IM LẶNG: Đổi thẻ Card cũ thành Card mới mà không làm giật trang
-            const oldCard = document.getElementById(`profile-card-${uid}`);
-            if (oldCard) {
-                // Khóa tạm chiều cao để chống nhảy trang (Layout Shift)
-                const oldHeight = oldCard.offsetHeight;
-                oldCard.style.minHeight = `${oldHeight}px`;
-
-                const newCard = this.createCardElement(newUiProfile, true);
-                
-                // Thêm viền sáng nhấp nháy báo hiệu đã tải xong data mới
-                newCard.classList.add("flash-highlight");
-                oldCard.replaceWith(newCard);
-
-                setTimeout(() => { newCard.classList.remove("flash-highlight"); }, 1500);
-            } else {
-                this.search(this.currentUids.join(","));
-            }
-
-            this.toast(`Đã cập nhật UID ${uid} thành công!`, "success");
-
-        } catch (err) {
-            this.toast(`Lỗi làm mới dữ liệu: ${err.message}`, "error");
-            if (btnEl) {
-                btnEl.disabled = false;
-                btnEl.classList.remove("opacity-60", "cursor-not-allowed", "ring-2", "ring-emerald-400/50");
-            }
-            if (iconEl) iconEl.className = oldIconCls;
-            if (textEl) textEl.innerText = "Tải lại";
-        }
-    },
-
     initGalleryDrag(el) {
         if (!el) return;
         let isDown = false, startX, scrollLeft;
-        el.addEventListener("wheel", (e) => { if (el.scrollWidth > el.clientWidth) { e.preventDefault(); el.scrollLeft += e.deltaY; } });
+        el.addEventListener("wheel", (e) => { if (el.scrollWidth > el.clientWidth) { e.preventDefault(); el.scrollLeft += e.deltaY; } }, { passive: false });
         el.addEventListener("mousedown", (e) => { if (el.scrollWidth <= el.clientWidth) return; isDown = true; el.classList.add("active"); startX = e.pageX - el.offsetLeft; scrollLeft = el.scrollLeft; });
         el.addEventListener("mouseleave", () => { isDown = false; el.classList.remove("active"); });
         el.addEventListener("mouseup", () => { isDown = false; el.classList.remove("active"); });
@@ -831,7 +687,7 @@ const app = {
 
     skeleton: (n) => Array(n).fill(0).map(() => `<div class="glass-panel rounded-3xl p-6 h-96 animate-pulse"><div class="flex gap-8"><div class="w-44 h-44 bg-white/5 rounded-[2.5rem] shrink-0"></div><div class="flex-grow space-y-4"><div class="h-10 bg-white/5 w-2/3 rounded-xl"></div><div class="h-6 bg-white/5 w-1/3 rounded-lg"></div><div class="h-32 bg-white/5 w-full rounded-2xl mt-4"></div></div></div></div>`).join(""),
 
-// =========================================================================
+    // =========================================================================
     // HỆ THỐNG TOAST XẾP CHỒNG (STACKED TOASTS - TỐI ĐA 3 POPUP)
     // =========================================================================
     activeToasts: [],
@@ -840,7 +696,6 @@ const app = {
         const container = document.getElementById("toast-container");
         if (!container) return;
 
-        // Nếu đã có 3 popup, tiêu diệt ngay lập tức popup cũ nhất (FIFO)
         if (this.activeToasts.length >= 3) {
             const oldest = this.activeToasts.shift();
             if (oldest && oldest.el) {
@@ -864,8 +719,6 @@ const app = {
         `;
 
         container.appendChild(el);
-        
-        // Kích hoạt animation xuất hiện
         el.offsetHeight; 
         el.classList.remove("toast-enter");
 
@@ -892,14 +745,12 @@ const app = {
         this.renderHist();
     },
 
-    // Xóa 1 phần tử lịch sử với hiệu ứng mượt mà
     deleteHist(uid, e) {
         if (e && e.stopPropagation) e.stopPropagation();
         
         const listEl = $("#history-list");
         const itemEl = listEl ? listEl.querySelector(`.hist-item[data-uid="${uid}"]`) : null;
 
-        // 1. Ghi nhận vị trí tọa độ của tất cả ô lịch sử TRƯỚC KHI XÓA (FLIP - First)
         const oldPositions = {};
         if (listEl) {
             listEl.querySelectorAll(".hist-item").forEach(item => {
@@ -907,12 +758,10 @@ const app = {
             });
         }
 
-        // 2. Cập nhật mảng dữ liệu & LocalStorage
         this.history = this.history.filter(h => h.uid != uid);
         localStorage.setItem("mw_h", JSON.stringify(this.history));
         this.toast(`Đã xóa khỏi lịch sử: ${uid}`, "success");
 
-        // 3. Nếu tìm thấy ô DOM, tạo hiệu ứng thu nhỏ biến mất rồi mới xếp lại lưới
         if (itemEl) {
             itemEl.classList.add("removing");
             setTimeout(() => {
@@ -931,15 +780,12 @@ const app = {
             return; 
         }
 
-        // RENDER GIAO DIỆN PHÂN VÙNG: Trái để tra cứu, Phải chứa nút Copy (trên) & Xóa (dưới)
         l.innerHTML = this.history.map((h) => `
             <div class="hist-item group relative overflow-hidden rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition flex items-stretch justify-between p-2 gap-2" data-uid="${h.uid}">
-                <!-- Vùng Trái: Click để Tra cứu -->
                 <div class="flex-grow min-w-0 flex flex-col justify-center cursor-pointer py-0.5" onclick="app.search('${h.uid}')" title="Click để tra cứu ${h.uid}">
                     <div class="font-bold text-sky-300 font-mono text-sm md:text-base group-hover:text-sky-200 transition truncate">${h.uid}</div>
                     <div class="text-xs text-slate-400 truncate">${utils.escapeAttr(h.name)}</div>
                 </div>
-                <!-- Vùng Phải: 2 Nút hành động cô lập -->
                 <div class="flex flex-col justify-between items-center gap-1 pl-2 border-l border-white/10 shrink-0">
                     <button onclick="utils.copy('${h.uid}', this, 'UID', event)" class="w-7 h-6 rounded-lg bg-white/5 hover:bg-sky-500/20 text-slate-400 hover:text-sky-300 active:scale-90 transition flex items-center justify-center text-xs" title="Sao chép UID">
                         <i class="fa-regular fa-copy"></i>
@@ -950,7 +796,6 @@ const app = {
             </div>
         `).join("");
 
-        // 4. THUẬT TOÁN FLIP: Tự động tính độ lệch và trượt mượt mà các ô còn lại vào chỗ trống
         if (oldPositions) {
             l.querySelectorAll(".hist-item").forEach(item => {
                 const uid = item.dataset.uid;
@@ -961,14 +806,9 @@ const app = {
                     const deltaY = first.top - last.top;
 
                     if (deltaX !== 0 || deltaY !== 0) {
-                        // Invert: Đưa ô về lại vị trí cũ ngay tức thì
                         item.style.transition = "none";
                         item.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0)`;
-                        
-                        // Buộc trình duyệt vẽ lại (Reflow)
                         item.offsetHeight;
-
-                        // Play: Trượt mượt mà về vị trí mới trong lưới
                         item.style.transition = "transform 0.35s cubic-bezier(0.2, 0, 0, 1)";
                         item.style.transform = "translate3d(0, 0, 0)";
                     }
@@ -988,11 +828,13 @@ const app = {
     openApi(uid) { window.open(PROXY_URL + uid, "_blank"); },
 
     // =========================================================================
-    // HỆ THỐNG MODAL JSON SIÊU MƯỢT (NON-BLOCKING FRAME-YIELDING 0MS)
+    // TRÌNH XEM JSON CHUẨN VS CODE: O(N) LAZY CHUNKED RENDERER (0MS ZERO LAG)
     // =========================================================================
     showJson(uid) {
-        if (!uid || !this.data[uid]) return;
+        const raw = this.data[uid] || {};
         this.curId = uid;
+        this.viewerLines = [];
+        if (this.renderChunkId) cancelAnimationFrame(this.renderChunkId);
 
         const modal = document.getElementById("json-modal");
         const titleEl = document.getElementById("modal-title");
@@ -1003,8 +845,7 @@ const app = {
             titleEl.innerHTML = `<i class="fa-solid fa-code text-sky-400"></i> JSON DATA — UID: <span class="text-sky-300 font-mono">${uid}</span>`;
         }
 
-        // Mở Modal tức thì 0ms
-        viewerEl.innerHTML = '<div class="text-center py-16 text-slate-400 font-mono"><i class="fa-solid fa-circle-notch fa-spin text-3xl text-sky-400 mb-3"></i><br>Đang dựng giao diện JSON chuẩn VS Code...</div>';
+        viewerEl.innerHTML = '<div class="text-center py-16 text-slate-400 font-mono"><i class="fa-solid fa-circle-notch fa-spin text-3xl text-sky-400 mb-3"></i><br>Đang dựng cây JSON chuẩn VS Code...</div>';
         
         modal.classList.remove("hidden");
         setTimeout(() => modal.classList.remove("opacity-0"), 10);
@@ -1014,58 +855,14 @@ const app = {
             boxEl.classList.add("scale-100");
         }
 
-        // Nhường luồng 15ms vẽ khung Modal xong mới dựng danh sách số dòng
         setTimeout(() => {
             if (viewerEl && this.curId === uid) {
-                viewerEl.innerHTML = utils.renderFastJson(this.data[uid]);
+                this.buildJson(null, raw, 0, true);
+                this.renderLinesChunked();
             }
-        }, 15);
+        }, 10);
     },
 
-    renderLinesFast() {
-        const container = document.getElementById("code-viewer");
-        if (!container) return;
-        
-        container.innerHTML = this.viewerLines.map((l, i) => `
-            <div class="j-line ${l.collapsible && !l.open ? "collapsed" : ""}" id="jl-${l.id}" style="display:${l.visible ? "flex" : "none"}">
-                <span class="j-num-col">
-                    <span class="j-num">${i + 1}</span>
-                    ${l.collapsible 
-                        ? `<span class="j-toggle" id="jt-${l.id}" onclick="app.toggleLine('${l.id}')" data-tip="Click để thu gọn"><i class="fa-solid fa-angle-down text-[11px]"></i></span>` 
-                        : `<span class="w-[18px] shrink-0"></span>` /* Thẻ giữ chỗ để số thứ tự luôn thẳng hàng tuyệt đối */
-                    }
-                </span>
-                <span class="j-content" style="padding-left:${l.depth * 20}px">${l.html}</span>
-            </div>
-        `).join("");
-    },
-
-    openModal() {
-        const m = $("#json-modal");
-        m.classList.remove("hidden");
-        setTimeout(() => m.classList.remove("opacity-0"), 10);
-        $("#json-box").classList.remove("scale-95");
-        $("#json-box").classList.add("scale-100");
-    },
-
-    closeModal() {
-        const m = document.getElementById("json-modal");
-        const box = document.getElementById("json-box");
-        if (!m) return;
-        
-        m.classList.add("opacity-0");
-        if (box) box.classList.add("scale-95");
-        
-        setTimeout(() => {
-            m.classList.add("hidden");
-            const viewerEl = document.getElementById("code-viewer");
-            if (viewerEl) viewerEl.innerHTML = "";
-        }, 250);
-    },
-
-    // =========================================================================
-    // NÂNG CẤP BUILD JSON: QUÉT VÀ NHẬN DIỆN SMART LINK (HTTP/HTTPS)
-    // =========================================================================
     buildJson(key, val, depth, isLast, pId = "root", currentPath = "") {
         const id = Math.random().toString(36).substr(2, 9);
         const base = { id, pId, depth, visible: true, open: true, html: "" };
@@ -1079,21 +876,38 @@ const app = {
         const kHtml = key !== null 
             ? `${wrap("j-punc", '"')}${wrap("j-key text-sky-300 font-semibold", key, `title="Click để copy path: ${newPath}" onclick="app.copyJsonPath(event, '${newPath}')"`)}${wrap("j-punc", '": ')}` 
             : "";
-        const comma = isLast ? "" : `<span class="j-punc text-slate-500">,</span>`;
+        const comma = isLast ? "" : `<span class="j-punc text-slate-500 font-bold">,</span>`;
+
+        const svgCopy = '<svg class="w-3.5 h-3.5 inline-block pointer-events-none text-slate-400 group-hover/cbtn:text-sky-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>';
+        const makeCopyBtn = (text, label) => `<button onclick="utils.copy('${utils.escapeAttr(text)}', this, '${utils.escapeAttr(label)}', event)" class="json-copy-btn group/cbtn inline-flex items-center justify-center w-5 h-5 ml-1.5 rounded bg-white/5 hover:bg-sky-500/20 active:scale-90 transition align-middle cursor-pointer" title="Sao chép: ${utils.escapeAttr(label)}">${svgCopy}</button>`;
 
         if (val === null || val === undefined) {
-            this.viewerLines.push({ ...base, html: `${kHtml}${wrap("j-null text-rose-400 font-bold", "null")}${comma}` });
+            this.viewerLines.push({ ...base, html: `${kHtml}${wrap("j-null text-rose-400 font-bold font-mono", "null")}${comma}` });
         } else if (typeof val !== "object") {
-            let valClass = "j-str text-green-300";
-            let valStr = typeof val === "string" ? `"${utils.escapeAttr(val)}"` : val;
-            if (typeof val === "number") valClass = "j-num text-amber-300 font-bold";
-            if (typeof val === "boolean") valClass = "j-bool text-purple-400 font-bold";
+            let valClass = "j-str text-emerald-300 font-mono";
+            let valStr = typeof val === "string" ? `"${utils.escapeHtml(val)}"` : val;
+            if (typeof val === "number") valClass = "j-num text-amber-400 font-bold font-mono";
+            if (typeof val === "boolean") valClass = "j-bool text-purple-400 font-bold font-mono";
             
-            // CHỈ GÁN DATA-URL VÀ CLASS J-LINK, KHÔNG DÙNG ONCLICK Ở ĐÂY
-            if (typeof val === "string" && /^https?:\/\//i.test(val)) {
-                const cleanUrl = utils.escapeAttr(val);
-                valStr = `<span class="j-link" data-url="${cleanUrl}">"${cleanUrl}"</span>`;
-                this.viewerLines.push({ ...base, html: `${kHtml}${valStr}${comma}` });
+            if (typeof val === "string") {
+                const cleanStr = val.replace(/\\n/g, "\n").replace(/\\r/g, "");
+                const isMultiline = cleanStr.includes("\n");
+
+                if (/^https?:\/\//i.test(val)) {
+                    const cleanUrl = utils.escapeAttr(val);
+                    valStr = `<span class="j-link" data-url="${cleanUrl}">"${utils.escapeHtml(val)}"</span>`;
+                    this.viewerLines.push({ ...base, html: `${kHtml}${valStr}${comma}${makeCopyBtn(val, String(key || "Link"))}` });
+                    return;
+                }
+
+                if (isMultiline) {
+                    valStr = `<span class="json-bounding-box bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-emerald-300 font-mono text-xs md:text-sm shadow-inner my-0.5">"${utils.escapeHtml(cleanStr)}"</span>`;
+                    this.viewerLines.push({ ...base, html: `${kHtml}${valStr}${comma}${makeCopyBtn(cleanStr, String(key || "Text"))}` });
+                    return;
+                }
+
+                valStr = `"${utils.escapeHtml(cleanStr)}"`;
+                this.viewerLines.push({ ...base, html: `${kHtml}${wrap(valClass, valStr)}${comma}${makeCopyBtn(cleanStr, String(key || "Text"))}` });
                 return;
             }
 
@@ -1104,27 +918,162 @@ const app = {
             const open = isArr ? "[" : "{", close = isArr ? "]" : "}";
             
             if (!keys.length) {
-                this.viewerLines.push({ ...base, html: `${kHtml}${wrap("j-punc text-slate-400", open + close)}${comma}` });
+                this.viewerLines.push({ ...base, html: `${kHtml}${wrap("j-punc text-slate-400 font-bold font-mono", open + close)}${comma}` });
             } else {
                 const itemCount = `<span class="text-[10px] text-slate-500 ml-1 font-sans font-normal">(${keys.length} ${isArr ? 'items' : 'keys'})</span>`;
                 const col = `<span class="j-collapsed-content cursor-pointer text-slate-400 hover:text-sky-300 bg-white/5 px-1.5 py-0.5 rounded ml-1" onclick="app.toggleLine('${id}')">...${itemCount} ${close}${comma}</span>`;
-                this.viewerLines.push({ ...base, collapsible: true, html: `${kHtml}${wrap("j-punc text-slate-300 font-bold", open)}${col}` });
+                this.viewerLines.push({ ...base, collapsible: true, html: `${kHtml}${wrap("j-punc text-slate-300 font-bold font-mono", open)}${col}` });
                 keys.forEach((k, i) => {
                     this.buildJson(isArr ? Number(k) : k, val[k], depth + 1, i === keys.length - 1, id, newPath);
                 });
-                this.viewerLines.push({ id: `end-${id}`, pId: id, depth, visible: true, html: `${wrap("j-punc text-slate-300 font-bold", close)}${comma}` });
+                this.viewerLines.push({ id: `end-${id}`, pId: id, depth, visible: true, html: `${wrap("j-punc text-slate-300 font-bold font-mono", close)}${comma}` });
             }
         }
     },
 
+    // LAZY CHUNKED RENDERER: VẼ TỨC THÌ 150 DÒNG, THÊM CÁC ĐOẠN 300 DÒNG TIẾP THEO TRONG HẬU TRƯỜNG
+    renderLinesChunked() {
+        const container = document.getElementById("code-viewer");
+        if (!container) return;
+        container.innerHTML = "";
+        if (this.renderChunkId) cancelAnimationFrame(this.renderChunkId);
+
+        const svgArrow = '<svg class="w-3.5 h-3.5 transition-transform duration-150" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>';
+        const total = this.viewerLines.length;
+        let index = 0;
+        const chunkSize = 150;
+
+        const renderNextChunk = () => {
+            if (index >= total) return;
+            const fragment = document.createDocumentFragment();
+            const end = Math.min(index + chunkSize, total);
+
+            for (let i = index; i < end; i++) {
+                const l = this.viewerLines[i];
+                const div = document.createElement("div");
+                div.className = `j-line ${l.collapsible && !l.open ? "collapsed" : ""}`;
+                div.id = `jl-${l.id}`;
+                div.style.display = l.visible ? "flex" : "none";
+                
+                div.innerHTML = `
+                    <span class="j-num-col">
+                        <span class="j-num">${i + 1}</span>
+                        ${l.collapsible 
+                            ? `<span class="j-toggle" id="jt-${l.id}" onclick="app.toggleLine('${l.id}')" data-tip="Click để thu gọn">${svgArrow}</span>` 
+                            : `<span class="w-[18px] shrink-0"></span>`
+                        }
+                    </span>
+                    <span class="j-content" style="padding-left:${l.depth * 20}px">${l.html}</span>
+                `;
+                fragment.appendChild(div);
+            }
+
+            container.appendChild(fragment);
+            index = end;
+            if (index < total) {
+                this.renderChunkId = requestAnimationFrame(renderNextChunk);
+            }
+        };
+
+        renderNextChunk();
+    },
+
+    toggleLine(id) {
+        const p = this.viewerLines.find((l) => l.id === id);
+        if (!p) return;
+        p.open = !p.open;
+        
+        const el = document.getElementById(`jl-${id}`);
+        if (el) el.classList.toggle("collapsed", !p.open);
+
+        const togEl = document.getElementById(`jt-${id}`);
+        if (togEl) {
+            const newTip = p.open ? "Click để thu gọn" : "Click để bung mở";
+            togEl.setAttribute("data-tip", newTip);
+            const tipEl = document.getElementById("global-tooltip");
+            if (tipEl && !tipEl.classList.contains("opacity-0")) tipEl.innerText = newTip;
+        }
+        
+        const setVis = (pid, vis) => {
+            for (let i = 0; i < this.viewerLines.length; i++) {
+                const l = this.viewerLines[i];
+                if (l.pId === pid) {
+                    l.visible = vis;
+                    const childEl = document.getElementById(`jl-${l.id}`);
+                    if (childEl) childEl.style.display = vis ? "flex" : "none";
+                    if (l.collapsible && l.open && vis) setVis(l.id, true);
+                    else if (l.collapsible) setVis(l.id, false);
+                }
+            }
+        };
+        setVis(id, p.open);
+    },
+
+    toggleAllJson(expand = true) {
+        this.viewerLines.forEach(l => {
+            if (l.collapsible) {
+                l.open = expand;
+                const el = document.getElementById(`jl-${l.id}`);
+                if (el) el.classList.toggle("collapsed", !expand);
+            }
+            if (l.pId !== "root") {
+                l.visible = expand;
+                const el = document.getElementById(`jl-${l.id}`);
+                if (el) el.style.display = expand ? "flex" : "none";
+            }
+        });
+        this.toast(expand ? "Đã bung mở toàn bộ JSON" : "Đã thu gọn toàn bộ JSON", "success");
+    },
+
+    openModal() {
+        const m = $("#json-modal");
+        m.classList.remove("hidden");
+        setTimeout(() => m.classList.remove("opacity-0"), 10);
+        $("#json-box").classList.remove("scale-95");
+        $("#json-box").classList.add("scale-100");
+    },
+
+    closeModal() {
+        if (this.renderChunkId) cancelAnimationFrame(this.renderChunkId);
+        const m = $("#json-modal");
+        const box = $("#json-box");
+        if (!m) return;
+        m.classList.add("opacity-0");
+        if (box) box.classList.add("scale-95");
+        setTimeout(() => {
+            m.classList.add("hidden");
+            this.viewerLines = [];
+            document.getElementById("code-viewer").innerHTML = "";
+        }, 300);
+    },
+
+    copyContent() {
+        if (!this.curId || !this.data[this.curId]) return;
+        utils.copy(JSON.stringify(this.data[this.curId], null, 2), null, `Toàn bộ JSON UID ${this.curId}`);
+    },
+
+    dlContent() {
+        if (!this.curId || !this.data[this.curId]) return;
+        const c = JSON.stringify(this.data[this.curId], null, 2);
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(new Blob([c], { type: "application/json" }));
+        a.download = `profile_${this.curId}.json`; a.click();
+        this.toast(`Đã tải xuống tệp profile_${this.curId}.json`, "success");
+    },
+
+    copyJsonPath(e, path) {
+        e.stopPropagation();
+        utils.copy(path);
+        this.toast(`Đã copy path: ${path}`, "success");
+    },
+
     // =========================================================================
-    // HỆ THỐNG XỬ LÝ SMART LINK & INTERACTIVE TOOLTIP (BỊ THIẾU TRƯỚC ĐÓ)
+    // HỆ THỐNG XỬ LÝ SMART LINK & INTERACTIVE TOOLTIP
     // =========================================================================
     activeLinkUrl: null,
     activeLinkType: null,
 
     initSmartLinkEvents() {
-        // 1. EVENT DELEGATION CHO CLICK LINK (Mở Action Menu hoặc Tab mới)
         document.addEventListener("click", (e) => {
             const linkEl = e.target.closest(".j-link");
             if (!linkEl) return;
@@ -1176,7 +1125,6 @@ const app = {
             }
         });
 
-        // 2. EVENT DELEGATION CHO HOVER (Hiển thị Tooltip đo kích thước)
         const tip = $("#link-tooltip");
         if (!tip) return;
         let timer = null;
@@ -1235,14 +1183,13 @@ const app = {
             const x = Math.min(e.clientX + 18, window.innerWidth - 300);
             const y = Math.min(e.clientY + 18, window.innerHeight - 250);
             tip.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-        });
+        }, { passive: true });
 
         document.addEventListener("mouseout", (e) => {
             if (e.target.closest(".j-link")) this.hideLinkTooltip();
         });
     },
 
-    // 3. CÁC HÀM TIỆN ÍCH ĐÓNG/MỞ MENU VÀ THỰC THI ACTION
     closeLinkMenu(e) {
         if (e && e.target !== $("#link-menu-overlay")) return;
         const ov = $("#link-menu-overlay"), box = $("#link-menu-box");
@@ -1265,90 +1212,13 @@ const app = {
         if (!tip || tip.classList.contains("hidden")) return;
         tip.classList.add("opacity-0");
         setTimeout(() => tip.classList.add("hidden"), 150);
-    },
-
-    copyJsonPath(e, path) {
-        e.stopPropagation();
-        utils.copy(path);
-        this.toast(`Đã copy path: ${path}`, "success");
-    },
-
-    toggleLine(id) {
-        const p = this.viewerLines.find((l) => l.id === id);
-        if (!p) return;
-        p.open = !p.open;
-        
-        const el = document.getElementById(`jl-${id}`);
-        if (el) el.classList.toggle("collapsed", !p.open);
-
-        // Cập nhật câu Tooltip theo trạng thái mới (Thu gọn <-> Bung mở)
-        const togEl = document.getElementById(`jt-${id}`);
-        if (togEl) {
-            const newTip = p.open ? "Click để thu gọn" : "Click để bung mở";
-            togEl.setAttribute("data-tip", newTip);
-            const tipEl = document.getElementById("global-tooltip");
-            if (tipEl && !tipEl.classList.contains("opacity-0")) tipEl.innerText = newTip;
-        }
-        
-        const setVis = (pid, vis) => {
-            for (let i = 0; i < this.viewerLines.length; i++) {
-                const l = this.viewerLines[i];
-                if (l.pId === pid) {
-                    l.visible = vis;
-                    const childEl = document.getElementById(`jl-${l.id}`);
-                    if (childEl) childEl.style.display = vis ? "flex" : "none";
-                    if (l.collapsible && l.open && vis) setVis(l.id, true);
-                    else if (l.collapsible) setVis(l.id, false);
-                }
-            }
-        };
-        setVis(id, p.open);
-    },
-
-    toggleAllJson(expand = true) {
-        if (!this.curId || !this.data[this.curId]) return;
-        const viewerEl = document.getElementById("code-viewer");
-        if (!viewerEl) return;
-
-        if (expand) {
-            viewerEl.innerHTML = utils.renderFastJson(this.data[this.curId]);
-            this.toast("Đã bung mở chi tiết JSON", "success");
-        } else {
-            const rootSummary = {};
-            Object.keys(this.data[this.curId]).forEach(k => {
-                const val = this.data[this.curId][k];
-                rootSummary[k] = (typeof val === 'object' && val !== null) ? `[Object ${Array.isArray(val) ? 'Array' : 'Dict'}]` : val;
-            });
-            viewerEl.innerHTML = utils.renderFastJson(rootSummary);
-            this.toast("Đã thu gọn các object lồng nhau", "info");
-        }
-    },
-
-    copyContent() {
-        if (!this.curId || !this.data[this.curId]) return;
-        utils.copy(JSON.stringify(this.data[this.curId], null, 2), null, `Toàn bộ JSON UID ${this.curId}`);
-    },
-
-    dlContent() {
-        if (!this.curId || !this.data[this.curId]) return;
-        const c = JSON.stringify(this.data[this.curId], null, 2);
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(new Blob([c], { type: "application/json" }));
-        a.download = `profile_${this.curId}.json`; 
-        a.click();
-        this.toast(`Đã tải xuống tệp profile_${this.curId}.json`, "success");
-    },
+    }
 };
 
 const viewer = {
-    imgs: [],
-    cur: 0,
-    x: 0, y: 0, s: 1, r: 0, fx: 1, fy: 1,
-    tx: 0, ty: 0, ts: 1, tr: 0,
-    isDrag: false, lx: 0, ly: 0,
-    animId: null,
-    isLerp: false,
-    touchDist: 0, lastTap: 0,
+    imgs: [], cur: 0, x: 0, y: 0, s: 1, r: 0, fx: 1, fy: 1,
+    tx: 0, ty: 0, ts: 1, tr: 0, isDrag: false, lx: 0, ly: 0,
+    animId: null, isLerp: false, touchDist: 0, lastTap: 0,
 
     openAvatar(el, uid) {
         const info = app.avatars[uid];
@@ -1482,7 +1352,6 @@ const viewer = {
 
         const loop = () => {
             if (!this.isLerp) return;
-            
             this.x += (this.tx - this.x) * 0.25;
             this.y += (this.ty - this.y) * 0.25;
             this.s += (this.ts - this.s) * 0.25;
@@ -1494,7 +1363,6 @@ const viewer = {
             if (Math.abs(this.tr - this.r) < 0.05) this.r = this.tr;
 
             img.style.transform = `translate3d(${this.x.toFixed(2)}px, ${this.y.toFixed(2)}px, 0) rotate(${this.r.toFixed(2)}deg) scale(${this.s.toFixed(3)}) scaleX(${this.fx}) scaleY(${this.fy})`;
-            
             this.animId = requestAnimationFrame(loop);
         };
         this.animId = requestAnimationFrame(loop);
@@ -1546,7 +1414,6 @@ const viewer = {
         this.tx += (mx - this.tx) * (1 - newS / oldS);
         this.ty += (my - this.ty) * (1 - newS / oldS);
         this.ts = newS;
-        
         this.updateZoomIndicator();
     },
 
@@ -1646,15 +1513,26 @@ const viewer = {
         }, { passive: false });
 
         c.addEventListener("touchend", () => {
-            this.isDrag = false;
+            if (this.isDrag) {
+                this.isDrag = false;
+                c.style.cursor = "grab";
+            }
             this.touchDist = 0;
         });
     }
 };
 
+// =========================================================================
+// ADAPTIVE ENERGY-SAVING STAR ENGINE (TIẾT KIỆM PIN & KHÁNG LAG CHO MÁY YẾU)
+// =========================================================================
 const bgAnim = {
+    animId: null,
+    isPaused: false,
+
     start() {
-        const c = document.getElementById("star-canvas"), x = c.getContext("2d");
+        const c = document.getElementById("star-canvas");
+        if (!c) return;
+        const x = c.getContext("2d");
         let w, h, s = [], lastTime = 0;
         const fps = 30;
         const interval = 1000 / fps;
@@ -1663,7 +1541,7 @@ const bgAnim = {
             w = c.width = window.innerWidth;
             h = c.height = window.innerHeight;
             s = [];
-            const count = w < 768 ? 40 : 100;
+            const count = w < 768 ? 35 : 85;
             for (let i = 0; i < count; i++) {
                 s.push({
                     x: Math.random() * w,
@@ -1676,14 +1554,27 @@ const bgAnim = {
             }
         };
 
+        // TỰ ĐỘNG DỪNG VẼ KHI TAB ẨN HỢC KHI MỞ MODAL ĐỂ GIẢI PHÓNG CPU
+        document.addEventListener("visibilitychange", () => {
+            this.isPaused = document.hidden;
+        });
+
         const loop = (currentTime) => {
-            requestAnimationFrame(loop);
+            this.animId = requestAnimationFrame(loop);
+            if (this.isPaused) return;
+
+            const modal = document.getElementById("json-modal");
+            const viewer = document.getElementById("viewer");
+            const isModalOpen = (modal && !modal.classList.contains("hidden")) || (viewer && !viewer.classList.contains("hidden"));
+            if (isModalOpen) return; // Không vẽ nền khi đang mở modal
+
             const delta = currentTime - lastTime;
             if (delta < interval) return;
             lastTime = currentTime - (delta % interval);
 
             x.clearRect(0, 0, w, h);
-            s.forEach((p) => {
+            for (let i = 0; i < s.length; i++) {
+                const p = s[i];
                 p.a += p.v;
                 if (p.a > 1 || p.a < 0) p.v *= -1;
                 p.y -= p.dy;
@@ -1691,18 +1582,19 @@ const bgAnim = {
                 
                 const alpha = Math.max(0.1, Math.min(1, Math.abs(p.a))).toFixed(2);
                 x.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-                x.fillRect(p.x, p.y, p.r, p.r);
-            });
+                // Sử dụng tọa độ số nguyên (Math.floor) để khử chi phí Anti-Aliasing của Canvas
+                x.fillRect(Math.floor(p.x), Math.floor(p.y), p.r, p.r);
+            }
         };
 
-        window.addEventListener("resize", init);
+        window.addEventListener("resize", init, { passive: true });
         init();
-        requestAnimationFrame(loop);
-    },
+        this.animId = requestAnimationFrame(loop);
+    }
 };
 
 document.addEventListener("DOMContentLoaded", () => { 
     app.init(); 
     viewer.initEvents(); 
-    if(app.initSmartLinkEvents) app.initSmartLinkEvents(); 
+    if (app.initSmartLinkEvents) app.initSmartLinkEvents(); 
 });

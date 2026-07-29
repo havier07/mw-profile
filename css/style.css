@@ -1,5 +1,5 @@
 /* ==========================================================================
-   1. BASE STYLES, VARIABLES & STAR CANVAS
+   1. BASE STYLES, VARIABLES & HARDWARE ACCELERATION
    ========================================================================== */
 :root {
     --bg-dark: #020617;
@@ -17,16 +17,15 @@ body {
 
 #star-canvas {
     position: fixed;
-    top: 0; 
-    left: 0; 
-    width: 100%; 
-    height: 100%;
-    z-index: -1; 
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: -1;
     pointer-events: none;
+    will-change: transform;
 }
 
 /* ==========================================================================
-   2. GLASS MORPHISM PANELS & SCROLLBARS
+   2. GLASS MORPHISM PANELS & COMPOSITOR LAYER PROMOTION
    ========================================================================== */
 .glass-panel {
     background: var(--glass);
@@ -34,6 +33,7 @@ body {
     box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
     transform: translateZ(0);
     will-change: transform;
+    position: relative;
 }
 
 @media (min-width: 768px) {
@@ -43,59 +43,29 @@ body {
     }
 }
 
-::-webkit-scrollbar { 
-    width: 4px; 
-    height: 4px; 
-}
-::-webkit-scrollbar-thumb { 
-    background: #475569; 
-    border-radius: 99px; 
-}
-::-webkit-scrollbar-track { 
-    background: transparent; 
-}
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-thumb { background: #475569; border-radius: 99px; }
+::-webkit-scrollbar-track { background: transparent; }
 
-/* ==========================================================================
-   3. COMMON ANIMATIONS & MICRO-INTERACTIONS (Buttons, Copy, Avatars)
-   ========================================================================== */
 @keyframes fadeUp {
-    from { 
-        opacity: 0; 
-        transform: translateY(20px); 
-    }
-    to { 
-        opacity: 1; 
-        transform: translateY(0); 
-    }
+    from { opacity: 0; transform: translate3d(0, 20px, 0); }
+    to   { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 
 .animate-enter {
-    animation: fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    animation: fadeUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    will-change: transform, opacity;
 }
 
-.blink-text { 
-    animation: pulse 2s infinite; 
-}
-@keyframes pulse { 
-    0%, 100% { opacity: 1; } 
-    50% { opacity: 0.5; } 
-}
+.blink-text { animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-.copy-btn { 
-    cursor: pointer; 
-    transition: 0.2s; 
-    opacity: 0.6; 
-}
-.copy-btn:hover { 
-    opacity: 1; 
-    transform: scale(1.1); 
-    color: #38bdf8; 
-}
+.copy-btn { cursor: pointer; transition: opacity 0.15s ease, transform 0.15s ease, color 0.15s ease; opacity: 0.6; }
+.copy-btn:hover { opacity: 1; transform: scale(1.1) translateZ(0); color: #38bdf8; }
 
-/* Tối ưu hóa Hover siêu tốc 0ms cho nút bấm và tương tác */
 button, .group-avatar, .copy-btn {
     transition: background-color 0.12s ease, color 0.12s ease, transform 0.12s cubic-bezier(0.2, 0, 0, 1), border-color 0.12s ease !important;
-    will-change: transform, background-color;
+    will-change: transform;
     transform: translateZ(0);
 }
 
@@ -105,18 +75,50 @@ button:active {
 }
 
 /* ==========================================================================
-   4. GALLERY SCROLL & FULLSCREEN 3D IMAGE VIEWER
+   3. GPU COMPOSITOR GLOW (HIỆU ỨNG THỞ VIỀN KHÔNG GÂY LAG CPU)
    ========================================================================== */
-.gallery-scroll {
-    display: flex; 
-    gap: 1rem; 
-    overflow-x: auto; 
-    padding-bottom: 1rem;
-    scroll-snap-type: x mandatory; 
-    -webkit-overflow-scrolling: touch;
+.glass-panel::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    box-shadow: 0 0 25px 2px rgba(16, 185, 129, 0.35);
+    border: 1px solid rgba(52, 211, 153, 0.85);
+    z-index: 100;
+    will-change: opacity;
 }
 
-/* Tối ưu hóa phần cứng cho Trình xem ảnh */
+@keyframes gpuGlowPulse {
+    0%, 100% { opacity: 0.25; }
+    50%      { opacity: 1; }
+}
+
+.card-fetching::after {
+    animation: gpuGlowPulse 1.3s infinite ease-in-out !important;
+    opacity: 1;
+}
+
+@keyframes gpuGlowFadeOut {
+    0%   { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+.card-fetch-success::after {
+    animation: gpuGlowFadeOut 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+/* ==========================================================================
+   4. GALLERY SCROLL & 3D IMAGE VIEWER
+   ========================================================================== */
+.gallery-scroll {
+    display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem;
+    scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+    contain: content;
+}
+
 #v-img {
     will-change: transform, opacity;
     transform-origin: center center;
@@ -128,32 +130,17 @@ button:active {
 }
 
 #zoom-indicator {
-    position: absolute; 
-    top: 50%; 
-    left: 50%; 
-    transform: translate(-50%, -50%);
-    background: rgba(0, 0, 0, 0.6); 
-    color: white; 
-    padding: 8px 16px; 
-    border-radius: 8px;
-    font-size: 16px; 
-    font-weight: bold; 
-    pointer-events: none; 
-    opacity: 0;
-    transition: opacity 0.3s ease; 
-    z-index: 50; 
-    backdrop-filter: blur(4px);
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.6); color: white; padding: 8px 16px; border-radius: 8px;
+    font-size: 16px; font-weight: bold; pointer-events: none; opacity: 0;
+    transition: opacity 0.3s ease; z-index: 50; backdrop-filter: blur(4px);
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
-#zoom-indicator.show { 
-    opacity: 1; 
-}
+#zoom-indicator.show { opacity: 1; }
 
 /* ==========================================================================
-   5. VS CODE STYLE JSON VIEWER (Line Numbers, Gutter, Hover Highlight)
+   5. VS CODE STYLE JSON VIEWER (LINE NUMBERS + HOVER HIGHLIGHT + INDENT)
    ========================================================================== */
-
-/* 1. Khung từng dòng code (Kháng lag tối đa với content-visibility) */
 .j-line {
     display: flex;
     align-items: flex-start;
@@ -161,21 +148,19 @@ button:active {
     font-size: 13.5px;
     line-height: 1.6;
     content-visibility: auto;
-    contain-intrinsic-size: 0 24px;
+    contain-intrinsic-size: 0 22px;
     contain: content;
-    transition: background-color 0.12s ease !important;
+    transition: background-color 0.1s ease !important;
     border-left: 2px solid transparent;
     border-radius: 0 4px 4px 0;
     width: 100%;
 }
 
-/* 2. Highlight dòng code khi rà chuột (Hover Highlight chuẩn VS Code) */
 .j-line:hover {
     background-color: rgba(56, 189, 248, 0.07) !important;
     border-left-color: rgba(56, 189, 248, 0.6) !important;
 }
 
-/* 3. Cột số thứ tự dòng (Line Number Gutter) */
 .j-num-col {
     flex-shrink: 0;
     width: 52px;
@@ -196,7 +181,6 @@ button:active {
     text-align: right;
 }
 
-/* 4. Nút mũi tên thu gọn/bung mở object chuẩn VS Code */
 .j-toggle {
     display: flex;
     align-items: center;
@@ -224,7 +208,6 @@ button:active {
     background-color: rgba(255, 255, 255, 0.15);
 }
 
-/* 5. Highlight dòng bị đóng (Folded Line Highlight) */
 .j-line.collapsed {
     background-color: rgba(56, 189, 248, 0.09) !important;
     border-left-color: #38bdf8 !important;
@@ -237,7 +220,6 @@ button:active {
     color: #38bdf8;
 }
 
-/* 6. Cột nội dung code & Màu cú pháp syntax */
 .j-content { 
     flex-grow: 1; 
     min-width: 0; 
@@ -269,15 +251,13 @@ button:active {
 .j-collapsed-content { display: none !important; }
 .j-line.collapsed .j-collapsed-content { display: inline-block !important; }
 
-/* Tối ưu riêng cho Điện thoại (Mobile PE - Chống lỗi thiếu chuột Hover) */
 @media (hover: none), (max-width: 768px) {
     .j-line { font-size: 12px; line-height: 1.5; contain-intrinsic-size: 0 20px; }
     .j-num-col { width: 44px; gap: 4px; padding-right: 8px; margin-right: 8px; }
     .j-toggle {
         opacity: 0.45 !important;
         pointer-events: auto;
-        width: 20px; 
-        height: 20px;
+        width: 20px; height: 20px;
     }
     .j-line.collapsed .j-toggle { opacity: 1 !important; }
 }
@@ -316,11 +296,10 @@ button:active {
 }
 
 @keyframes slideUpModal {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
+    from { transform: translate3d(0, 100%, 0); }
+    to   { transform: translate3d(0, 0, 0); }
 }
 
-/* Màu sắc viền theo từng loại tệp trong Universal Link Engine */
 .lt-bg-image { border-left: 4px solid #38bdf8 !important; }
 .lt-bg-video { border-left: 4px solid #f43f5e !important; }
 .lt-bg-audio { border-left: 4px solid #a855f7 !important; }
@@ -330,10 +309,8 @@ button:active {
 .lt-bg-web   { border-left: 4px solid #64748b !important; }
 
 /* ==========================================================================
-   7. STACKED TOASTS & FLIP LAYOUT ANIMATIONS (Lịch sử tra cứu)
+   7. STACKED TOASTS & FLIP LAYOUT ANIMATIONS
    ========================================================================== */
-
-/* 1. Hiệu ứng Toast thông báo xếp chồng tối đa 3 popup */
 .toast-item {
     pointer-events: auto;
     transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
@@ -370,7 +347,6 @@ button:active {
     border: none !important;
 }
 
-/* 2. Hiệu ứng lưới Lịch sử (FLIP Layout Animation) */
 .hist-item {
     transition: transform 0.35s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease, background-color 0.15s ease;
     will-change: transform, opacity;
@@ -378,14 +354,12 @@ button:active {
 
 .hist-item.removing {
     opacity: 0;
-    transform: scale(0.8) !important;
+    transform: scale(0.8) translateZ(0) !important;
 }
 
 /* ==========================================================================
-   8. ULTIMATE 60 FPS GPU SPIN & REACTIVE CARD HIGHLIGHTS
+   8. ULTIMATE 60 FPS GPU SPIN & BUTTON STATES
    ========================================================================== */
-
-/* 1. Động cơ xoay 360° liên tục bằng GPU (Chống xung đột transition hover) */
 @keyframes ultimateSpin {
     0%   { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
@@ -398,28 +372,6 @@ button:active {
     will-change: transform;
 }
 
-/* 2. Trong lúc tải: Viền xanh thắp sáng nhịp nhàng (Breathing Glow) */
-@keyframes borderPulse {
-    0%, 100% { border-color: rgba(52, 211, 153, 0.35); box-shadow: 0 0 15px 0 rgba(16, 185, 129, 0.15); }
-    50%      { border-color: rgba(52, 211, 153, 0.85); box-shadow: 0 0 28px 2px rgba(16, 185, 129, 0.35); }
-}
-
-.card-fetching {
-    animation: borderPulse 1.3s infinite ease-in-out !important;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-/* 3. Sau khi tải xong: Viền sáng mờ dần êm ái trong 0.45 giây (Visual Settling) */
-@keyframes fetchSuccessFade {
-    0%   { border-color: rgba(52, 211, 153, 0.9); box-shadow: 0 0 30px 4px rgba(16, 185, 129, 0.4); background-color: rgba(16, 185, 129, 0.04); }
-    100% { border-color: rgba(255, 255, 255, 0.1); box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5); background-color: transparent; }
-}
-
-.card-fetch-success {
-    animation: fetchSuccessFade 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
-}
-
-/* 4. Xoay GPU siêu mượt 60 FPS chuẩn chung */
 @keyframes smoothSpin {
     from { transform: rotate(0deg); }
     to   { transform: rotate(360deg); }
@@ -432,10 +384,8 @@ button:active {
 }
 
 /* ==========================================================================
-   9. JSON INTRINSIC BOUNDING BOX & BOXED SELECTION (Zero-Lag Performance)
+   9. JSON INTRINSIC BOUNDING BOX & BOXED SELECTION
    ========================================================================== */
-
-/* 1. Hộp Bounding Box cho văn bản nhiều dòng (\n) */
 .json-bounding-box {
     display: inline-block !important;
     width: -max-content;
@@ -448,14 +398,12 @@ button:active {
     box-sizing: border-box;
 }
 
-/* 2. Khóa vùng selection bôi đen: Chỉ sáng xanh trong khung, không tràn lề phải */
 .json-bounding-box::selection,
 .json-bounding-box *::selection {
     background-color: rgba(56, 189, 248, 0.35) !important;
     color: #ffffff !important;
 }
 
-/* 3. Nút Copy nhỏ gọn nằm ngay sau dấu phẩy hoặc nháy kép */
 .json-copy-btn {
     display: inline-flex;
     align-items: center;
