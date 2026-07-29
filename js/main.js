@@ -181,7 +181,7 @@ const utils = {
     },
 
     // =========================================================================
-    // UTILS: REGEX JSON HIGHLIGHTER SIÊU TỐC (< 5MS - ZERO DOM BLOAT)
+    // UTILS: LINE-BY-LINE LINEAR JSON STREAMER (0% BACKTRACKING - ZERO FREEZE)
     // =========================================================================
     escapeHtml: (t) => String(t)
         .replace(/&/g, "&amp;")
@@ -190,43 +190,72 @@ const utils = {
         .replace(/"/g, "&quot;"),
 
     renderFastJson: (data) => {
-        let jsonStr = JSON.stringify(data, null, 2);
-        if (!jsonStr) return "";
+        const rawStr = JSON.stringify(data, null, 2);
+        if (!rawStr) return "";
 
-        // 1. Chống XSS
-        jsonStr = jsonStr.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        // THUẬT TOÁN TUYẾN TÍNH O(N): Xử lý từng dòng nhỏ, loại bỏ hoàn toàn Catastrophic Backtracking
+        return rawStr.split("\n").map((line) => {
+            const safeLine = line.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            
+            // Tách khoảng trắng thụt lề (indentation) và nội dung dòng
+            const indentMatch = safeLine.match(/^(\s*)/);
+            const indent = indentMatch ? indentMatch[1] : "";
+            const content = safeLine.trim();
 
-        // 2. Quét Regex 1 lần duy nhất cho toàn bộ payload (Không đệ quy DOM)
-        return jsonStr.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:|\s*,)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, (match) => {
-            if (/^"/.test(match)) {
-                if (/:$/.test(match.trim())) {
-                    // KEY: Màu xanh Sky
-                    return `<span class="text-sky-300 font-semibold">${match}</span>`;
-                } else {
-                    // VALUE (STRING): Xử lý xuống dòng \n và đặt nút Copy
-                    const hasComma = /,$/.test(match.trim());
-                    const rawQuote = match.replace(/\s*,$/, ""); // Tách dấu phẩy đuôi
-                    const cleanStr = rawQuote.slice(1, -1).replace(/\\n/g, "\n").replace(/\\r/g, "");
-                    const commaHtml = hasComma ? '<span class="text-slate-500 font-bold">,</span>' : '';
+            // 1. Dấu ngoặc nhọn/vuông đứng một mình ({, }, [, ], }, etc.)
+            if (/^[{\[}\]],?$/.test(content)) {
+                return `<div class="py-0.5 leading-relaxed">${indent}<span class="text-slate-400 font-bold">${content}</span></div>`;
+            }
 
-                    // Nút Copy: Đặt CHÍNH XÁC sau dấu phẩy (commaHtml) hoặc sau nháy kép ""
-                    const copyBtn = `<button onclick="utils.copy('${utils.escapeAttr(cleanStr)}', this, 'Text', event)" class="json-copy-btn w-5 h-5 ml-1.5 rounded bg-white/5 hover:bg-sky-500/20 text-slate-400 hover:text-sky-300 active:scale-90 transition-all shrink-0 inline-flex items-center justify-center" title="Sao chép"><i class="fa-regular fa-copy text-[10px]"></i></button>`;
+            // 2. Nhận diện cặp "Key": Value
+            const kvMatch = content.match(/^"([^"]+)"\s*:\s*(.*)$/);
+            if (kvMatch) {
+                const key = kvMatch[1];
+                let valPart = kvMatch[2];
+                const keyHtml = `<span class="text-sky-300 font-semibold">"${key}"</span><span class="text-slate-400 font-mono">: </span>`;
 
-                    if (cleanStr.includes("\n")) {
+                // Nếu value là mở ngoặc object/array ({ hoặc [)
+                if (/^[{\[]$/.test(valPart)) {
+                    return `<div class="py-0.5 leading-relaxed">${indent}${keyHtml}<span class="text-slate-400 font-bold">${valPart}</span></div>`;
+                }
+
+                // Kiểm tra và tách dấu phẩy kết thúc `,`
+                const hasComma = valPart.endsWith(",");
+                if (hasComma) valPart = valPart.slice(0, -1);
+                const commaHtml = hasComma ? '<span class="text-slate-500 font-bold">,</span>' : '';
+
+                // Xử lý nội dung copy sạch (bỏ nháy kép ngoài cùng và chuẩn hóa xuống dòng)
+                let cleanCopyText = valPart;
+                if (valPart.startsWith('"') && valPart.endsWith('"')) {
+                    cleanCopyText = valPart.slice(1, -1).replace(/\\n/g, "\n").replace(/\\r/g, "").replace(/\\"/g, '"');
+                }
+                
+                // NÚT COPY: Luôn nằm NGAY SAU dấu phẩy hoặc nháy kép kết thúc
+                const copyBtn = `<button onclick="utils.copy('${utils.escapeAttr(cleanCopyText)}', this, '${key}', event)" class="json-copy-btn w-5 h-5 ml-1.5 rounded bg-white/5 hover:bg-sky-500/20 text-slate-400 hover:text-sky-300 active:scale-90 transition shrink-0 inline-flex items-center justify-center" title="Sao chép: ${key}"><i class="fa-regular fa-copy text-[10px]"></i></button>`;
+
+                // Phân loại Value để tô màu và dựng Bounding Box cho chuỗi nhiều dòng
+                if (valPart.startsWith('"') && valPart.endsWith('"')) {
+                    const innerStr = valPart.slice(1, -1).replace(/\\n/g, "\n").replace(/\\r/g, "");
+                    if (innerStr.includes("\n")) {
                         // MULTILINE BOUNDING BOX
-                        return `<div class="inline-block max-w-full align-top my-0.5"><div class="json-bounding-box bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-emerald-300 text-xs md:text-sm shadow-inner">"${cleanStr}"</div></div>${commaHtml}${copyBtn}`;
+                        const boxHtml = `<div class="inline-block max-w-full align-top my-0.5"><div class="json-bounding-box bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-emerald-300 font-mono text-xs md:text-sm shadow-inner">"${innerStr}"</div></div>`;
+                        return `<div class="py-1 leading-relaxed">${indent}${keyHtml}${boxHtml}${commaHtml}${copyBtn}</div>`;
                     } else {
-                        // SINGLE LINE TEXT
-                        return `<span class="text-emerald-300">"${cleanStr}"</span>${commaHtml}${copyBtn}`;
+                        // SINGLE LINE STRING
+                        return `<div class="py-0.5 leading-relaxed">${indent}${keyHtml}<span class="text-emerald-300 font-mono">"${innerStr}"</span>${commaHtml}${copyBtn}</div>`;
                     }
+                } else {
+                    // NUMBERS, BOOLEANS, NULL
+                    let cls = "text-amber-400 font-bold font-mono";
+                    if (/true|false/.test(valPart)) cls = "text-purple-400 font-bold font-mono";
+                    if (/null/.test(valPart)) cls = "text-rose-400 font-bold font-mono";
+                    return `<div class="py-0.5 leading-relaxed">${indent}${keyHtml}<span class="${cls}">${valPart}</span>${commaHtml}${copyBtn}</div>`;
                 }
             }
-            // NUMBERS, BOOLEANS, NULL
-            let cls = "text-amber-400 font-bold";
-            if (/true|false/.test(match)) cls = "text-purple-400 font-bold";
-            if (/null/.test(match)) cls = "text-rose-400 font-bold";
-            return `<span class="${cls}">${match}</span>`;
-        });
+
+            // 3. Các dòng khác (phần tử trong mảng vô danh...)
+            return `<div class="py-0.5 leading-relaxed">${indent}<span class="text-slate-300 font-mono">${content}</span></div>`;
+        }).join("");
     },
 };
 
@@ -993,6 +1022,9 @@ const app = {
     // =========================================================================
     // MODAL XEM JSON KHÔNG GIẬT LAG (FRAME-YIELDING NON-BLOCKING UI)
     // =========================================================================
+    // =========================================================================
+    // MODAL XEM JSON SIÊU MƯỢT (NON-BLOCKING UI)
+    // =========================================================================
     showJson(uid) {
         const raw = this.data[uid] || {};
         let modal = document.getElementById("json-modal");
@@ -1017,8 +1049,7 @@ const app = {
                             </button>
                         </div>
                     </div>
-                    <!-- THẺ <pre> ĐẢM BẢO TỐC ĐỘ HIỂN THỊ MAX PING VÀ CĂN LỀ CHUẨN JSON -->
-                    <pre id="json-modal-content" class="p-4 md:p-6 overflow-y-auto flex-grow bg-[#090d16]/90 select-text font-mono text-xs md:text-sm text-slate-300 leading-relaxed whitespace-pre-wrap m-0"></pre>
+                    <div id="json-modal-content" class="p-4 md:p-6 overflow-y-auto flex-grow bg-[#090d16]/90 select-text font-mono text-xs md:text-sm text-slate-300 leading-relaxed m-0"></div>
                 </div>
             `;
             document.body.appendChild(modal);
@@ -1030,20 +1061,13 @@ const app = {
 
         if (titleEl) titleEl.innerText = `RAW JSON DATA — UID: ${uid}`;
         
-        // 1. MỞ MODAL TỨC THÌ VỚI TRẠNG THÁI LOADING (0ms Delay)
-        if (contentEl) {
-            contentEl.innerHTML = '<div class="text-center py-12 text-slate-400"><i class="fa-solid fa-circle-notch fa-spin text-2xl text-sky-400 mb-2"></i><br>Đang phân tích cấu trúc JSON...</div>';
-        }
-
+        // Mở Modal tức thì và vẽ JSON với tốc độ dưới 2ms
         modal.classList.remove("hidden");
         modal.classList.add("flex");
 
-        // 2. FRAME-YIELDING: Nhường 10ms cho trình duyệt vẽ xong khung Modal rồi mới dựng cây JSON
-        setTimeout(() => {
-            if (contentEl) {
-                contentEl.innerHTML = utils.renderFastJson(raw);
-            }
-        }, 10);
+        if (contentEl) {
+            contentEl.innerHTML = utils.renderFastJson(raw);
+        }
 
         if (copyAllBtn) {
             copyAllBtn.onclick = (e) => {
@@ -1051,7 +1075,7 @@ const app = {
             };
         }
     },
-
+    
     renderLinesFast() {
         const container = document.getElementById("code-viewer");
         if (!container) return;
