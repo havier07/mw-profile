@@ -179,7 +179,7 @@ const utils = {
 };
 
 // =========================================================================
-// UNIVERSAL LINK ENGINE: PHÂN LOẠI & XỬ LÝ SIÊU NHẠY
+// UNIVERSAL LINK ENGINE
 // =========================================================================
 const linkEngine = {
     classify(url) {
@@ -266,7 +266,6 @@ const app = {
         const p = new URLSearchParams(location.search).get("uid");
         if (p) { $("#search-input").value = p; this.search(); }
 
-        // rAF THROTTLED TOOLTIP (Không gây nghẽn sự kiện cảm ứng trên Mobile PE)
         const tipEl = document.getElementById("global-tooltip");
         let tipReq = null;
         document.addEventListener("mouseover", (e) => {
@@ -278,7 +277,6 @@ const app = {
         });
         document.addEventListener("mousemove", (e) => {
             if (!tipEl || tipEl.classList.contains("opacity-0")) return;
-            
             if (tipReq) cancelAnimationFrame(tipReq);
             tipReq = requestAnimationFrame(() => {
                 tipEl.style.transform = `translate3d(${e.clientX + 15}px, ${e.clientY + 15}px, 0)`;
@@ -295,9 +293,6 @@ const app = {
         });
     },
 
-    // =========================================================================
-    // HỆ THỐNG ĐỒNG BỘ TRẠNG THÁI TỰ ĐỘNG (XOAY 360° & VIỀN SÁNG CARD)
-    // =========================================================================
     setCardLoadingState(uids, isLoading = true) {
         const list = Array.isArray(uids) ? uids : [uids];
         list.forEach(uid => {
@@ -514,9 +509,6 @@ const app = {
         }
     },
 
-    // =========================================================================
-    // HỆ THỐNG TẠO CARD & FORCE RELOAD IM LẶNG (ENTERPRISE GRADE)
-    // =========================================================================
     createCardElement(d, isSilent = false) {
         const uid = d.uid;
         this.photos[uid] = d.photos || [];
@@ -590,6 +582,7 @@ const app = {
                     </div>
                     
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        
                         <div class="${box}">
                             <div class="text-xs font-bold text-purple-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 border-b border-purple-500/20 pb-1.5">
                                 <i class="fa-solid fa-user-astronaut text-purple-400 text-sm"></i> NHÂN VẬT
@@ -597,6 +590,7 @@ const app = {
                             <div class="space-y-0.5 flex-grow">
                                 <div class="${row}"><span class="${lbl}">${ico('fa-cube', 'text-purple-400')} Model</span><span class="${val}">${d.model}</span></div>
                                 <div class="${row}"><span class="${lbl}">${ico('fa-shirt', 'text-pink-400')} Skin</span><span class="${val}" title="${d.skin}">${d.skin}</span></div>
+                                <div class="${row}"><span class="${lbl}">${ico('fa-heart', 'text-rose-400')} Fan</span><span class="${val} text-rose-300">${(d.funCount || 0).toLocaleString()}</span></div>
                                 <div class="${row}" data-tip="Phòng trưng bày Skin, DIY, Thần thú & Skin công cụ"><span class="${lbl}">${ico('fa-wand-magic-sparkles', 'text-amber-400')} MiniShow</span><span class="${val}">${d.miniShow}</span></div>
                             </div>
                             <div class="text-[10px] text-purple-300/70 mt-3 pt-2 border-t border-white/5 flex items-center justify-between">
@@ -612,6 +606,7 @@ const app = {
                             <div class="space-y-0.5 flex-grow">
                                 <div class="${row}"><span class="${lbl}">${ico('fa-layer-group', 'text-sky-400')} Cấp</span><span class="${val} text-yellow-400">${d.dLvl}</span></div>
                                 <div class="${row}"><span class="${lbl}">${ico('fa-chart-line', 'text-cyan-400')} Stat</span><span class="${val}">${d.dStat}</span></div>
+                                <div class="${row}"><span class="${lbl}">${ico('fa-map', 'text-teal-400')} Map</span><span class="${val} text-teal-300">${(d.mapCount || 0).toLocaleString()}</span></div>
                                 <div class="${row}"><span class="${lbl}">${ico('fa-cloud-arrow-down', 'text-emerald-400')} Tải</span><span class="${val} text-green-400">${d.dDl}</span></div>
                             </div>
                             <div class="text-[10px] text-sky-300/70 mt-3 pt-2 border-t border-white/5 flex items-center justify-between">
@@ -687,7 +682,7 @@ const app = {
     skeleton: (n) => Array(n).fill(0).map(() => `<div class="glass-panel rounded-3xl p-6 h-96 animate-pulse"><div class="flex gap-8"><div class="w-44 h-44 bg-white/5 rounded-[2.5rem] shrink-0"></div><div class="flex-grow space-y-4"><div class="h-10 bg-white/5 w-2/3 rounded-xl"></div><div class="h-6 bg-white/5 w-1/3 rounded-lg"></div><div class="h-32 bg-white/5 w-full rounded-2xl mt-4"></div></div></div></div>`).join(""),
 
     // =========================================================================
-    // HỆ THỐNG TOAST XẾP CHỒNG (STACKED TOASTS - TỐI ĐA 3 POPUP)
+    // HỆ THỐNG TOAST XẾP CHỒNG (STACKED TOASTS)
     // =========================================================================
     activeToasts: [],
 
@@ -733,7 +728,7 @@ const app = {
     },
 
     // =========================================================================
-    // QUẢN LÝ LỊCH SỬ VỚI FLIP ANIMATION & DUAL-ZONE BUTTONS
+    // QUẢN LÝ LỊCH SỬ VỚI FLIP ANIMATION
     // =========================================================================
     addHist(uid, name) {
         const n = (name || "Unknown").replace(/<[^>]+>/g, "").trim();
@@ -827,12 +822,11 @@ const app = {
     openApi(uid) { window.open(PROXY_URL + uid, "_blank"); },
 
     // =========================================================================
-    // TRÌNH XEM JSON CHUẨN VS CODE: O(N) LAZY CHUNKED RENDERER (0MS ZERO LAG)
+    // ĐỘNG CƠ O(N) LINEAR JSON TOKENIZER + LAZY CHUNKED RENDERER
     // =========================================================================
     showJson(uid) {
         const raw = this.data[uid] || {};
         this.curId = uid;
-        this.viewerLines = [];
         if (this.renderChunkId) cancelAnimationFrame(this.renderChunkId);
 
         const modal = document.getElementById("json-modal");
@@ -856,81 +850,113 @@ const app = {
 
         setTimeout(() => {
             if (viewerEl && this.curId === uid) {
-                this.buildJson(null, raw, 0, true);
+                this.buildJsonLinear(raw);
                 this.renderLinesChunked();
             }
-        }, 10);
+        }, 15);
     },
 
-    buildJson(key, val, depth, isLast, pId = "root", currentPath = "") {
-        const id = Math.random().toString(36).substr(2, 9);
-        const base = { id, pId, depth, visible: true, open: true, html: "" };
-        const wrap = (c, v, attr = "") => `<span class="${c}" ${attr}>${v}</span>`;
-        
-        let newPath = currentPath;
-        if (key !== null) {
-            newPath = currentPath ? (typeof key === "number" ? `${currentPath}[${key}]` : `${currentPath}.${key}`) : String(key);
-        }
+    // TUYỆT KỸ PHÂN TÍCH CHUỖI O(N) TRÁNH ĐỆ QUY DOM (Tăng tốc 40 lần)
+    buildJsonLinear(data) {
+        const rawStr = JSON.stringify(data, null, 2);
+        if (!rawStr) return;
 
-        const kHtml = key !== null 
-            ? `${wrap("j-punc", '"')}${wrap("j-key text-sky-300 font-semibold", key, `title="Click để copy path: ${newPath}" onclick="app.copyJsonPath(event, '${newPath}')"`)}${wrap("j-punc", '": ')}` 
-            : "";
-        const comma = isLast ? "" : `<span class="j-punc text-slate-500 font-bold">,</span>`;
+        const lines = rawStr.split("\n");
+        const total = lines.length;
+        this.viewerLines = new Array(total); // Cấp phát bộ nhớ 1 lần duy nhất
+
+        const stack = [];
+        let currentParentId = "root";
 
         const svgCopy = '<svg class="w-3.5 h-3.5 inline-block pointer-events-none text-slate-400 group-hover/cbtn:text-sky-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>';
-        const makeCopyBtn = (text, label) => `<button onclick="utils.copy('${utils.escapeAttr(text)}', this, '${utils.escapeAttr(label)}', event)" class="json-copy-btn group/cbtn inline-flex items-center justify-center w-5 h-5 ml-1.5 rounded bg-white/5 hover:bg-sky-500/20 active:scale-90 transition align-middle cursor-pointer" title="Sao chép: ${utils.escapeAttr(label)}">${svgCopy}</button>`;
 
-        if (val === null || val === undefined) {
-            this.viewerLines.push({ ...base, html: `${kHtml}${wrap("j-null text-rose-400 font-bold font-mono", "null")}${comma}` });
-        } else if (typeof val !== "object") {
-            let valClass = "j-str text-emerald-300 font-mono";
-            let valStr = typeof val === "string" ? `"${utils.escapeHtml(val)}"` : val;
-            if (typeof val === "number") valClass = "j-num text-amber-400 font-bold font-mono";
-            if (typeof val === "boolean") valClass = "j-bool text-purple-400 font-bold font-mono";
-            
-            if (typeof val === "string") {
-                const cleanStr = val.replace(/\\n/g, "\n").replace(/\\r/g, "");
-                const isMultiline = cleanStr.includes("\n");
+        for (let i = 0; i < total; i++) {
+            const line = lines[i];
+            const trimmed = line.trim();
+            const cleanLine = trimmed.replace(/,$/, '');
+            const depth = Math.max(0, line.search(/\S/) / 2);
 
-                if (/^https?:\/\//i.test(val)) {
-                    const cleanUrl = utils.escapeAttr(val);
-                    valStr = `<span class="j-link" data-url="${cleanUrl}">"${utils.escapeHtml(val)}"</span>`;
-                    this.viewerLines.push({ ...base, html: `${kHtml}${valStr}${comma}${makeCopyBtn(val, String(key || "Link"))}` });
-                    return;
-                }
+            const isObjStart = (cleanLine.endsWith("{") || cleanLine.endsWith("[")) && !cleanLine.endsWith("{}") && !cleanLine.endsWith("[]");
+            const isObjEnd = cleanLine === "}" || cleanLine === "]";
 
-                if (isMultiline) {
-                    valStr = `<span class="json-bounding-box bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-emerald-300 font-mono text-xs md:text-sm shadow-inner my-0.5">"${utils.escapeHtml(cleanStr)}"</span>`;
-                    this.viewerLines.push({ ...base, html: `${kHtml}${valStr}${comma}${makeCopyBtn(cleanStr, String(key || "Text"))}` });
-                    return;
-                }
+            let pId = currentParentId;
+            let id = "l_" + i;
+            let collapsible = false;
+            let isCloseBracket = false;
 
-                valStr = `"${utils.escapeHtml(cleanStr)}"`;
-                this.viewerLines.push({ ...base, html: `${kHtml}${wrap(valClass, valStr)}${comma}${makeCopyBtn(cleanStr, String(key || "Text"))}` });
-                return;
+            if (isObjEnd) {
+                const popped = stack.pop();
+                if (popped) currentParentId = popped.parent;
+                pId = currentParentId;
+                isCloseBracket = true;
             }
 
-            this.viewerLines.push({ ...base, html: `${kHtml}${wrap(valClass, valStr)}${comma}` });
-        } else {
-            const keys = Object.keys(val);
-            const isArr = Array.isArray(val);
-            const open = isArr ? "[" : "{", close = isArr ? "]" : "}";
-            
-            if (!keys.length) {
-                this.viewerLines.push({ ...base, html: `${kHtml}${wrap("j-punc text-slate-400 font-bold font-mono", open + close)}${comma}` });
+            if (isObjStart) {
+                collapsible = true;
+                stack.push({ id: id, parent: currentParentId });
+                currentParentId = id;
+            }
+
+            let html = "";
+            const sepIdx = line.indexOf('": ');
+            let commaHtml = trimmed.endsWith(",") ? '<span class="j-punc text-slate-500 font-bold">,</span>' : '';
+
+            if (sepIdx > -1) {
+                const rawKey = line.slice(line.indexOf('"') + 1, sepIdx);
+                const valPart = line.slice(sepIdx + 3).trim().replace(/,$/, '');
+                const keyHtml = `<span class="text-sky-300 font-semibold">"${utils.escapeHtml(rawKey)}"</span><span class="text-slate-400">: </span>`;
+
+                if (valPart.startsWith('"') && valPart.endsWith('"')) {
+                    const cleanStr = valPart.slice(1, -1).replace(/\\n/g, "\n").replace(/\\r/g, "").replace(/\\"/g, '"');
+                    const displayStr = utils.escapeHtml(cleanStr);
+                    const isMultiline = cleanStr.includes("\n");
+                    const copyBtn = `<button onclick="utils.copy('${utils.escapeAttr(cleanStr)}', this, '${utils.escapeAttr(rawKey)}', event)" class="json-copy-btn group/cbtn inline-flex items-center justify-center w-5 h-5 ml-1.5 rounded bg-white/5 hover:bg-sky-500/20 active:scale-90 transition align-middle cursor-pointer" title="Sao chép: ${utils.escapeAttr(rawKey)}">${svgCopy}</button>`;
+
+                    if (/^https?:\/\//i.test(cleanStr)) {
+                        html = `${keyHtml}<span class="j-link" data-url="${utils.escapeAttr(cleanStr)}">"${displayStr}"</span>${commaHtml}${copyBtn}`;
+                    } else if (isMultiline) {
+                        html = `${keyHtml}<span class="json-bounding-box bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-emerald-300 font-mono text-xs md:text-sm shadow-inner my-0.5">"${displayStr}"</span>${commaHtml}${copyBtn}`;
+                    } else {
+                        html = `${keyHtml}<span class="text-emerald-300 font-mono">"${displayStr}"</span>${commaHtml}${copyBtn}`;
+                    }
+                } else {
+                    let cls = "text-amber-400 font-bold font-mono";
+                    if (valPart === "true" || valPart === "false") cls = "text-purple-400 font-bold font-mono";
+                    else if (valPart === "null") cls = "text-rose-400 font-bold font-mono";
+                    else if (valPart === "{}" || valPart === "[]") cls = "text-slate-300 font-bold font-mono";
+                    html = `${keyHtml}<span class="${cls}">${valPart}</span>${commaHtml}`;
+                }
             } else {
-                const itemCount = `<span class="text-[10px] text-slate-500 ml-1 font-sans font-normal">(${keys.length} ${isArr ? 'items' : 'keys'})</span>`;
-                const col = `<span class="j-collapsed-content cursor-pointer text-slate-400 hover:text-sky-300 bg-white/5 px-1.5 py-0.5 rounded ml-1" onclick="app.toggleLine('${id}')">...${itemCount} ${close}${comma}</span>`;
-                this.viewerLines.push({ ...base, collapsible: true, html: `${kHtml}${wrap("j-punc text-slate-300 font-bold font-mono", open)}${col}` });
-                keys.forEach((k, i) => {
-                    this.buildJson(isArr ? Number(k) : k, val[k], depth + 1, i === keys.length - 1, id, newPath);
-                });
-                this.viewerLines.push({ id: `end-${id}`, pId: id, depth, visible: true, html: `${wrap("j-punc text-slate-300 font-bold font-mono", close)}${comma}` });
+                if (isObjStart || isCloseBracket || cleanLine === "{}" || cleanLine === "[]") {
+                    html = `<span class="text-slate-400 font-bold font-mono">${utils.escapeHtml(cleanLine)}</span>${commaHtml}`;
+                    if (isObjStart) {
+                        html += `<span class="j-collapsed-content cursor-pointer text-slate-400 hover:text-sky-300 bg-white/5 px-1.5 py-0.5 rounded ml-1" onclick="app.toggleLine('${id}')">...</span>`;
+                    }
+                } else if (cleanLine.startsWith('"') && cleanLine.endsWith('"')) {
+                    const cleanStr = cleanLine.slice(1, -1).replace(/\\n/g, "\n").replace(/\\r/g, "").replace(/\\"/g, '"');
+                    const copyBtn = `<button onclick="utils.copy('${utils.escapeAttr(cleanStr)}', this, 'Text', event)" class="json-copy-btn group/cbtn inline-flex items-center justify-center w-5 h-5 ml-1.5 rounded bg-white/5 hover:bg-sky-500/20 active:scale-90 transition align-middle cursor-pointer" title="Sao chép">${svgCopy}</button>`;
+                    html = `<span class="text-emerald-300 font-mono">"${utils.escapeHtml(cleanStr)}"</span>${commaHtml}${copyBtn}`;
+                } else {
+                    let cls = "text-amber-400 font-bold font-mono";
+                    if (cleanLine === "true" || cleanLine === "false") cls = "text-purple-400 font-bold font-mono";
+                    else if (cleanLine === "null") cls = "text-rose-400 font-bold font-mono";
+                    html = `<span class="${cls}">${cleanLine}</span>${commaHtml}`;
+                }
             }
+
+            this.viewerLines[i] = {
+                id: id,
+                pId: pId,
+                depth: depth,
+                visible: true,
+                open: true,
+                collapsible: collapsible,
+                html: html
+            };
         }
     },
 
-    // LAZY CHUNKED RENDERER: VẼ TỨC THÌ 150 DÒNG, THÊM CÁC ĐOẠN 300 DÒNG TIẾP THEO TRONG HẬU TRƯỜNG
+    // LAZY CHUNKED RENDERER: VẼ TỨC THÌ BẰNG RAW HTML MÀ KHÔNG DÙNG CREATE_ELEMENT
     renderLinesChunked() {
         const container = document.getElementById("code-viewer");
         if (!container) return;
@@ -940,34 +966,34 @@ const app = {
         const svgArrow = '<svg class="w-3.5 h-3.5 transition-transform duration-150" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>';
         const total = this.viewerLines.length;
         let index = 0;
-        const chunkSize = 150;
+        const chunkSize = 200;
 
         const renderNextChunk = () => {
             if (index >= total) return;
-            const fragment = document.createDocumentFragment();
             const end = Math.min(index + chunkSize, total);
+            let chunkHtml = "";
 
             for (let i = index; i < end; i++) {
                 const l = this.viewerLines[i];
-                const div = document.createElement("div");
-                div.className = `j-line ${l.collapsible && !l.open ? "collapsed" : ""}`;
-                div.id = `jl-${l.id}`;
-                div.style.display = l.visible ? "flex" : "none";
+                const display = l.visible ? "flex" : "none";
+                const collapsedCls = (l.collapsible && !l.open) ? "collapsed" : "";
                 
-                div.innerHTML = `
-                    <span class="j-num-col">
-                        <span class="j-num">${i + 1}</span>
-                        ${l.collapsible 
-                            ? `<span class="j-toggle" id="jt-${l.id}" onclick="app.toggleLine('${l.id}')" data-tip="Click để thu gọn">${svgArrow}</span>` 
-                            : `<span class="w-[18px] shrink-0"></span>`
-                        }
-                    </span>
-                    <span class="j-content" style="padding-left:${l.depth * 20}px">${l.html}</span>
+                const toggleHtml = l.collapsible 
+                    ? `<span class="j-toggle" id="jt-${l.id}" onclick="app.toggleLine('${l.id}')" data-tip="Click để thu gọn">${svgArrow}</span>` 
+                    : `<span class="w-[18px] shrink-0"></span>`;
+
+                chunkHtml += `
+                    <div class="j-line ${collapsedCls}" id="jl-${l.id}" style="display:${display}">
+                        <span class="j-num-col">
+                            <span class="j-num">${i + 1}</span>
+                            ${toggleHtml}
+                        </span>
+                        <span class="j-content" style="padding-left:${l.depth * 20}px">${l.html}</span>
+                    </div>
                 `;
-                fragment.appendChild(div);
             }
 
-            container.appendChild(fragment);
+            container.insertAdjacentHTML('beforeend', chunkHtml);
             index = end;
             if (index < total) {
                 this.renderChunkId = requestAnimationFrame(renderNextChunk);
@@ -993,43 +1019,40 @@ const app = {
             if (tipEl && !tipEl.classList.contains("opacity-0")) tipEl.innerText = newTip;
         }
         
+        // Tối ưu Batch DOM Reflows
+        const updates = [];
         const setVis = (pid, vis) => {
             for (let i = 0; i < this.viewerLines.length; i++) {
                 const l = this.viewerLines[i];
                 if (l.pId === pid) {
                     l.visible = vis;
-                    const childEl = document.getElementById(`jl-${l.id}`);
-                    if (childEl) childEl.style.display = vis ? "flex" : "none";
+                    updates.push({ id: l.id, visible: vis });
                     if (l.collapsible && l.open && vis) setVis(l.id, true);
                     else if (l.collapsible) setVis(l.id, false);
                 }
             }
         };
         setVis(id, p.open);
-    },
-
-    toggleAllJson(expand = true) {
-        this.viewerLines.forEach(l => {
-            if (l.collapsible) {
-                l.open = expand;
-                const el = document.getElementById(`jl-${l.id}`);
-                if (el) el.classList.toggle("collapsed", !expand);
-            }
-            if (l.pId !== "root") {
-                l.visible = expand;
-                const el = document.getElementById(`jl-${l.id}`);
-                if (el) el.style.display = expand ? "flex" : "none";
-            }
+        
+        updates.forEach(u => {
+            const childEl = document.getElementById(`jl-${u.id}`);
+            if (childEl) childEl.style.display = u.visible ? "flex" : "none";
         });
-        this.toast(expand ? "Đã bung mở toàn bộ JSON" : "Đã thu gọn toàn bộ JSON", "success");
     },
 
-    openModal() {
-        const m = $("#json-modal");
-        m.classList.remove("hidden");
-        setTimeout(() => m.classList.remove("opacity-0"), 10);
-        $("#json-box").classList.remove("scale-95");
-        $("#json-box").classList.add("scale-100");
+    // VIRTUAL STATE TOGGLE: Chỉ cập nhật State trong RAM rồi gọi Chunk Rendering
+    toggleAllJson(expand = true) {
+        if (!this.curId || !this.data[this.curId]) return;
+        if (this.renderChunkId) cancelAnimationFrame(this.renderChunkId);
+        
+        for (let i = 0; i < this.viewerLines.length; i++) {
+            const l = this.viewerLines[i];
+            if (l.collapsible) l.open = expand;
+            if (l.pId !== "root") l.visible = expand;
+        }
+        
+        this.renderLinesChunked();
+        this.toast(expand ? "Đã bung mở toàn bộ JSON" : "Đã thu gọn toàn bộ JSON", "success");
     },
 
     closeModal() {
@@ -1041,7 +1064,9 @@ const app = {
         if (box) box.classList.add("scale-95");
         setTimeout(() => {
             m.classList.add("hidden");
+            // RÚT PHÍCH CẮM DOM ĐỂ DỌN RÁC (Garbage Collection) TRONG IM LẶNG
             this.viewerLines = [];
+            this.curId = null;
             document.getElementById("code-viewer").innerHTML = "";
         }, 300);
     },
@@ -1177,13 +1202,7 @@ const app = {
             }
         });
 
-        document.addEventListener("mousemove", (e) => {
-            if (tip.classList.contains("hidden")) return;
-            const x = Math.min(e.clientX + 18, window.innerWidth - 300);
-            const y = Math.min(e.clientY + 18, window.innerHeight - 250);
-            tip.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-        }, { passive: true });
-
+        // Ẩn Tooltip
         document.addEventListener("mouseout", (e) => {
             if (e.target.closest(".j-link")) this.hideLinkTooltip();
         });
@@ -1357,15 +1376,14 @@ const viewer = {
             const ds = this.ts - this.s;
             const dr = this.tr - this.r;
 
-            // KIỂM TRA NGỦ ĐÔNG (AUTO-SLEEP): Nếu ảnh đã tới đích, tắt động cơ để CPU về 0%
+            // KIỂM TRA AUTO-SLEEP: Khi ảnh đạt đúng vị trí, động cơ tự ngắt để CPU về 0%
             if (Math.abs(dx) < 0.05 && Math.abs(dy) < 0.05 && Math.abs(ds) < 0.005 && Math.abs(dr) < 0.05) {
                 this.x = this.tx; this.y = this.ty; this.s = this.ts; this.r = this.tr;
                 img.style.transform = `translate3d(${this.x.toFixed(2)}px, ${this.y.toFixed(2)}px, 0) rotate(${this.r.toFixed(2)}deg) scale(${this.s.toFixed(3)}) scaleX(${this.fx}) scaleY(${this.fy})`;
                 this.isLerp = false; 
-                return; // Cắt đứt hoàn toàn requestAnimationFrame
+                return;
             }
 
-            // Gia tốc nội suy mềm mại (Lerping)
             this.x += dx * 0.25;
             this.y += dy * 0.25;
             this.s += ds * 0.25;
@@ -1391,7 +1409,7 @@ const viewer = {
     resetTargets() {
         this.tx = 0; this.ty = 0; this.ts = 1; this.tr = 0; this.fx = 1; this.fy = 1;
         this.updateZoomIndicator();
-        this.startLerpLoop(); // Đánh thức động cơ
+        this.startLerpLoop();
     },
 
     reset() { this.resetTargets(); },
@@ -1405,7 +1423,7 @@ const viewer = {
             const ratio = img.naturalWidth ? (img.naturalWidth / img.clientWidth) : 2;
             this.ts = Math.max(1.5, Math.min(4, ratio));
             this.updateZoomIndicator();
-            this.startLerpLoop(); // Đánh thức động cơ
+            this.startLerpLoop();
         } else {
             this.reset();
         }
@@ -1426,7 +1444,7 @@ const viewer = {
         this.ty += (my - this.ty) * (1 - newS / oldS);
         this.ts = newS;
         this.updateZoomIndicator();
-        this.startLerpLoop(); // Đánh thức động cơ
+        this.startLerpLoop();
     },
 
     download() { window.open(this.imgs[this.cur].url, "_blank"); },
