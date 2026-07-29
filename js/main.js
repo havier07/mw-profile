@@ -181,7 +181,7 @@ const utils = {
     },
 
     // =========================================================================
-    // UTILS: RICH JSON FORMATTER & BOUNDING BOX RENDERER
+    // UTILS: REGEX JSON HIGHLIGHTER SIÊU TỐC (< 5MS - ZERO DOM BLOAT)
     // =========================================================================
     escapeHtml: (t) => String(t)
         .replace(/&/g, "&amp;")
@@ -189,57 +189,44 @@ const utils = {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;"),
 
-    renderRichJson: (data, rootName = "") => {
-        const build = (val, key = "", isLast = true) => {
-            // Dấu phẩy kết thúc thuộc tính (nếu không phải phần tử cuối)
-            const comma = isLast ? "" : '<span class="text-slate-500 font-bold">,</span>';
-            const keyHtml = key ? `<span class="text-sky-300 font-semibold font-mono">"${key}"</span><span class="text-slate-400 font-mono">: </span>` : "";
+    renderFastJson: (data) => {
+        let jsonStr = JSON.stringify(data, null, 2);
+        if (!jsonStr) return "";
 
-            if (val === null || val === undefined) {
-                return `<div class="py-0.5">${keyHtml}<span class="text-rose-400 font-mono font-bold">null</span>${comma}</div>`;
-            }
-            if (typeof val === "boolean") {
-                return `<div class="py-0.5">${keyHtml}<span class="text-purple-400 font-mono font-bold">${val}</span>${comma}</div>`;
-            }
-            if (typeof val === "number") {
-                return `<div class="py-0.5">${keyHtml}<span class="text-amber-400 font-mono font-bold">${val}</span>${comma}</div>`;
-            }
-            if (typeof val === "string") {
-                // 1. CHUẨN HÓA KÝ TỰ XUẤT HÀNG: Biến \n hoặc \\n từ game thành xuống dòng thật
-                const cleanStr = String(val).replace(/\\r/g, "").replace(/\\n/g, "\n");
-                const isMultiline = cleanStr.includes("\n");
-                
-                // 2. NÚT COPY: Đặt NGAY SAU dấu nháy " kết thúc HOẶC SAU dấu phẩy (comma)
-                const copyBtn = `<button onclick="utils.copy('${utils.escapeAttr(cleanStr)}', this, '${key || "Chuỗi"}', event)" class="json-copy-btn w-6 h-6 ml-1.5 rounded-md bg-white/5 hover:bg-sky-500/20 text-slate-400 hover:text-sky-300 active:scale-90 transition-all shrink-0" title="Sao chép nội dung: ${key || 'Text'}"><i class="fa-regular fa-copy text-xs"></i></button>`;
+        // 1. Chống XSS
+        jsonStr = jsonStr.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-                if (isMultiline) {
-                    // 3. BOUNDING BOX CHỮ NHẬT CHO TEXT NHIỀU DÒNG (mood_text...)
-                    return `
-                        <div class="py-1 leading-relaxed">
-                            ${keyHtml}
-                            <div class="inline-block max-w-full align-top my-0.5">
-                                <div class="json-bounding-box bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-emerald-300 font-mono text-xs md:text-sm shadow-inner">"${utils.escapeHtml(cleanStr)}"</div>
-                            </div>${comma}${copyBtn}
-                        </div>`;
+        // 2. Quét Regex 1 lần duy nhất cho toàn bộ payload (Không đệ quy DOM)
+        return jsonStr.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:|\s*,)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, (match) => {
+            if (/^"/.test(match)) {
+                if (/:$/.test(match.trim())) {
+                    // KEY: Màu xanh Sky
+                    return `<span class="text-sky-300 font-semibold">${match}</span>`;
                 } else {
-                    // 4. TEXT 1 DÒNG BÌNH THƯỜNG
-                    return `<div class="py-0.5">${keyHtml}<span class="text-emerald-300 font-mono">"${utils.escapeHtml(cleanStr)}"</span>${comma}${copyBtn}</div>`;
+                    // VALUE (STRING): Xử lý xuống dòng \n và đặt nút Copy
+                    const hasComma = /,$/.test(match.trim());
+                    const rawQuote = match.replace(/\s*,$/, ""); // Tách dấu phẩy đuôi
+                    const cleanStr = rawQuote.slice(1, -1).replace(/\\n/g, "\n").replace(/\\r/g, "");
+                    const commaHtml = hasComma ? '<span class="text-slate-500 font-bold">,</span>' : '';
+
+                    // Nút Copy: Đặt CHÍNH XÁC sau dấu phẩy (commaHtml) hoặc sau nháy kép ""
+                    const copyBtn = `<button onclick="utils.copy('${utils.escapeAttr(cleanStr)}', this, 'Text', event)" class="json-copy-btn w-5 h-5 ml-1.5 rounded bg-white/5 hover:bg-sky-500/20 text-slate-400 hover:text-sky-300 active:scale-90 transition-all shrink-0 inline-flex items-center justify-center" title="Sao chép"><i class="fa-regular fa-copy text-[10px]"></i></button>`;
+
+                    if (cleanStr.includes("\n")) {
+                        // MULTILINE BOUNDING BOX
+                        return `<div class="inline-block max-w-full align-top my-0.5"><div class="json-bounding-box bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-emerald-300 text-xs md:text-sm shadow-inner">"${cleanStr}"</div></div>${commaHtml}${copyBtn}`;
+                    } else {
+                        // SINGLE LINE TEXT
+                        return `<span class="text-emerald-300">"${cleanStr}"</span>${commaHtml}${copyBtn}`;
+                    }
                 }
             }
-            if (Array.isArray(val)) {
-                if (val.length === 0) return `<div class="py-0.5">${keyHtml}<span class="text-slate-400 font-mono">[]</span>${comma}</div>`;
-                const items = val.map((item, idx) => build(item, "", idx === val.length - 1)).join("");
-                return `<div class="py-0.5">${keyHtml}<span class="text-slate-400 font-mono">[</span><div class="pl-4 md:pl-6 border-l border-white/10 my-0.5 space-y-0.5">${items}</div><span class="text-slate-400 font-mono">]</span>${comma}</div>`;
-            }
-            if (typeof val === "object") {
-                const keys = Object.keys(val);
-                if (keys.length === 0) return `<div class="py-0.5">${keyHtml}<span class="text-slate-400 font-mono">{}</span>${comma}</div>`;
-                const items = keys.map((k, idx) => build(val[k], k, idx === keys.length - 1)).join("");
-                return `<div class="py-0.5">${keyHtml}<span class="text-slate-400 font-mono">{</span><div class="pl-4 md:pl-6 border-l border-white/10 my-0.5 space-y-0.5">${items}</div><span class="text-slate-400 font-mono">}</span>${comma}</div>`;
-            }
-            return "";
-        };
-        return `<div class="font-mono text-xs md:text-sm text-slate-300 leading-relaxed overflow-x-auto">${build(data, rootName, true)}</div>`;
+            // NUMBERS, BOOLEANS, NULL
+            let cls = "text-amber-400 font-bold";
+            if (/true|false/.test(match)) cls = "text-purple-400 font-bold";
+            if (/null/.test(match)) cls = "text-rose-400 font-bold";
+            return `<span class="${cls}">${match}</span>`;
+        });
     },
 };
 
@@ -1004,20 +991,19 @@ const app = {
     openApi(uid) { window.open(PROXY_URL + uid, "_blank"); },
 
     // =========================================================================
-    // MODAL XEM JSON SIÊU MƯỢT VỚI BOUNDING BOX & NÚT COPY TỰ ĐỘNG
+    // MODAL XEM JSON KHÔNG GIẬT LAG (FRAME-YIELDING NON-BLOCKING UI)
     // =========================================================================
     showJson(uid) {
         const raw = this.data[uid] || {};
         let modal = document.getElementById("json-modal");
         
-        // Tự động tạo Modal nếu chưa có trong DOM
         if (!modal) {
             modal = document.createElement("div");
             modal.id = "json-modal";
             modal.className = "fixed inset-0 z-[500] bg-black/80 backdrop-blur-md hidden items-center justify-center p-3 md:p-6";
             modal.innerHTML = `
                 <div class="glass-panel rounded-3xl max-w-4xl w-full max-h-[88vh] flex flex-col border border-white/15 shadow-2xl overflow-hidden">
-                    <div class="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-white/5">
+                    <div class="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-white/5 shrink-0">
                         <div class="flex items-center gap-2">
                             <i class="fa-solid fa-code text-sky-400"></i>
                             <h3 id="json-modal-title" class="font-bold text-white text-sm md:text-base font-mono">JSON DATA</h3>
@@ -1031,7 +1017,8 @@ const app = {
                             </button>
                         </div>
                     </div>
-                    <div id="json-modal-content" class="p-4 md:p-6 overflow-y-auto flex-grow space-y-1 bg-[#090d16]/90 select-text"></div>
+                    <!-- THẺ <pre> ĐẢM BẢO TỐC ĐỘ HIỂN THỊ MAX PING VÀ CĂN LỀ CHUẨN JSON -->
+                    <pre id="json-modal-content" class="p-4 md:p-6 overflow-y-auto flex-grow bg-[#090d16]/90 select-text font-mono text-xs md:text-sm text-slate-300 leading-relaxed whitespace-pre-wrap m-0"></pre>
                 </div>
             `;
             document.body.appendChild(modal);
@@ -1043,20 +1030,26 @@ const app = {
 
         if (titleEl) titleEl.innerText = `RAW JSON DATA — UID: ${uid}`;
         
-        // SỬ DỤNG RENDERER TRỰC QUAN ĐỂ VẼ CÂY BOUNDING BOX
+        // 1. MỞ MODAL TỨC THÌ VỚI TRẠNG THÁI LOADING (0ms Delay)
         if (contentEl) {
-            contentEl.innerHTML = utils.renderRichJson(raw);
+            contentEl.innerHTML = '<div class="text-center py-12 text-slate-400"><i class="fa-solid fa-circle-notch fa-spin text-2xl text-sky-400 mb-2"></i><br>Đang phân tích cấu trúc JSON...</div>';
         }
 
-        // Sự kiện cho nút Copy Toàn Bộ JSON (vẫn có tick xanh mượt mà)
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+
+        // 2. FRAME-YIELDING: Nhường 10ms cho trình duyệt vẽ xong khung Modal rồi mới dựng cây JSON
+        setTimeout(() => {
+            if (contentEl) {
+                contentEl.innerHTML = utils.renderFastJson(raw);
+            }
+        }, 10);
+
         if (copyAllBtn) {
             copyAllBtn.onclick = (e) => {
                 utils.copy(JSON.stringify(raw, null, 2), copyAllBtn, `Toàn bộ JSON UID ${uid}`, e);
             };
         }
-
-        modal.classList.remove("hidden");
-        modal.classList.add("flex");
     },
 
     renderLinesFast() {
