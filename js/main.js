@@ -119,7 +119,7 @@ const utils = {
     },
 
     // =========================================================================
-    // UTILS: O(N) LINEAR JSON TOKENIZER (0% BACKTRACKING - ZERO FREEZE)
+    // UTILS: STRUCTURED LINE STREAMER (SỐ DÒNG + HIGHLIGHT + 0MS ZERO LAG)
     // =========================================================================
     copy: (txt, btnEl = null, label = "", e = null) => {
         if (e && e.stopPropagation) e.stopPropagation();
@@ -155,16 +155,18 @@ const utils = {
         const rawStr = JSON.stringify(data, null, 2);
         if (!rawStr) return "";
 
-        // Icon SVG thuần tịnh: Trình duyệt vẽ trong 0ms, không kích hoạt FontAwesome JS
-        const svgCopy = '<svg class="w-3.5 h-3.5 inline-block pointer-events-none text-slate-400 group-hover/cbtn:text-sky-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>';
+        // Icon SVG thuần: Không bị quét bởi FontAwesome JS -> Không bao giờ gây đơ web
+        const svgCopy = '<svg class="w-3.5 h-3.5 inline-block pointer-events-none text-slate-400 group-hover/cbtn:text-sky-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>';
 
-        // THUẬT TOÁN TUYẾN TÍNH INDEXOF O(N): Siêu nhanh < 1.5ms cho 10.000 dòng
         const lines = rawStr.split("\n");
         const out = [];
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
+            const lineNum = i + 1; // SỐ THỨ TỰ DÒNG (1, 2, 3...)
             const sepIdx = line.indexOf('": ');
+
+            let lineContentHtml = "";
 
             // 1. DÒNG CHỨA CẶP "KEY": VALUE
             if (sepIdx > -1) {
@@ -174,7 +176,7 @@ const utils = {
 
                 const keyHtml = `${indent}<span class="text-sky-300 font-semibold">"${utils.escapeHtml(rawKey)}"</span><span class="text-slate-400">: </span>`;
 
-                // Kiểm tra dấu phẩy `,` kết thúc dòng
+                // Kiểm tra dấu phẩy `,` kết thúc
                 const hasComma = valPart.endsWith(',');
                 const rawVal = hasComma ? valPart.slice(0, -1) : valPart;
                 const commaHtml = hasComma ? '<span class="text-slate-500 font-bold">,</span>' : '';
@@ -185,35 +187,43 @@ const utils = {
                     const displayStr = utils.escapeHtml(cleanStr);
                     const isMultiline = cleanStr.includes("\n");
 
-                    // NÚT COPY: Luôn đặt ngay sau dấu phẩy (hoặc sau dấu " kết thúc)
+                    // NÚT COPY: Luôn nằm sát ngay sau dấu phẩy (hoặc dấu " kết thúc)
                     const copyBtn = `<button onclick="utils.copy('${utils.escapeAttr(cleanStr)}', this, '${utils.escapeAttr(rawKey)}', event)" class="json-copy-btn group/cbtn inline-flex items-center justify-center w-5 h-5 ml-1.5 rounded bg-white/5 hover:bg-sky-500/20 active:scale-90 transition align-middle cursor-pointer" title="Sao chép: ${rawKey}">${svgCopy}</button>`;
 
                     if (isMultiline) {
-                        // BOUNDING BOX CHỮ NHẬT CHO TEXT NHIỀU DÒNG (\n)
+                        // BOUNDING BOX CHỮ NHẬT CHO VĂN BẢN NHIỀU DÒNG
                         const boxHtml = `<span class="json-bounding-box bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-emerald-300 font-mono text-xs md:text-sm shadow-inner my-0.5">"${displayStr}"</span>`;
-                        out.push(`${keyHtml}${boxHtml}${commaHtml}${copyBtn}`);
+                        lineContentHtml = `${keyHtml}${boxHtml}${commaHtml}${copyBtn}`;
                     } else {
-                        // TEXT 1 DÒNG INLINE BÌNH THƯỜNG
-                        out.push(`${keyHtml}<span class="text-emerald-300">"${displayStr}"</span>${commaHtml}${copyBtn}`);
+                        // VĂN BẢN 1 DÒNG
+                        lineContentHtml = `${keyHtml}<span class="text-emerald-300">"${displayStr}"</span>${commaHtml}${copyBtn}`;
                     }
-                    continue;
-                }
-
+                } 
                 // B. NẾU VALUE LÀ SỐ, BOOLEAN, NULL -> KHÔNG CÓ NÚT COPY
-                let cls = "text-amber-400 font-bold";
-                if (rawVal === "true" || rawVal === "false") cls = "text-purple-400 font-bold";
-                else if (rawVal === "null") cls = "text-rose-400 font-bold";
-                else if (rawVal === "{" || rawVal === "[") cls = "text-slate-300 font-bold";
+                else {
+                    let cls = "text-amber-400 font-bold";
+                    if (rawVal === "true" || rawVal === "false") cls = "text-purple-400 font-bold";
+                    else if (rawVal === "null") cls = "text-rose-400 font-bold";
+                    else if (rawVal === "{" || rawVal === "[") cls = "text-slate-300 font-bold";
 
-                out.push(`${keyHtml}<span class="${cls}">${rawVal}</span>${commaHtml}`);
-                continue;
+                    lineContentHtml = `${keyHtml}<span class="${cls}">${rawVal}</span>${commaHtml}`;
+                }
+            } 
+            // 2. CÁC DÒNG NGOẶC HOẶC PHẦN TỬ KHÁC
+            else {
+                lineContentHtml = `<span class="text-slate-300">${utils.escapeHtml(line)}</span>`;
             }
 
-            // 2. CÁC DÒNG NGOẶC HOẶC PHẦN TỬ MẢNG ĐƠN LẺ
-            out.push(`<span class="text-slate-300">${utils.escapeHtml(line)}</span>`);
+            // ĐÓNG GÓI CHUẨN IDE: CỘT SỐ DÒNG (.j-num-col) + CỘT CODE (.j-content) TRONG KHUNG (.j-line)
+            out.push(`
+                <div class="j-line">
+                    <span class="j-num-col"><span class="j-num">${lineNum}</span></span>
+                    <span class="j-content">${lineContentHtml}</span>
+                </div>
+            `);
         }
 
-        return out.join("\n");
+        return out.join("");
     },
 };
 
@@ -982,7 +992,7 @@ const app = {
     // =========================================================================
     showJson(uid) {
         if (!uid || !this.data[uid]) return;
-        this.curId = uid; // Lưu ID hiện tại để Copy & Tải về sử dụng
+        this.curId = uid;
 
         const modal = document.getElementById("json-modal");
         const titleEl = document.getElementById("modal-title");
@@ -993,8 +1003,8 @@ const app = {
             titleEl.innerHTML = `<i class="fa-solid fa-code text-sky-400"></i> JSON DATA — UID: <span class="text-sky-300 font-mono">${uid}</span>`;
         }
 
-        // 1. MỞ MODAL TỨC THÌ TRONG 0MS VỚI TRẠNG THÁI LOADING
-        viewerEl.innerHTML = '<div class="text-center py-16 text-slate-400 font-mono"><i class="fa-solid fa-circle-notch fa-spin text-3xl text-sky-400 mb-3"></i><br>Đang dựng Bounding Box JSON...</div>';
+        // Mở Modal tức thì 0ms
+        viewerEl.innerHTML = '<div class="text-center py-16 text-slate-400 font-mono"><i class="fa-solid fa-circle-notch fa-spin text-3xl text-sky-400 mb-3"></i><br>Đang dựng giao diện JSON chuẩn VS Code...</div>';
         
         modal.classList.remove("hidden");
         setTimeout(() => modal.classList.remove("opacity-0"), 10);
@@ -1004,11 +1014,10 @@ const app = {
             boxEl.classList.add("scale-100");
         }
 
-        // 2. FRAME-YIELDING: Nhường 15ms cho trình duyệt vẽ xong Modal rồi mới render cây JSON
+        // Nhường luồng 15ms vẽ khung Modal xong mới dựng danh sách số dòng
         setTimeout(() => {
             if (viewerEl && this.curId === uid) {
-                // Đóng trong thẻ <pre> để giữ nguyên định dạng xuống dòng và Bounding Box
-                viewerEl.innerHTML = `<pre class="font-mono text-xs md:text-sm leading-relaxed text-slate-300 whitespace-pre-wrap select-text m-0 p-0">${utils.renderFastJson(this.data[uid])}</pre>`;
+                viewerEl.innerHTML = utils.renderFastJson(this.data[uid]);
             }
         }, 15);
     },
@@ -1302,16 +1311,15 @@ const app = {
         if (!viewerEl) return;
 
         if (expand) {
-            viewerEl.innerHTML = `<pre class="font-mono text-xs md:text-sm leading-relaxed text-slate-300 whitespace-pre-wrap select-text m-0 p-0">${utils.renderFastJson(this.data[this.curId])}</pre>`;
+            viewerEl.innerHTML = utils.renderFastJson(this.data[this.curId]);
             this.toast("Đã bung mở chi tiết JSON", "success");
         } else {
-            // Thu gọn chỉ hiện tầng Root cốt lõi
             const rootSummary = {};
             Object.keys(this.data[this.curId]).forEach(k => {
                 const val = this.data[this.curId][k];
                 rootSummary[k] = (typeof val === 'object' && val !== null) ? `[Object ${Array.isArray(val) ? 'Array' : 'Dict'}]` : val;
             });
-            viewerEl.innerHTML = `<pre class="font-mono text-xs md:text-sm leading-relaxed text-slate-300 whitespace-pre-wrap select-text m-0 p-0">${utils.renderFastJson(rootSummary)}</pre>`;
+            viewerEl.innerHTML = utils.renderFastJson(rootSummary);
             this.toast("Đã thu gọn các object lồng nhau", "info");
         }
     },

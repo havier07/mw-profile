@@ -1,3 +1,6 @@
+/* ==========================================================================
+   1. BASE STYLES, VARIABLES & STAR CANVAS
+   ========================================================================== */
 :root {
     --bg-dark: #020617;
     --glass: rgba(15, 23, 42, 0.95);
@@ -14,10 +17,17 @@ body {
 
 #star-canvas {
     position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    z-index: -1; pointer-events: none;
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%;
+    z-index: -1; 
+    pointer-events: none;
 }
 
+/* ==========================================================================
+   2. GLASS MORPHISM PANELS & SCROLLBARS
+   ========================================================================== */
 .glass-panel {
     background: var(--glass);
     border: 1px solid var(--glass-border);
@@ -33,26 +43,56 @@ body {
     }
 }
 
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-thumb { background: #475569; border-radius: 99px; }
-::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar { 
+    width: 4px; 
+    height: 4px; 
+}
+::-webkit-scrollbar-thumb { 
+    background: #475569; 
+    border-radius: 99px; 
+}
+::-webkit-scrollbar-track { 
+    background: transparent; 
+}
 
+/* ==========================================================================
+   3. COMMON ANIMATIONS & MICRO-INTERACTIONS (Buttons, Copy, Avatars)
+   ========================================================================== */
 @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { 
+        opacity: 0; 
+        transform: translateY(20px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0); 
+    }
 }
 
 .animate-enter {
     animation: fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
-.blink-text { animation: pulse 2s infinite; }
-@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.blink-text { 
+    animation: pulse 2s infinite; 
+}
+@keyframes pulse { 
+    0%, 100% { opacity: 1; } 
+    50% { opacity: 0.5; } 
+}
 
-.copy-btn { cursor: pointer; transition: 0.2s; opacity: 0.6; }
-.copy-btn:hover { opacity: 1; transform: scale(1.1); color: #38bdf8; }
+.copy-btn { 
+    cursor: pointer; 
+    transition: 0.2s; 
+    opacity: 0.6; 
+}
+.copy-btn:hover { 
+    opacity: 1; 
+    transform: scale(1.1); 
+    color: #38bdf8; 
+}
 
-/* TỐI ƯU HÓA HOVER SIÊU TỐC 0ms CHO TẤT CẢ NÚT BẤM VÀ TƯƠNG TÁC */
+/* Tối ưu hóa Hover siêu tốc 0ms cho nút bấm và tương tác */
 button, .group-avatar, .copy-btn {
     transition: background-color 0.12s ease, color 0.12s ease, transform 0.12s cubic-bezier(0.2, 0, 0, 1), border-color 0.12s ease !important;
     will-change: transform, background-color;
@@ -64,13 +104,19 @@ button:active {
     transition: transform 0.05s ease !important;
 }
 
-/* THƯ VIỆN ẢNH CUỘN NGANG */
+/* ==========================================================================
+   4. GALLERY SCROLL & FULLSCREEN 3D IMAGE VIEWER
+   ========================================================================== */
 .gallery-scroll {
-    display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem;
-    scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+    display: flex; 
+    gap: 1rem; 
+    overflow-x: auto; 
+    padding-bottom: 1rem;
+    scroll-snap-type: x mandatory; 
+    -webkit-overflow-scrolling: touch;
 }
 
-/* TỐI ƯU HÓA PHẦN CỨNG CHO TRÌNH XEM ẢNH (#v-img đã được gộp làm 1 duy nhất) */
+/* Tối ưu hóa phần cứng cho Trình xem ảnh */
 #v-img {
     will-change: transform, opacity;
     transform-origin: center center;
@@ -82,49 +128,64 @@ button:active {
 }
 
 #zoom-indicator {
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    background: rgba(0, 0, 0, 0.6); color: white; padding: 8px 16px; border-radius: 8px;
-    font-size: 16px; font-weight: bold; pointer-events: none; opacity: 0;
-    transition: opacity 0.3s ease; z-index: 50; backdrop-filter: blur(4px);
+    position: absolute; 
+    top: 50%; 
+    left: 50%; 
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.6); 
+    color: white; 
+    padding: 8px 16px; 
+    border-radius: 8px;
+    font-size: 16px; 
+    font-weight: bold; 
+    pointer-events: none; 
+    opacity: 0;
+    transition: opacity 0.3s ease; 
+    z-index: 50; 
+    backdrop-filter: blur(4px);
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
-#zoom-indicator.show { opacity: 1; }
+#zoom-indicator.show { 
+    opacity: 1; 
+}
 
 /* ==========================================================================
-   SIÊU TRÌNH XEM JSON CHUẨN IDE VS CODE (GUTTER TOGGLE & FOLD HIGHLIGHT)
+   5. VS CODE STYLE JSON VIEWER (Line Numbers, Gutter, Hover Highlight)
    ========================================================================== */
 
-/* 1. KHUNG TỪNG DÒNG CODE */
+/* 1. Khung từng dòng code (Kháng lag tối đa với content-visibility) */
 .j-line {
     display: flex;
     align-items: flex-start;
     font-family: 'Fira Code', 'Courier New', monospace;
     font-size: 13.5px;
     line-height: 1.6;
-    content-visibility: auto; /* Kháng lag tuyệt đối cho 10.000 dòng */
-    contain-intrinsic-size: 0 22px;
+    content-visibility: auto;
+    contain-intrinsic-size: 0 24px;
     contain: content;
     transition: background-color 0.12s ease !important;
     border-left: 2px solid transparent;
     border-radius: 0 4px 4px 0;
+    width: 100%;
 }
 
+/* 2. Highlight dòng code khi rà chuột (Hover Highlight chuẩn VS Code) */
 .j-line:hover {
-    background-color: rgba(56, 189, 248, 0.06);
-    border-left-color: rgba(56, 189, 248, 0.5);
+    background-color: rgba(56, 189, 248, 0.07) !important;
+    border-left-color: rgba(56, 189, 248, 0.6) !important;
 }
 
-/* 2. CỘT GUTTER (SỐ THỨ TỰ + NÚT ĐÓNG MỞ): Thiết kế Flexbox căn phải chuẩn chỉ */
+/* 3. Cột số thứ tự dòng (Line Number Gutter) */
 .j-num-col {
     flex-shrink: 0;
-    width: 64px; /* Mở rộng để chứa cả số lẫn mũi tên */
+    width: 52px;
     display: flex;
     align-items: center;
     justify-content: flex-end;
     gap: 6px;
-    padding-right: 8px;
+    padding-right: 10px;
     margin-right: 12px;
-    color: #64748b; /* Slate-500 */
+    color: #64748b;
     border-right: 1px solid rgba(255, 255, 255, 0.12);
     user-select: none;
     font-weight: 400;
@@ -135,7 +196,7 @@ button:active {
     text-align: right;
 }
 
-/* 3. NÚT MŨI TÊN CHUẨN VS CODE: Xoay 90 độ mượt mà bằng Hardware Acceleration */
+/* 4. Nút mũi tên thu gọn/bung mở object chuẩn VS Code */
 .j-toggle {
     display: flex;
     align-items: center;
@@ -146,46 +207,58 @@ button:active {
     color: #94a3b8;
     border-radius: 4px;
     transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease, color 0.15s ease, background-color 0.15s ease !important;
-    
-    /* Mặc định mũi tên thu gọn (mở) bị ẩn đi để giao diện thoáng */
     opacity: 0;
     pointer-events: none;
     transform: rotate(0deg);
 }
 
-/* Khi di chuột vào vùng code HOẶC di vào dòng đó -> Hiện mũi tên thu gọn */
 #code-viewer:hover .j-toggle,
 .j-line:hover .j-toggle {
     opacity: 0.6;
     pointer-events: auto;
 }
 
-/* Khi hover chuột trực tiếp vào mũi tên -> Sáng rực 100% kèm nền sáng nhẹ */
 .j-toggle:hover {
     opacity: 1 !important;
     color: #ffffff;
     background-color: rgba(255, 255, 255, 0.15);
 }
 
-/* 4. TÍNH NĂNG HIGHLIGHT DÒNG BỊ ĐÓNG (FOLDED LINE HIGHLIGHT) */
+/* 5. Highlight dòng bị đóng (Folded Line Highlight) */
 .j-line.collapsed {
-    background-color: rgba(56, 189, 248, 0.09) !important; /* Highlight xanh dịu mắt */
-    border-left-color: #38bdf8 !important; /* Vạch sáng đậm bên trái */
+    background-color: rgba(56, 189, 248, 0.09) !important;
+    border-left-color: #38bdf8 !important;
 }
 
-/* QUAN TRỌNG: Mũi tên của dòng ĐANG ĐÓNG thì LUÔN LUÔN HIỆN 100% + XOAY -90 ĐỘ */
 .j-line.collapsed .j-toggle {
     opacity: 1 !important;
     pointer-events: auto;
-    transform: rotate(-90deg); /* Xoay mũi tên sang phải (>) chuẩn VS Code */
+    transform: rotate(-90deg);
     color: #38bdf8;
 }
 
-/* 5. CỘT NỘI DUNG CODE & FONT CHỮ */
-.j-content { flex-grow: 1; min-width: 0; word-break: break-all; padding-right: 16px; }
+/* 6. Cột nội dung code & Màu cú pháp syntax */
+.j-content { 
+    flex-grow: 1; 
+    min-width: 0; 
+    white-space: pre-wrap; 
+    word-break: break-word; 
+    padding-right: 16px; 
+    padding-top: 2px; 
+    padding-bottom: 2px; 
+}
 
-.j-key { color: #7dd3fc; font-weight: 500; cursor: pointer; transition: color 0.1s ease, text-shadow 0.1s ease; }
-.j-key:hover { color: #38bdf8 !important; text-decoration: underline; text-shadow: 0 0 8px rgba(56, 189, 248, 0.4); }
+.j-key { 
+    color: #7dd3fc; 
+    font-weight: 500; 
+    cursor: pointer; 
+    transition: color 0.1s ease, text-shadow 0.1s ease; 
+}
+.j-key:hover { 
+    color: #38bdf8 !important; 
+    text-decoration: underline; 
+    text-shadow: 0 0 8px rgba(56, 189, 248, 0.4); 
+}
 
 .j-str  { color: #86efac; font-weight: 400; }
 .j-num  { color: #fde047; font-weight: 400; }
@@ -193,44 +266,32 @@ button:active {
 .j-null { color: #fda4af; font-weight: 400; }
 .j-punc { color: #cbd5e1; font-weight: 400; }
 
-/* 6. QUY TẮC ẨN/HIỆN NỘI DUNG GOM GỌN "...(n items) }" */
 .j-collapsed-content { display: none !important; }
 .j-line.collapsed .j-collapsed-content { display: inline-block !important; }
 
-/* ==========================================================================
-   TỐI ƯU RIÊNG CHO ĐIỆN THOẠI (MOBILE PE - CHỐNG LỖI THIẾU HOVER)
-   ========================================================================== */
+/* Tối ưu riêng cho Điện thoại (Mobile PE - Chống lỗi thiếu chuột Hover) */
 @media (hover: none), (max-width: 768px) {
-    .j-line { font-size: 12px; line-height: 1.5; contain-intrinsic-size: 0 18px; }
-    
-    .j-num-col {
-        width: 52px; /* Thu nhỏ cột Gutter trên mobile */
-        gap: 4px;
-        padding-right: 6px;
-        margin-right: 8px;
-    }
-
-    /* Trên màn hình cảm ứng không có chuột hover -> Luôn hiện mờ 45% để dễ chạm */
+    .j-line { font-size: 12px; line-height: 1.5; contain-intrinsic-size: 0 20px; }
+    .j-num-col { width: 44px; gap: 4px; padding-right: 8px; margin-right: 8px; }
     .j-toggle {
         opacity: 0.45 !important;
         pointer-events: auto;
-        width: 20px; height: 20px; /* Vùng chạm lớn hơn cho ngón tay */
+        width: 20px; 
+        height: 20px;
     }
     .j-line.collapsed .j-toggle { opacity: 1 !important; }
 }
 
 /* ==========================================================================
-   SMART LINK VS CODE & INTERACTIVE TOOLTIP
+   6. SMART LINK VS CODE & INTERACTIVE TOOLTIP
    ========================================================================== */
-
-/* 1. HIỆU ỨNG LINK TRONG JSON (Underline nhẹ, sáng bừng khi hover) */
 .j-link {
     color: #38bdf8 !important;
     text-decoration: underline;
     text-decoration-color: rgba(56, 189, 248, 0.4);
     text-underline-offset: 3px;
     cursor: pointer !important;
-    pointer-events: auto !important; /* KHÓA CỨNG: Ép trình duyệt luôn nhận sự kiện chuột */
+    pointer-events: auto !important;
     transition: color 0.1s ease, background-color 0.1s ease !important;
     border-radius: 3px;
     padding: 0 2px;
@@ -242,33 +303,9 @@ button:active {
     background-color: rgba(56, 189, 248, 0.2);
 }
 
-/* 2. HIỆU ỨNG POPUP ACTION MENU (Mượt mà cho cả PC lẫn Mobile PE) */
 #link-menu-overlay { backdrop-filter: blur(4px); }
 #link-menu-box { transform: translateZ(0); will-change: transform; }
 
-/* Trên Mobile PE, biến Menu thành Bottom Sheet vuốt từ dưới lên cực tiện */
-@media (max-width: 768px) {
-    #link-menu-box {
-        border-radius: 24px 24px 0 0 !important;
-        max-width: 100% !important;
-        margin-bottom: -1px;
-    }
-}
-
-/* ==========================================================================
-   UNIVERSAL LINK ENGINE & CONTEXTUAL STYLES
-   ========================================================================== */
-
-/* Màu sắc Header Tooltip theo từng loại file */
-.lt-bg-image { border-left: 4px solid #38bdf8 !important; }
-.lt-bg-video { border-left: 4px solid #f43f5e !important; }
-.lt-bg-audio { border-left: 4px solid #a855f7 !important; }
-.lt-bg-doc   { border-left: 4px solid #f59e0b !important; }
-.lt-bg-arc   { border-left: 4px solid #10b981 !important; }
-.lt-bg-api   { border-left: 4px solid #ec4899 !important; }
-.lt-bg-web   { border-left: 4px solid #64748b !important; }
-
-/* Hiệu ứng Bottom Sheet siêu mượt trên Mobile PE */
 @media (max-width: 768px) {
     #link-menu-box {
         border-radius: 28px 28px 0 0 !important;
@@ -277,16 +314,26 @@ button:active {
         animation: slideUpModal 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
 }
+
 @keyframes slideUpModal {
     from { transform: translateY(100%); }
     to { transform: translateY(0); }
 }
 
+/* Màu sắc viền theo từng loại tệp trong Universal Link Engine */
+.lt-bg-image { border-left: 4px solid #38bdf8 !important; }
+.lt-bg-video { border-left: 4px solid #f43f5e !important; }
+.lt-bg-audio { border-left: 4px solid #a855f7 !important; }
+.lt-bg-doc   { border-left: 4px solid #f59e0b !important; }
+.lt-bg-arc   { border-left: 4px solid #10b981 !important; }
+.lt-bg-api   { border-left: 4px solid #ec4899 !important; }
+.lt-bg-web   { border-left: 4px solid #64748b !important; }
+
 /* ==========================================================================
-   STACKED TOASTS & FLIP LAYOUT ANIMATIONS
+   7. STACKED TOASTS & FLIP LAYOUT ANIMATIONS (Lịch sử tra cứu)
    ========================================================================== */
 
-/* 1. Hiệu ứng Toast xếp chồng mượt mà */
+/* 1. Hiệu ứng Toast thông báo xếp chồng tối đa 3 popup */
 .toast-item {
     pointer-events: auto;
     transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
@@ -299,7 +346,6 @@ button:active {
     transform: translate3d(100%, 0, 0) scale(0.9);
 }
 
-/* Trên Mobile PE: Toast căn giữa màn hình, lướt từ dưới lên */
 @media (max-width: 768px) {
     #toast-container {
         left: 50%;
@@ -324,7 +370,7 @@ button:active {
     border: none !important;
 }
 
-/* 2. Hiệu ứng lưới Lịch sử (FLIP Layout) */
+/* 2. Hiệu ứng lưới Lịch sử (FLIP Layout Animation) */
 .hist-item {
     transition: transform 0.35s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease, background-color 0.15s ease;
     will-change: transform, opacity;
@@ -336,10 +382,10 @@ button:active {
 }
 
 /* ==========================================================================
-   ULTIMATE 60 FPS SPIN & REACTIVE CARD HIGHLIGHTS
+   8. ULTIMATE 60 FPS GPU SPIN & REACTIVE CARD HIGHLIGHTS
    ========================================================================== */
 
-/* 1. Động cơ xoay 360° liên tục vô tận (Đúng 0.6 giây = 1 vòng tròn hoàn hảo) */
+/* 1. Động cơ xoay 360° liên tục bằng GPU (Chống xung đột transition hover) */
 @keyframes ultimateSpin {
     0%   { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
@@ -347,13 +393,12 @@ button:active {
 
 .spin-active {
     animation: ultimateSpin 0.6s linear infinite !important;
-    /* BÍ QUYẾT TỐI THƯỢNG: Giết chết transition ngay lập tức để không xung đột với góc xoay Hover */
     transition: none !important;
     display: inline-block !important;
     will-change: transform;
 }
 
-/* 2. TRONG LÚC TẢI: Viền xanh thắp sáng nhịp nhàng (Breathing Glow) */
+/* 2. Trong lúc tải: Viền xanh thắp sáng nhịp nhàng (Breathing Glow) */
 @keyframes borderPulse {
     0%, 100% { border-color: rgba(52, 211, 153, 0.35); box-shadow: 0 0 15px 0 rgba(16, 185, 129, 0.15); }
     50%      { border-color: rgba(52, 211, 153, 0.85); box-shadow: 0 0 28px 2px rgba(16, 185, 129, 0.35); }
@@ -364,7 +409,7 @@ button:active {
     transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* 3. SAU KHI TẢI XONG: Viền sáng mờ dần êm ái trong đúng 0.45 giây (Visual Settling) */
+/* 3. Sau khi tải xong: Viền sáng mờ dần êm ái trong 0.45 giây (Visual Settling) */
 @keyframes fetchSuccessFade {
     0%   { border-color: rgba(52, 211, 153, 0.9); box-shadow: 0 0 30px 4px rgba(16, 185, 129, 0.4); background-color: rgba(16, 185, 129, 0.04); }
     100% { border-color: rgba(255, 255, 255, 0.1); box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5); background-color: transparent; }
@@ -374,24 +419,20 @@ button:active {
     animation: fetchSuccessFade 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
 
-/* ==========================================================================
-   HARDWARE-ACCELERATED SMOOTH SPIN (Xoay 60 FPS siêu mượt bằng GPU)
-   ========================================================================== */
+/* 4. Xoay GPU siêu mượt 60 FPS chuẩn chung */
 @keyframes smoothSpin {
     from { transform: rotate(0deg); }
     to   { transform: rotate(360deg); }
 }
 
 .spin-smooth {
-    /* Xoay 1 vòng trong 0.75 giây, tốc độ đều (linear) và vô tận */
     animation: smoothSpin 0.75s linear infinite !important;
-    /* Ép trình duyệt đưa icon lên xử lý bằng card đồ họa (GPU) để không bao giờ bị giật */
     will-change: transform;
     display: inline-block;
 }
 
 /* ==========================================================================
-   JSON INTRINSIC BOUNDING BOX & BOXED SELECTION (Zero-Lag Performance)
+   9. JSON INTRINSIC BOUNDING BOX & BOXED SELECTION (Zero-Lag Performance)
    ========================================================================== */
 
 /* 1. Hộp Bounding Box cho văn bản nhiều dòng (\n) */
@@ -407,14 +448,14 @@ button:active {
     box-sizing: border-box;
 }
 
-/* 2. KHÓA VÙNG BÔI ĐEN: Chỉ sáng xanh trong hộp, không bao giờ tràn lề phải */
+/* 2. Khóa vùng selection bôi đen: Chỉ sáng xanh trong khung, không tràn lề phải */
 .json-bounding-box::selection,
 .json-bounding-box *::selection {
     background-color: rgba(56, 189, 248, 0.35) !important;
     color: #ffffff !important;
 }
 
-/* 3. Nút Copy inline nằm gọn gàng ngay sau dấu phẩy hoặc nháy kép */
+/* 3. Nút Copy nhỏ gọn nằm ngay sau dấu phẩy hoặc nháy kép */
 .json-copy-btn {
     display: inline-flex;
     align-items: center;
