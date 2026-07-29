@@ -389,3 +389,36 @@ button:active {
     will-change: transform;
     display: inline-block;
 }
+
+/* ==========================================================================
+   JSON INTRINSIC BOUNDING BOX & BOXED SELECTION (VS Code / JetBrains Style)
+   ========================================================================== */
+
+/* 1. Hộp Bounding Box cho chuỗi nhiều dòng (\n) */
+.json-bounding-box {
+    display: inline-block !important;
+    width: -max-content;
+    width: fit-content;
+    max-width: 100%;
+    white-space: pre-wrap;
+    word-break: break-word;
+    vertical-align: top;
+    position: relative;
+}
+
+/* 2. KHÓA VÙNG BÔI ĐEN (Selection): Không bao giờ tràn qua khoảng trống bên phải */
+.json-bounding-box::selection,
+.json-bounding-box *::selection {
+    background-color: rgba(56, 189, 248, 0.35) !important; /* Màu Sky-400 mờ sang trọng */
+    color: #ffffff !important;
+}
+
+/* 3. Nút Copy nhỏ gọn inline trong cây JSON */
+.json-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    user-select: none;
+    -webkit-user-select: none;
+}
