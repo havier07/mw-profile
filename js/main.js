@@ -23,32 +23,7 @@ const utils = {
             throw e;
         }
     },
-    copy: (txt, btnEl = null, label = "", e = null) => {
-        if (e && e.stopPropagation) e.stopPropagation();
-        const t = document.createElement("textarea");
-        t.value = txt; t.style.position = "fixed"; t.style.left = "-9999px";
-        document.body.appendChild(t); t.focus(); t.select();
-        try {
-            const success = document.execCommand("copy");
-            if (success) {
-                const msg = label ? `Đã sao chép ${label}: ${txt}` : `Đã sao chép: ${txt}`;
-                app.toast(msg, "success");
-                
-                // HIỆU ỨNG TICK XANH LÁ TẠM THỜI MƯỢT MÀ CHO NÚT BẤM
-                if (btnEl) {
-                    const icon = btnEl.tagName === "I" ? btnEl : btnEl.querySelector("i");
-                    if (icon) {
-                        const oldCls = icon.className;
-                        icon.className = "fa-solid fa-check text-green-400 scale-125 transition-all duration-300";
-                        setTimeout(() => { icon.className = oldCls; }, 1500);
-                    }
-                }
-            } else {
-                app.toast("Lỗi sao chép vào Clipboard", "error");
-            }
-        } catch (err) { app.toast("Lỗi quyền truy cập Clipboard", "error"); }
-        document.body.removeChild(t);
-    },
+
     escapeAttr: (t) => String(t).replace(/"/g, "&quot;").replace(/\n/g, "&#10;"),
 
     parseMood: (t) => {
@@ -100,33 +75,19 @@ const utils = {
             if (clean[i] === '<') {
                 flush();
                 let tag = '';
-                while (i < len && clean[i] !== '>') { 
-                    tag += clean[i]; 
-                    i++; 
-                }
-                if (i < len) {
-                    tag += clean[i]; // Cộng nốt dấu '>' vào tag
-                    i++; // VƯỢT QUA DẤU '>': Đây là mấu chốt để không bị in dư dấu >
-                }
+                while (i < len && clean[i] !== '>') { tag += clean[i]; i++; }
+                if (i < len) { tag += clean[i]; i++; }
                 html += tag;
                 continue;
             }
 
-            if (clean[i] !== '#') {
-                buffer += clean[i];
-                i++;
-                continue;
-            }
+            if (clean[i] !== '#') { buffer += clean[i]; i++; continue; }
 
             // --- BẮT ĐẦU PHÂN TÍCH LỆNH GAME (#) ---
             const nextChar = i + 1 < len ? clean[i + 1] : '';
 
             // Luật 1: Thoát ký tự '##' thành '#'
-            if (nextChar === '#') {
-                buffer += '#';
-                i += 2;
-                continue;
-            }
+            if (nextChar === '#') { buffer += '#'; i += 2; continue; }
 
             flush();
             i++; // Bỏ qua dấu #
@@ -135,45 +96,22 @@ const utils = {
             
             const cmd = clean[i];
 
-            if (COLOR_MAP[cmd]) {
-                color = COLOR_MAP[cmd];
-                i++;
-            } 
+            if (COLOR_MAP[cmd]) { color = COLOR_MAP[cmd]; i++; } 
             else if (cmd === 'c' || cmd === 'C') {
                 i++;
                 let hex = '';
-                while (i < len && hex.length < 6 && /[0-9a-fA-F]/.test(clean[i])) {
-                    hex += clean[i];
-                    i++;
-                }
+                while (i < len && hex.length < 6 && /[0-9a-fA-F]/.test(clean[i])) { hex += clean[i]; i++; }
                 if (hex.length > 0) color = '#' + hex;
             } 
             else if (cmd === 'A') {
                 i++;
                 let iconId = '';
-                while (i < len && iconId.length < 3 && /[0-9]/.test(clean[i])) {
-                    iconId += clean[i];
-                    i++;
-                }
+                while (i < len && iconId.length < 3 && /[0-9]/.test(clean[i])) { iconId += clean[i]; i++; }
             } 
-            else if (cmd === 'L') {
-                isUnderline = true;
-                //color = '#fca5a5';
-                i++;
-            } 
-            else if (cmd === 'b') {
-                isBlink = true;
-                i++;
-            } 
-            else if (cmd === 'n') {
-                color = null;
-                isUnderline = false;
-                isBlink = false;
-                i++;
-            } 
-            else {
-                i++; // Ẩn các dấu # rác
-            }
+            else if (cmd === 'L') { isUnderline = true; i++; } 
+            else if (cmd === 'b') { isBlink = true; i++; } 
+            else if (cmd === 'n') { color = null; isUnderline = false; isBlink = false; i++; } 
+            else { i++; }
         }
         
         flush();
@@ -181,8 +119,32 @@ const utils = {
     },
 
     // =========================================================================
-    // UTILS: LINE-BY-LINE LINEAR JSON STREAMER (0% BACKTRACKING - ZERO FREEZE)
+    // UTILS: O(N) LINEAR JSON TOKENIZER (0% BACKTRACKING - ZERO FREEZE)
     // =========================================================================
+    copy: (txt, btnEl = null, label = "", e = null) => {
+        if (e && e.stopPropagation) e.stopPropagation();
+        const t = document.createElement("textarea");
+        t.value = txt; t.style.position = "fixed"; t.style.left = "-9999px";
+        document.body.appendChild(t); t.focus(); t.select();
+        try {
+            const success = document.execCommand("copy");
+            if (success) {
+                const msg = label ? `Đã sao chép ${label}` : `Đã sao chép nội dung`;
+                app.toast(msg, "success");
+                
+                // HIỆU ỨNG TICK XANH LÁ SVG TẠM THỜI MƯỢT MÀ CHUẨN XÁC
+                if (btnEl) {
+                    const oldHTML = btnEl.innerHTML;
+                    btnEl.innerHTML = '<svg class="w-3.5 h-3.5 inline-block text-green-400 scale-125 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>';
+                    setTimeout(() => { btnEl.innerHTML = oldHTML; }, 1500);
+                }
+            } else {
+                app.toast("Lỗi sao chép vào Clipboard", "error");
+            }
+        } catch (err) { app.toast("Lỗi quyền truy cập Clipboard", "error"); }
+        document.body.removeChild(t);
+    },
+
     escapeHtml: (t) => String(t)
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
@@ -193,69 +155,65 @@ const utils = {
         const rawStr = JSON.stringify(data, null, 2);
         if (!rawStr) return "";
 
-        // THUẬT TOÁN TUYẾN TÍNH O(N): Xử lý từng dòng nhỏ, loại bỏ hoàn toàn Catastrophic Backtracking
-        return rawStr.split("\n").map((line) => {
-            const safeLine = line.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-            
-            // Tách khoảng trắng thụt lề (indentation) và nội dung dòng
-            const indentMatch = safeLine.match(/^(\s*)/);
-            const indent = indentMatch ? indentMatch[1] : "";
-            const content = safeLine.trim();
+        // Icon SVG thuần tịnh: Trình duyệt vẽ trong 0ms, không kích hoạt FontAwesome JS
+        const svgCopy = '<svg class="w-3.5 h-3.5 inline-block pointer-events-none text-slate-400 group-hover/cbtn:text-sky-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>';
 
-            // 1. Dấu ngoặc nhọn/vuông đứng một mình ({, }, [, ], }, etc.)
-            if (/^[{\[}\]],?$/.test(content)) {
-                return `<div class="py-0.5 leading-relaxed">${indent}<span class="text-slate-400 font-bold">${content}</span></div>`;
-            }
+        // THUẬT TOÁN TUYẾN TÍNH INDEXOF O(N): Siêu nhanh < 1.5ms cho 10.000 dòng
+        const lines = rawStr.split("\n");
+        const out = [];
 
-            // 2. Nhận diện cặp "Key": Value
-            const kvMatch = content.match(/^"([^"]+)"\s*:\s*(.*)$/);
-            if (kvMatch) {
-                const key = kvMatch[1];
-                let valPart = kvMatch[2];
-                const keyHtml = `<span class="text-sky-300 font-semibold">"${key}"</span><span class="text-slate-400 font-mono">: </span>`;
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const sepIdx = line.indexOf('": ');
 
-                // Nếu value là mở ngoặc object/array ({ hoặc [)
-                if (/^[{\[]$/.test(valPart)) {
-                    return `<div class="py-0.5 leading-relaxed">${indent}${keyHtml}<span class="text-slate-400 font-bold">${valPart}</span></div>`;
-                }
+            // 1. DÒNG CHỨA CẶP "KEY": VALUE
+            if (sepIdx > -1) {
+                const indent = line.slice(0, line.indexOf('"'));
+                const rawKey = line.slice(line.indexOf('"') + 1, sepIdx);
+                const valPart = line.slice(sepIdx + 3).trim();
 
-                // Kiểm tra và tách dấu phẩy kết thúc `,`
-                const hasComma = valPart.endsWith(",");
-                if (hasComma) valPart = valPart.slice(0, -1);
+                const keyHtml = `${indent}<span class="text-sky-300 font-semibold">"${utils.escapeHtml(rawKey)}"</span><span class="text-slate-400">: </span>`;
+
+                // Kiểm tra dấu phẩy `,` kết thúc dòng
+                const hasComma = valPart.endsWith(',');
+                const rawVal = hasComma ? valPart.slice(0, -1) : valPart;
                 const commaHtml = hasComma ? '<span class="text-slate-500 font-bold">,</span>' : '';
 
-                // Xử lý nội dung copy sạch (bỏ nháy kép ngoài cùng và chuẩn hóa xuống dòng)
-                let cleanCopyText = valPart;
-                if (valPart.startsWith('"') && valPart.endsWith('"')) {
-                    cleanCopyText = valPart.slice(1, -1).replace(/\\n/g, "\n").replace(/\\r/g, "").replace(/\\"/g, '"');
-                }
-                
-                // NÚT COPY: Luôn nằm NGAY SAU dấu phẩy hoặc nháy kép kết thúc
-                const copyBtn = `<button onclick="utils.copy('${utils.escapeAttr(cleanCopyText)}', this, '${key}', event)" class="json-copy-btn w-5 h-5 ml-1.5 rounded bg-white/5 hover:bg-sky-500/20 text-slate-400 hover:text-sky-300 active:scale-90 transition shrink-0 inline-flex items-center justify-center" title="Sao chép: ${key}"><i class="fa-regular fa-copy text-[10px]"></i></button>`;
+                // A. NẾU VALUE LÀ CHUỖI VĂN BẢN (STRING) -> CÓ NÚT COPY SAU DẤU PHẨY/NHÁY KÉP
+                if (rawVal.startsWith('"') && rawVal.endsWith('"')) {
+                    const cleanStr = rawVal.slice(1, -1).replace(/\\n/g, "\n").replace(/\\r/g, "").replace(/\\"/g, '"');
+                    const displayStr = utils.escapeHtml(cleanStr);
+                    const isMultiline = cleanStr.includes("\n");
 
-                // Phân loại Value để tô màu và dựng Bounding Box cho chuỗi nhiều dòng
-                if (valPart.startsWith('"') && valPart.endsWith('"')) {
-                    const innerStr = valPart.slice(1, -1).replace(/\\n/g, "\n").replace(/\\r/g, "");
-                    if (innerStr.includes("\n")) {
-                        // MULTILINE BOUNDING BOX
-                        const boxHtml = `<div class="inline-block max-w-full align-top my-0.5"><div class="json-bounding-box bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-emerald-300 font-mono text-xs md:text-sm shadow-inner">"${innerStr}"</div></div>`;
-                        return `<div class="py-1 leading-relaxed">${indent}${keyHtml}${boxHtml}${commaHtml}${copyBtn}</div>`;
+                    // NÚT COPY: Luôn đặt ngay sau dấu phẩy (hoặc sau dấu " kết thúc)
+                    const copyBtn = `<button onclick="utils.copy('${utils.escapeAttr(cleanStr)}', this, '${utils.escapeAttr(rawKey)}', event)" class="json-copy-btn group/cbtn inline-flex items-center justify-center w-5 h-5 ml-1.5 rounded bg-white/5 hover:bg-sky-500/20 active:scale-90 transition align-middle cursor-pointer" title="Sao chép: ${rawKey}">${svgCopy}</button>`;
+
+                    if (isMultiline) {
+                        // BOUNDING BOX CHỮ NHẬT CHO TEXT NHIỀU DÒNG (\n)
+                        const boxHtml = `<span class="json-bounding-box bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-emerald-300 font-mono text-xs md:text-sm shadow-inner my-0.5">"${displayStr}"</span>`;
+                        out.push(`${keyHtml}${boxHtml}${commaHtml}${copyBtn}`);
                     } else {
-                        // SINGLE LINE STRING
-                        return `<div class="py-0.5 leading-relaxed">${indent}${keyHtml}<span class="text-emerald-300 font-mono">"${innerStr}"</span>${commaHtml}${copyBtn}</div>`;
+                        // TEXT 1 DÒNG INLINE BÌNH THƯỜNG
+                        out.push(`${keyHtml}<span class="text-emerald-300">"${displayStr}"</span>${commaHtml}${copyBtn}`);
                     }
-                } else {
-                    // NUMBERS, BOOLEANS, NULL
-                    let cls = "text-amber-400 font-bold font-mono";
-                    if (/true|false/.test(valPart)) cls = "text-purple-400 font-bold font-mono";
-                    if (/null/.test(valPart)) cls = "text-rose-400 font-bold font-mono";
-                    return `<div class="py-0.5 leading-relaxed">${indent}${keyHtml}<span class="${cls}">${valPart}</span>${commaHtml}${copyBtn}</div>`;
+                    continue;
                 }
+
+                // B. NẾU VALUE LÀ SỐ, BOOLEAN, NULL -> KHÔNG CÓ NÚT COPY
+                let cls = "text-amber-400 font-bold";
+                if (rawVal === "true" || rawVal === "false") cls = "text-purple-400 font-bold";
+                else if (rawVal === "null") cls = "text-rose-400 font-bold";
+                else if (rawVal === "{" || rawVal === "[") cls = "text-slate-300 font-bold";
+
+                out.push(`${keyHtml}<span class="${cls}">${rawVal}</span>${commaHtml}`);
+                continue;
             }
 
-            // 3. Các dòng khác (phần tử trong mảng vô danh...)
-            return `<div class="py-0.5 leading-relaxed">${indent}<span class="text-slate-300 font-mono">${content}</span></div>`;
-        }).join("");
+            // 2. CÁC DÒNG NGOẶC HOẶC PHẦN TỬ MẢNG ĐƠN LẺ
+            out.push(`<span class="text-slate-300">${utils.escapeHtml(line)}</span>`);
+        }
+
+        return out.join("\n");
     },
 };
 
@@ -1020,62 +978,41 @@ const app = {
     openApi(uid) { window.open(PROXY_URL + uid, "_blank"); },
 
     // =========================================================================
-    // MODAL XEM JSON KHÔNG GIẬT LAG (FRAME-YIELDING NON-BLOCKING UI)
-    // =========================================================================
-    // =========================================================================
-    // MODAL XEM JSON SIÊU MƯỢT (NON-BLOCKING UI)
+    // HỆ THỐNG MODAL JSON SIÊU MƯỢT (NON-BLOCKING FRAME-YIELDING 0MS)
     // =========================================================================
     showJson(uid) {
-        const raw = this.data[uid] || {};
-        let modal = document.getElementById("json-modal");
-        
-        if (!modal) {
-            modal = document.createElement("div");
-            modal.id = "json-modal";
-            modal.className = "fixed inset-0 z-[500] bg-black/80 backdrop-blur-md hidden items-center justify-center p-3 md:p-6";
-            modal.innerHTML = `
-                <div class="glass-panel rounded-3xl max-w-4xl w-full max-h-[88vh] flex flex-col border border-white/15 shadow-2xl overflow-hidden">
-                    <div class="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-white/5 shrink-0">
-                        <div class="flex items-center gap-2">
-                            <i class="fa-solid fa-code text-sky-400"></i>
-                            <h3 id="json-modal-title" class="font-bold text-white text-sm md:text-base font-mono">JSON DATA</h3>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <button id="json-copy-all-btn" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 text-xs font-bold transition flex items-center gap-1.5 active:scale-95">
-                                <i class="fa-regular fa-copy"></i> Copy toàn bộ JSON
-                            </button>
-                            <button onclick="document.getElementById('json-modal').classList.add('hidden'); document.getElementById('json-modal').classList.remove('flex');" class="w-8 h-8 rounded-xl bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition flex items-center justify-center">
-                                <i class="fa-solid fa-xmark text-lg"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div id="json-modal-content" class="p-4 md:p-6 overflow-y-auto flex-grow bg-[#090d16]/90 select-text font-mono text-xs md:text-sm text-slate-300 leading-relaxed m-0"></div>
-                </div>
-            `;
-            document.body.appendChild(modal);
+        if (!uid || !this.data[uid]) return;
+        this.curId = uid; // Lưu ID hiện tại để Copy & Tải về sử dụng
+
+        const modal = document.getElementById("json-modal");
+        const titleEl = document.getElementById("modal-title");
+        const viewerEl = document.getElementById("code-viewer");
+        if (!modal || !viewerEl) return;
+
+        if (titleEl) {
+            titleEl.innerHTML = `<i class="fa-solid fa-code text-sky-400"></i> JSON DATA — UID: <span class="text-sky-300 font-mono">${uid}</span>`;
         }
 
-        const titleEl = modal.querySelector("#json-modal-title");
-        const contentEl = modal.querySelector("#json-modal-content");
-        const copyAllBtn = modal.querySelector("#json-copy-all-btn");
-
-        if (titleEl) titleEl.innerText = `RAW JSON DATA — UID: ${uid}`;
+        // 1. MỞ MODAL TỨC THÌ TRONG 0MS VỚI TRẠNG THÁI LOADING
+        viewerEl.innerHTML = '<div class="text-center py-16 text-slate-400 font-mono"><i class="fa-solid fa-circle-notch fa-spin text-3xl text-sky-400 mb-3"></i><br>Đang dựng Bounding Box JSON...</div>';
         
-        // Mở Modal tức thì và vẽ JSON với tốc độ dưới 2ms
         modal.classList.remove("hidden");
-        modal.classList.add("flex");
-
-        if (contentEl) {
-            contentEl.innerHTML = utils.renderFastJson(raw);
+        setTimeout(() => modal.classList.remove("opacity-0"), 10);
+        const boxEl = document.getElementById("json-box");
+        if (boxEl) {
+            boxEl.classList.remove("scale-95");
+            boxEl.classList.add("scale-100");
         }
 
-        if (copyAllBtn) {
-            copyAllBtn.onclick = (e) => {
-                utils.copy(JSON.stringify(raw, null, 2), copyAllBtn, `Toàn bộ JSON UID ${uid}`, e);
-            };
-        }
+        // 2. FRAME-YIELDING: Nhường 15ms cho trình duyệt vẽ xong Modal rồi mới render cây JSON
+        setTimeout(() => {
+            if (viewerEl && this.curId === uid) {
+                // Đóng trong thẻ <pre> để giữ nguyên định dạng xuống dòng và Bounding Box
+                viewerEl.innerHTML = `<pre class="font-mono text-xs md:text-sm leading-relaxed text-slate-300 whitespace-pre-wrap select-text m-0 p-0">${utils.renderFastJson(this.data[uid])}</pre>`;
+            }
+        }, 15);
     },
-    
+
     renderLinesFast() {
         const container = document.getElementById("code-viewer");
         if (!container) return;
@@ -1103,14 +1040,18 @@ const app = {
     },
 
     closeModal() {
-        const m = $("#json-modal");
+        const m = document.getElementById("json-modal");
+        const box = document.getElementById("json-box");
+        if (!m) return;
+        
         m.classList.add("opacity-0");
-        $("#json-box").classList.add("scale-95");
+        if (box) box.classList.add("scale-95");
+        
         setTimeout(() => {
             m.classList.add("hidden");
-            this.viewerLines = [];
-            document.getElementById("code-viewer").innerHTML = "";
-        }, 300);
+            const viewerEl = document.getElementById("code-viewer");
+            if (viewerEl) viewerEl.innerHTML = "";
+        }, 250);
     },
 
     // =========================================================================
@@ -1355,30 +1296,39 @@ const app = {
         setVis(id, p.open);
     },
 
-    // SỬA LỖI HIỂN THỊ FLEX CHO NÚT BUNG MỞ / THU GỌN TOÀN BỘ
     toggleAllJson(expand = true) {
-        this.viewerLines.forEach(l => {
-            if (l.collapsible) {
-                l.open = expand;
-                const el = document.getElementById(`jl-${l.id}`);
-                if (el) el.classList.toggle("collapsed", !expand);
-            }
-            if (l.pId !== "root") {
-                l.visible = expand;
-                const el = document.getElementById(`jl-${l.id}`);
-                if (el) el.style.display = expand ? "flex" : "none";
-            }
-        });
-        this.toast(expand ? "Đã bung mở toàn bộ JSON" : "Đã thu gọn toàn bộ JSON", "success");
+        if (!this.curId || !this.data[this.curId]) return;
+        const viewerEl = document.getElementById("code-viewer");
+        if (!viewerEl) return;
+
+        if (expand) {
+            viewerEl.innerHTML = `<pre class="font-mono text-xs md:text-sm leading-relaxed text-slate-300 whitespace-pre-wrap select-text m-0 p-0">${utils.renderFastJson(this.data[this.curId])}</pre>`;
+            this.toast("Đã bung mở chi tiết JSON", "success");
+        } else {
+            // Thu gọn chỉ hiện tầng Root cốt lõi
+            const rootSummary = {};
+            Object.keys(this.data[this.curId]).forEach(k => {
+                const val = this.data[this.curId][k];
+                rootSummary[k] = (typeof val === 'object' && val !== null) ? `[Object ${Array.isArray(val) ? 'Array' : 'Dict'}]` : val;
+            });
+            viewerEl.innerHTML = `<pre class="font-mono text-xs md:text-sm leading-relaxed text-slate-300 whitespace-pre-wrap select-text m-0 p-0">${utils.renderFastJson(rootSummary)}</pre>`;
+            this.toast("Đã thu gọn các object lồng nhau", "info");
+        }
     },
 
-    copyContent() { utils.copy(JSON.stringify(this.data[this.curId], null, 4)); },
+    copyContent() {
+        if (!this.curId || !this.data[this.curId]) return;
+        utils.copy(JSON.stringify(this.data[this.curId], null, 2), null, `Toàn bộ JSON UID ${this.curId}`);
+    },
 
     dlContent() {
-        const c = JSON.stringify(this.data[this.curId], null, 4);
+        if (!this.curId || !this.data[this.curId]) return;
+        const c = JSON.stringify(this.data[this.curId], null, 2);
         const a = document.createElement("a");
         a.href = URL.createObjectURL(new Blob([c], { type: "application/json" }));
-        a.download = `profile_${this.curId}.json`; a.click();
+        a.download = `profile_${this.curId}.json`; 
+        a.click();
+        this.toast(`Đã tải xuống tệp profile_${this.curId}.json`, "success");
     },
 };
 

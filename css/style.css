@@ -394,6 +394,7 @@ button:active {
    JSON INTRINSIC BOUNDING BOX & BOXED SELECTION (Zero-Lag Performance)
    ========================================================================== */
 
+/* 1. Hộp Bounding Box cho văn bản nhiều dòng (\n) */
 .json-bounding-box {
     display: inline-block !important;
     width: -max-content;
@@ -403,14 +404,17 @@ button:active {
     word-break: break-word;
     vertical-align: top;
     position: relative;
+    box-sizing: border-box;
 }
 
+/* 2. KHÓA VÙNG BÔI ĐEN: Chỉ sáng xanh trong hộp, không bao giờ tràn lề phải */
 .json-bounding-box::selection,
 .json-bounding-box *::selection {
     background-color: rgba(56, 189, 248, 0.35) !important;
     color: #ffffff !important;
 }
 
+/* 3. Nút Copy inline nằm gọn gàng ngay sau dấu phẩy hoặc nháy kép */
 .json-copy-btn {
     display: inline-flex;
     align-items: center;
