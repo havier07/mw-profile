@@ -336,10 +336,24 @@ button:active {
 }
 
 /* ==========================================================================
-   REACTIVE CARD HIGHLIGHTS (Hiệu ứng viền sáng trong lúc tải & sau khi tải)
+   ULTIMATE 60 FPS SPIN & REACTIVE CARD HIGHLIGHTS
    ========================================================================== */
 
-/* 1. TRONG LÚC TẢI: Viền xanh nhịp nhàng thở (Breathing Glow), giữ liên tục khi fetch */
+/* 1. Động cơ xoay 360° liên tục vô tận (Đúng 0.6 giây = 1 vòng tròn hoàn hảo) */
+@keyframes ultimateSpin {
+    0%   { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.spin-active {
+    animation: ultimateSpin 0.6s linear infinite !important;
+    /* BÍ QUYẾT TỐI THƯỢNG: Giết chết transition ngay lập tức để không xung đột với góc xoay Hover */
+    transition: none !important;
+    display: inline-block !important;
+    will-change: transform;
+}
+
+/* 2. TRONG LÚC TẢI: Viền xanh thắp sáng nhịp nhàng (Breathing Glow) */
 @keyframes borderPulse {
     0%, 100% { border-color: rgba(52, 211, 153, 0.35); box-shadow: 0 0 15px 0 rgba(16, 185, 129, 0.15); }
     50%      { border-color: rgba(52, 211, 153, 0.85); box-shadow: 0 0 28px 2px rgba(16, 185, 129, 0.35); }
@@ -350,7 +364,7 @@ button:active {
     transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* 2. SAU KHI TẢI XONG: Viền sáng mờ dần êm ái trong 0.45 giây (Visual Settling) */
+/* 3. SAU KHI TẢI XONG: Viền sáng mờ dần êm ái trong đúng 0.45 giây (Visual Settling) */
 @keyframes fetchSuccessFade {
     0%   { border-color: rgba(52, 211, 153, 0.9); box-shadow: 0 0 30px 4px rgba(16, 185, 129, 0.4); background-color: rgba(16, 185, 129, 0.04); }
     100% { border-color: rgba(255, 255, 255, 0.1); box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5); background-color: transparent; }

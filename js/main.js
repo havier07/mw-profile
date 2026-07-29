@@ -297,7 +297,7 @@ const app = {
     },
 
     // =========================================================================
-    // HỆ THỐNG ĐỒNG BỘ TRẠNG THÁI TỰ ĐỘNG (XOAY 360° & VIỀN SÁNG CARD)
+    // HỆ THỐNG ĐỒNG BỘ TRẠNG THÁI TỰ ĐỘNG (XOAY TRƠN TRU 100%)
     // =========================================================================
     setCardLoadingState(uids, isLoading = true) {
         const list = Array.isArray(uids) ? uids : [uids];
@@ -305,15 +305,15 @@ const app = {
             const card = document.getElementById(`profile-card-${uid}`);
             if (!card) return;
             
-            // 1. QUẢN LÝ VIỀN SÁNG CỦA TOÀN BỘ THẺ CARD
+            // 1. Quản lý viền sáng thở của Card
             if (isLoading) {
                 card.classList.remove("card-fetch-success");
-                card.classList.add("card-fetching"); // Bật viền xanh thở liên tục suốt lúc fetch
+                card.classList.add("card-fetching");
             } else {
-                card.classList.remove("card-fetching"); // Tắt viền thở nếu fetch lỗi/dừng
+                card.classList.remove("card-fetching");
             }
 
-            // 2. QUẢN LÝ NÚT TẢI LẠI (XOAY 360° LIÊN TỤC BẰNG GPU)
+            // 2. Quản lý icon xoay mượt mà không xung đột
             const btn = card.querySelector('button[onclick*="reloadProfile"]');
             if (!btn) return;
 
@@ -324,15 +324,17 @@ const app = {
                 btn.disabled = true;
                 btn.classList.add("opacity-70", "cursor-not-allowed", "ring-2", "ring-emerald-400/50", "bg-emerald-500/10");
                 if (icon) {
-                    icon.classList.remove("transition-transform", "duration-300", "group-hover/btn:rotate-180");
-                    icon.classList.add("spin-smooth", "text-emerald-400"); // Xoay tròn 360 độ liên tục vô tận
+                    // Gỡ sạch toàn bộ class transition và hover gây xung đột
+                    icon.classList.remove("group-hover/btn:rotate-180", "transition-transform", "duration-300");
+                    icon.classList.add("spin-active", "text-emerald-400"); // Kích hoạt xoay GPU mượt mà
                 }
                 if (text) text.innerText = "Đang tải...";
             } else {
                 btn.disabled = false;
                 btn.classList.remove("opacity-70", "cursor-not-allowed", "ring-2", "ring-emerald-400/50", "bg-emerald-500/10");
                 if (icon) {
-                    icon.classList.remove("spin-smooth", "text-emerald-400");
+                    // Tắt xoay GPU, trả lại độ dẻo transition hover ban đầu
+                    icon.classList.remove("spin-active", "text-emerald-400");
                     icon.classList.add("transition-transform", "duration-300", "group-hover/btn:rotate-180");
                 }
                 if (text) text.innerText = "Tải lại";
@@ -340,7 +342,6 @@ const app = {
         });
     },
 
-    // RENDER THÔNG MINH: CHUYỂN TIẾP TRẠNG THÁI LẮNG ĐỌNG 0.45s
     renderData(dataList, isSilent = false) {
         const container = $("#content-area");
         if (!container) return;
@@ -354,7 +355,7 @@ const app = {
                 this.addHist(d.uid, d.nameRaw);
             });
         } else {
-            // SILENT DIFFING: Khi có data mới, thay thế Card và kích hoạt hiệu ứng mờ dần 0.45s
+            // SILENT DIFFING: Cập nhật DOM im lặng + Kích hoạt hiệu ứng lắng đọng 0.45s
             dataList.forEach((d) => {
                 const uid = d.uid;
                 const oldCard = document.getElementById(`profile-card-${uid}`);
@@ -365,9 +366,9 @@ const app = {
 
                     const newCard = this.createCardElement(d, true);
                     
-                    // THAY THẾ DOM IM LẶNG KÈM HIỆU ỨNG LẮNG ĐỌNG THỊ GIÁC (DECAY FEEDBACK 0.45s)
+                    // Thêm class lắng đọng, viền sáng sẽ mờ dần trong đúng 0.45 giây sau khi nút tải dừng!
                     newCard.classList.add("card-fetch-success");
-                    setTimeout(() => newCard.classList.remove("card-fetch-success"), 450); // Đúng 0.45 giây sẽ tắt hẳn
+                    setTimeout(() => newCard.classList.remove("card-fetch-success"), 450);
                     
                     oldCard.replaceWith(newCard);
                 } else {
@@ -452,12 +453,15 @@ const app = {
     async silentRefresh() {
         if (!this.currentUids || !this.currentUids.length) return;
         
-        // Bật hiệu ứng xoay nút Tải lại trước khi fetch định kỳ
         this.setCardLoadingState(this.currentUids, true);
-        
+        const minSpinTime = new Promise(resolve => setTimeout(resolve, 600));
+
         try {
             const url = PROXY_URL + this.currentUids.join(",");
-            const response = await utils.fetchFast(url);
+            const [response] = await Promise.all([
+                utils.fetchFast(url),
+                minSpinTime
+            ]);
 
             if (!response.uiData || !response.uiData.length) return;
 
@@ -470,7 +474,6 @@ const app = {
             const cacheKey = "mw_cache_" + this.currentUids.join("_");
             localStorage.setItem(cacheKey, JSON.stringify(response.uiData));
 
-            // Tự động thay thế im lặng và sáng viền xanh lục!
             this.renderData(response.uiData, true);
         } catch (e) {
             this.setCardLoadingState(this.currentUids, false);
@@ -481,13 +484,20 @@ const app = {
         if (e && e.stopPropagation) e.stopPropagation();
         if (!uid) return;
 
-        // Kích hoạt trạng thái loading tự động
         this.setCardLoadingState(uid, true);
         this.toast(`Đang làm mới dữ liệu trực tiếp từ máy chủ game...`, "info");
 
+        // BÍ QUYẾT UI/UX: Tạo bộ đếm tối thiểu 600ms (đúng bằng 1 vòng xoay 360° của CSS)
+        const minSpinTime = new Promise(resolve => setTimeout(resolve, 600));
+
         try {
             const forceUrl = `${PROXY_URL}${uid}&_force=${Date.now()}`;
-            const response = await utils.fetchFast(forceUrl);
+            
+            // Chạy song song: Vừa cào data, vừa bắt buộc phải đợi icon xoay hết ít nhất 1 vòng tròn
+            const [response] = await Promise.all([
+                utils.fetchFast(forceUrl),
+                minSpinTime
+            ]);
 
             if (!response.uiData || !response.uiData.length) {
                 throw new Error("Máy chủ game không phản hồi dữ liệu mới");
@@ -510,7 +520,7 @@ const app = {
                 } catch(err) {}
             }
 
-            // Gọi renderData để tự động diff DOM, reset nút xoay và hiện viền xanh!
+            // Gọi renderData -> Thẻ cũ thay bằng thẻ mới, viền sáng từ từ mờ đi trong 0.45s
             this.renderData([newUiProfile], true);
             this.toast(`Đã cập nhật UID ${uid} thành công!`, "success");
 
