@@ -265,7 +265,6 @@ const app = {
         
         const p = new URLSearchParams(location.search).get("uid");
         if (p) { $("#search-input").value = p; this.search(); }
-        bgAnim.start();
 
         // rAF THROTTLED TOOLTIP (Không gây nghẽn sự kiện cảm ứng trên Mobile PE)
         const tipEl = document.getElementById("global-tooltip");
@@ -278,12 +277,12 @@ const app = {
             }
         });
         document.addEventListener("mousemove", (e) => {
-            if (tipEl && !tipEl.classList.contains("opacity-0")) {
-                if (tipReq) cancelAnimationFrame(tipReq);
-                tipReq = requestAnimationFrame(() => {
-                    tipEl.style.transform = `translate3d(${e.clientX + 15}px, ${e.clientY + 15}px, 0)`;
-                });
-            }
+            if (!tipEl || tipEl.classList.contains("opacity-0")) return;
+            
+            if (tipReq) cancelAnimationFrame(tipReq);
+            tipReq = requestAnimationFrame(() => {
+                tipEl.style.transform = `translate3d(${e.clientX + 15}px, ${e.clientY + 15}px, 0)`;
+            });
         }, { passive: true });
         document.addEventListener("mouseout", (e) => {
             const item = e.target.closest("[data-tip]");
@@ -1347,20 +1346,30 @@ const viewer = {
     startLerpLoop() {
         if (this.isLerp) return;
         this.isLerp = true;
-        const img = $("#v-img");
+        const img = document.getElementById("v-img");
         if (!img) return;
 
         const loop = () => {
             if (!this.isLerp) return;
-            this.x += (this.tx - this.x) * 0.25;
-            this.y += (this.ty - this.y) * 0.25;
-            this.s += (this.ts - this.s) * 0.25;
-            this.r += (this.tr - this.r) * 0.25;
+            
+            const dx = this.tx - this.x;
+            const dy = this.ty - this.y;
+            const ds = this.ts - this.s;
+            const dr = this.tr - this.r;
 
-            if (Math.abs(this.tx - this.x) < 0.05) this.x = this.tx;
-            if (Math.abs(this.ty - this.y) < 0.05) this.y = this.ty;
-            if (Math.abs(this.ts - this.s) < 0.005) this.s = this.ts;
-            if (Math.abs(this.tr - this.r) < 0.05) this.r = this.tr;
+            // KIỂM TRA NGỦ ĐÔNG (AUTO-SLEEP): Nếu ảnh đã tới đích, tắt động cơ để CPU về 0%
+            if (Math.abs(dx) < 0.05 && Math.abs(dy) < 0.05 && Math.abs(ds) < 0.005 && Math.abs(dr) < 0.05) {
+                this.x = this.tx; this.y = this.ty; this.s = this.ts; this.r = this.tr;
+                img.style.transform = `translate3d(${this.x.toFixed(2)}px, ${this.y.toFixed(2)}px, 0) rotate(${this.r.toFixed(2)}deg) scale(${this.s.toFixed(3)}) scaleX(${this.fx}) scaleY(${this.fy})`;
+                this.isLerp = false; 
+                return; // Cắt đứt hoàn toàn requestAnimationFrame
+            }
+
+            // Gia tốc nội suy mềm mại (Lerping)
+            this.x += dx * 0.25;
+            this.y += dy * 0.25;
+            this.s += ds * 0.25;
+            this.r += dr * 0.25;
 
             img.style.transform = `translate3d(${this.x.toFixed(2)}px, ${this.y.toFixed(2)}px, 0) rotate(${this.r.toFixed(2)}deg) scale(${this.s.toFixed(3)}) scaleX(${this.fx}) scaleY(${this.fy})`;
             this.animId = requestAnimationFrame(loop);
@@ -1375,19 +1384,20 @@ const viewer = {
 
     applyDirect() {
         this.x = this.tx; this.y = this.ty; this.s = this.ts; this.r = this.tr;
-        const img = $("#v-img");
+        const img = document.getElementById("v-img");
         if (img) img.style.transform = `translate3d(${this.x}px, ${this.y}px, 0) rotate(${this.r}deg) scale(${this.s}) scaleX(${this.fx}) scaleY(${this.fy})`;
     },
 
     resetTargets() {
         this.tx = 0; this.ty = 0; this.ts = 1; this.tr = 0; this.fx = 1; this.fy = 1;
         this.updateZoomIndicator();
+        this.startLerpLoop(); // Đánh thức động cơ
     },
 
     reset() { this.resetTargets(); },
 
     toggleOneToOne() {
-        const img = $("#v-img");
+        const img = document.getElementById("v-img");
         if (!img) return;
         if (Math.abs(this.ts - 1) < 0.05 && (this.tx !== 0 || this.ty !== 0)) {
             this.reset();
@@ -1395,14 +1405,15 @@ const viewer = {
             const ratio = img.naturalWidth ? (img.naturalWidth / img.clientWidth) : 2;
             this.ts = Math.max(1.5, Math.min(4, ratio));
             this.updateZoomIndicator();
+            this.startLerpLoop(); // Đánh thức động cơ
         } else {
             this.reset();
         }
     },
 
-    rotate(d) { this.tr += d; },
-    flipH() { this.fx *= -1; },
-    flipV() { this.fy *= -1; },
+    rotate(d) { this.tr += d; this.startLerpLoop(); },
+    flipH() { this.fx *= -1; this.startLerpLoop(); },
+    flipV() { this.fy *= -1; this.startLerpLoop(); },
     
     zoom(d, clientX = window.innerWidth / 2, clientY = window.innerHeight / 2) {
         const oldS = this.ts;
@@ -1415,6 +1426,7 @@ const viewer = {
         this.ty += (my - this.ty) * (1 - newS / oldS);
         this.ts = newS;
         this.updateZoomIndicator();
+        this.startLerpLoop(); // Đánh thức động cơ
     },
 
     download() { window.open(this.imgs[this.cur].url, "_blank"); },
@@ -1456,6 +1468,7 @@ const viewer = {
             this.tx += (e.clientX - this.lx);
             this.ty += (e.clientY - this.ly);
             this.lx = e.clientX; this.ly = e.clientY;
+            this.startLerpLoop();
         });
         window.addEventListener("mouseup", () => {
             if (this.isDrag) {
@@ -1496,6 +1509,7 @@ const viewer = {
                 this.ty += e.touches[0].clientY - this.ly;
                 this.lx = e.touches[0].clientX;
                 this.ly = e.touches[0].clientY;
+                this.startLerpLoop();
             } else if (e.touches.length === 2) {
                 e.preventDefault();
                 const newDist = Math.hypot(
@@ -1519,77 +1533,6 @@ const viewer = {
             }
             this.touchDist = 0;
         });
-    }
-};
-
-// =========================================================================
-// ADAPTIVE ENERGY-SAVING STAR ENGINE (TIẾT KIỆM PIN & KHÁNG LAG CHO MÁY YẾU)
-// =========================================================================
-const bgAnim = {
-    animId: null,
-    isPaused: false,
-
-    start() {
-        const c = document.getElementById("star-canvas");
-        if (!c) return;
-        const x = c.getContext("2d");
-        let w, h, s = [], lastTime = 0;
-        const fps = 30;
-        const interval = 1000 / fps;
-
-        const init = () => {
-            w = c.width = window.innerWidth;
-            h = c.height = window.innerHeight;
-            s = [];
-            const count = w < 768 ? 35 : 85;
-            for (let i = 0; i < count; i++) {
-                s.push({
-                    x: Math.random() * w,
-                    y: Math.random() * h,
-                    r: Math.random() * 1.5 + 0.5,
-                    a: Math.random(),
-                    v: (Math.random() * 0.02 + 0.005) * (Math.random() > 0.5 ? 1 : -1),
-                    dy: Math.random() * 0.15 + 0.05,
-                });
-            }
-        };
-
-        // TỰ ĐỘNG DỪNG VẼ KHI TAB ẨN HỢC KHI MỞ MODAL ĐỂ GIẢI PHÓNG CPU
-        document.addEventListener("visibilitychange", () => {
-            this.isPaused = document.hidden;
-        });
-
-        const loop = (currentTime) => {
-            this.animId = requestAnimationFrame(loop);
-            if (this.isPaused) return;
-
-            const modal = document.getElementById("json-modal");
-            const viewer = document.getElementById("viewer");
-            const isModalOpen = (modal && !modal.classList.contains("hidden")) || (viewer && !viewer.classList.contains("hidden"));
-            if (isModalOpen) return; // Không vẽ nền khi đang mở modal
-
-            const delta = currentTime - lastTime;
-            if (delta < interval) return;
-            lastTime = currentTime - (delta % interval);
-
-            x.clearRect(0, 0, w, h);
-            for (let i = 0; i < s.length; i++) {
-                const p = s[i];
-                p.a += p.v;
-                if (p.a > 1 || p.a < 0) p.v *= -1;
-                p.y -= p.dy;
-                if (p.y < 0) p.y = h;
-                
-                const alpha = Math.max(0.1, Math.min(1, Math.abs(p.a))).toFixed(2);
-                x.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-                // Sử dụng tọa độ số nguyên (Math.floor) để khử chi phí Anti-Aliasing của Canvas
-                x.fillRect(Math.floor(p.x), Math.floor(p.y), p.r, p.r);
-            }
-        };
-
-        window.addEventListener("resize", init, { passive: true });
-        init();
-        this.animId = requestAnimationFrame(loop);
     }
 };
 
