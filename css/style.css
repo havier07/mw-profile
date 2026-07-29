@@ -15,13 +15,66 @@ body {
     -webkit-tap-highlight-color: transparent;
 }
 
-#star-canvas {
+/* Động cơ chứa nền: Khóa chặt layout (contain: strict) để chống rò rỉ Paint */
+#ambient-bg {
     position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
+    inset: 0;
     z-index: -1;
+    background-color: var(--bg-dark);
+    overflow: hidden;
     pointer-events: none;
+    contain: strict; 
+}
+
+/* Tạo 3 khối cầu mờ ảo có tâm màu rõ rệt */
+#ambient-bg::before,
+#ambient-bg::after,
+.ambient-blob {
+    content: "";
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 100vmax; height: 100vmax; /* Thu gọn kích thước để di chuyển lộ rõ hơn */
+    margin-top: -50vmax; margin-left: -50vmax; /* Neo tọa độ chính xác về tâm */
+    border-radius: 50%;
     will-change: transform;
+    mix-blend-mode: screen;
+}
+
+/* Khối Sky (Xanh lơ) - Đậm hơn để làm chủ đạo */
+#ambient-bg::before {
+    background: radial-gradient(circle, rgba(14, 165, 233, 0.22) 0%, rgba(14, 165, 233, 0) 65%);
+    animation: aurora1 18s ease-in-out infinite alternate;
+}
+
+/* Khối Purple (Tím) - Tạo điểm nhấn bí ẩn */
+#ambient-bg::after {
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.18) 0%, rgba(168, 85, 247, 0) 65%);
+    animation: aurora2 22s ease-in-out infinite alternate-reverse;
+}
+
+/* Khối Emerald (Xanh lá) - Tương phản thị giác */
+.ambient-blob {
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0) 65%);
+    animation: aurora3 20s ease-in-out infinite alternate;
+}
+
+/* THUẬT TOÁN AURORA FLUID: Quét chéo góc màn hình + Nhịp thở Scale (100% GPU) */
+@keyframes aurora1 {
+    0%   { transform: translate3d(-35vw, -30vh, 0) scale(0.8) rotate(0deg); }
+    50%  { transform: translate3d(25vw, -10vh, 0) scale(1.25) rotate(90deg); }
+    100% { transform: translate3d(-15vw, 35vh, 0) scale(0.9) rotate(180deg); }
+}
+
+@keyframes aurora2 {
+    0%   { transform: translate3d(35vw, 35vh, 0) scale(1.2) rotate(0deg); }
+    50%  { transform: translate3d(-20vw, 15vh, 0) scale(0.85) rotate(-90deg); }
+    100% { transform: translate3d(-30vw, -25vh, 0) scale(1.15) rotate(-180deg); }
+}
+
+@keyframes aurora3 {
+    0%   { transform: translate3d(0, 40vh, 0) scale(0.9) rotate(0deg); }
+    50%  { transform: translate3d(30vw, -25vh, 0) scale(1.3) rotate(180deg); }
+    100% { transform: translate3d(-35vw, -15vh, 0) scale(1) rotate(360deg); }
 }
 
 /* ==========================================================================
