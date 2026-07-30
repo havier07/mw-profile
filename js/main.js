@@ -542,10 +542,11 @@ const app = {
         }
 
         const box = "bg-white/[0.03] rounded-2xl p-4 border border-white/10 flex flex-col justify-between hover:bg-white/[0.07] hover:border-white/20 transition-all duration-200 active:scale-[0.98] group/box shadow-lg h-full";
-        const row = "text-xs md:text-sm flex justify-between items-start py-1.5 border-b border-white/[0.03] last:border-0";
+        
+        const row = "text-xs md:text-sm flex flex-wrap justify-between items-start gap-x-2 gap-y-1.5 py-1.5 border-b border-white/[0.03] last:border-0";
         const lbl = "text-slate-400 flex items-center gap-2 truncate font-medium mt-[1px] shrink-0";
-        const val = "text-white font-semibold truncate ml-2 font-mono text-right";
-        const valWrap = "text-white font-semibold ml-2 text-right flex-1 break-words leading-[1.2]"; 
+        const val = "text-white font-semibold truncate font-mono text-right ml-auto";
+        const valWrap = "text-white font-semibold text-right break-words leading-[1.2] ml-auto max-w-full"; 
         const ico = (cls, color) => `<i class="fa-solid ${cls} ${color} w-4 text-center shrink-0 text-xs md:text-sm group-hover/box:scale-110 transition-transform duration-200"></i>`;
 
         card.innerHTML = `
@@ -589,13 +590,11 @@ const app = {
                                 <i class="fa-solid fa-user-astronaut text-purple-400 text-sm"></i> NHÂN VẬT
                             </div>
                             <div class="space-y-0.5 flex-grow">
-                                
-                                <!-- CHỈ CẦN GỌI d.mTip, d.mClass, d.mText TRỰC TIẾP TỪ SERVER -->
                                 <div class="${row}" data-tip="${d.mTip}"><span class="${lbl}">${ico('fa-cube', 'text-purple-400')} Model</span><span class="${valWrap} cursor-help hover:text-purple-300 transition-colors ${d.mClass}">${d.mText}</span></div>
-                                
                                 <div class="${row}"><span class="${lbl}">${ico('fa-shirt', 'text-pink-400')} Skin</span><span class="${val}" title="${d.skin}">${d.skin}</span></div>
                                 <div class="${row}"><span class="${lbl}">${ico('fa-heart', 'text-rose-400')} Fan</span><span class="${val} text-rose-300">${(d.funCount || 0).toLocaleString()}</span></div>
-                                <div class="${row}" data-tip="Phòng trưng bày Skin, DIY, Thần thú & Skin công cụ"><span class="${lbl}">${ico('fa-wand-magic-sparkles', 'text-amber-400')} MiniShow</span><span class="${val}">${d.miniShow}</span></div>
+                                <div class="${row}" data-tip="Phòng trưng bày Skin, DIY, Thần thú & Skin công cụ"><span class="${lbl}">${ico('fa-wand-magic-sparkles', 'text-amber-400')} MiniShow</span><span class="${valWrap}">${d.miniShow}</span></div>
+                                
                             </div>
                             <div class="text-[10px] text-purple-300/70 mt-3 pt-2 border-t border-white/5 flex items-center justify-between">
                                 <span class="flex items-center gap-1 truncate"><i class="fa-solid fa-clock text-indigo-400"></i> DIY:</span>
