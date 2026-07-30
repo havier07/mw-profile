@@ -7,6 +7,8 @@ const COLOR_MAP = {
     'B': '#3b82f6', 'G': '#22c55e'
 };
 
+const PARSE_CACHE = new Map();
+
 const utils = {
     fetchFast: async (fullUrl) => {
         const controller = new AbortController();
@@ -33,6 +35,10 @@ const utils = {
 
     parseMood: (t) => {
         if (!t || String(t).trim() === '') return null;
+        
+        // 🚀 THUẬT TOÁN MEMOIZATION: Nếu đã từng dịch chuỗi này rồi, móc từ RAM ra trả về luôn (Tốc độ O(1))
+        if (PARSE_CACHE.has(t)) return PARSE_CACHE.get(t);
+
         let clean = String(t)
             .replace(/</g, "&lt;").replace(/>/g, "&gt;")
             .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" class="text-sky-400 hover:underline j-link" onclick="event.stopPropagation()">$1</a>')
@@ -65,7 +71,7 @@ const utils = {
 
             flush(); i++; if (i >= len) break; const cmd = clean[i];
 
-            if (COLOR_MAP[cmd]) { color = COLOR_MAP[cmd]; i++; } 
+            if (COLOR_MAP_GLOBAL[cmd]) { color = COLOR_MAP_GLOBAL[cmd]; i++; } 
             else if (cmd === 'c' || cmd === 'C') {
                 i++; let hex = ''; while (i < len && hex.length < 6 && /[0-9a-fA-F]/.test(clean[i])) { hex += clean[i]; i++; }
                 if (hex.length > 0) color = '#' + hex;
@@ -76,7 +82,13 @@ const utils = {
             else if (cmd === 'n') { color = null; isUnderline = false; isBlink = false; i++; } 
             else { i++; }
         }
-        flush(); return html;
+        flush(); 
+        
+        // 🚀 DỌN RÁC RAM (Garbage Collection): Chống tràn bộ nhớ nếu người dùng treo máy tra cứu 1000 người
+        if (PARSE_CACHE.size > 200) PARSE_CACHE.clear();
+        PARSE_CACHE.set(t, html); // Lưu lại thành quả vào RAM
+        
+        return html;
     },
 
     // 1. ENGINE ANIMATION (Nhanh nhạy, dứt khoát chuẩn Apple/Vercel)
@@ -280,13 +292,27 @@ const app = {
                 tipEl.classList.remove("opacity-0");
             }
         });
+
+        let lastX = 0, lastY = 0;
+        let isTicking = false;
+
         document.addEventListener("mousemove", (e) => {
             if (!tipEl || tipEl.classList.contains("opacity-0")) return;
-            if (tipReq) cancelAnimationFrame(tipReq);
-            tipReq = requestAnimationFrame(() => {
-                tipEl.style.transform = `translate3d(${e.clientX + 15}px, ${e.clientY + 15}px, 0)`;
-            });
+            
+            // Chỉ ghi nhận tọa độ mới nhất
+            lastX = e.clientX;
+            lastY = e.clientY;
+
+            // Nếu GPU chưa vẽ xong frame trước, bỏ qua không nhồi thêm lệnh vào CPU
+            if (!isTicking) {
+                requestAnimationFrame(() => {
+                    tipEl.style.transform = `translate3d(${lastX + 15}px, ${lastY + 15}px, 0)`;
+                    isTicking = false;
+                });
+                isTicking = true;
+            }
         }, { passive: true });
+        
         document.addEventListener("mouseout", (e) => {
             const item = e.target.closest("[data-tip]");
             if (item && tipEl) tipEl.classList.add("opacity-0");
@@ -519,8 +545,8 @@ const app = {
 
         const card = document.createElement("div");
         card.id = `profile-card-${uid}`;
-        card.className = `glass-panel rounded-3xl p-6 relative overflow-hidden transition-[transform,box-shadow] duration-300 ease-out border-t border-white/10 group hover:shadow-sky-500/10 hover:shadow-2xl transform-gpu will-change-[transform,box-shadow] contain-paint ${isSilent ? '' : 'animate-enter'}`;
-        
+        card.className = `glass-panel rounded-3xl p-6 relative overflow-hidden transition-transform duration-300 ease-out border-t border-white/10 group transform-gpu will-change-transform contain-paint ${isSilent ? '' : 'animate-enter'}`;
+
         const isNu = String(d.gender).includes('venus');
         const bg = isNu ? "from-pink-500/10 via-purple-500/5 to-rose-500/10" : "from-sky-500/10 via-blue-500/5 to-cyan-500/10";
 
@@ -571,7 +597,7 @@ const app = {
                 <!-- Cột trái: Avatar + UID -->
                 <div class="flex flex-col items-center shrink-0 justify-between">
                     <div class="relative w-40 h-40 md:w-44 md:h-44 rounded-[2.5rem] p-1 border-2 border-white/10 overflow-hidden shadow-2xl bg-[#0b101e] cursor-pointer group-avatar transition-transform hover:scale-105" onclick="viewer.openAvatar(this, '${uid}')">
-                        <img src="${d.avatar}" class="w-full h-full object-cover rounded-[2.3rem]" decoding="async">
+                        <img src="${d.avatar}" class="w-full h-full object-cover rounded-[2.3rem]" width="176" height="176" decoding="async">
                         <div class="absolute inset-0 bg-black/30 opacity-0 group-avatar:hover:opacity-100 transition flex items-center justify-center"><i class="fa-solid fa-expand text-white text-2xl"></i></div>
                     </div>
                     
