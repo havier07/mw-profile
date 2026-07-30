@@ -28,117 +28,77 @@ const utils = {
 
     parseMood: (t) => {
         if (!t || String(t).trim() === '') return null;
-        
         let clean = String(t)
             .replace(/</g, "&lt;").replace(/>/g, "&gt;")
             .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" class="text-sky-400 hover:underline j-link" onclick="event.stopPropagation()">$1</a>')
             .replace(/\n/g, "<br>");
 
-        let html = '';
-        let buffer = '';
-        let color = null;
-        let isBlink = false;
-        let isUnderline = false;
-
-        const COLOR_MAP = {
-            'K': '#000000', 'W': '#ffffff', 'R': '#ef4444', 'Y': '#eab308',
-            'B': '#3b82f6', 'G': '#22c55e'
-        };
+        let html = ''; let buffer = ''; let color = null; let isBlink = false; let isUnderline = false;
+        const COLOR_MAP = { 'K': '#000000', 'W': '#ffffff', 'R': '#ef4444', 'Y': '#eab308', 'B': '#3b82f6', 'G': '#22c55e' };
 
         const flush = () => {
             if (!buffer) return;
-            let styles = [];
-            let classes = [];
-
+            let styles = []; let classes = [];
             if (color) styles.push(`color:${color}`);
-            if (isUnderline) {
-                styles.push(`text-decoration:underline`);
-                if (color) styles.push(`text-decoration-color:${color}`);
-            }
+            if (isUnderline) { styles.push(`text-decoration:underline`); if (color) styles.push(`text-decoration-color:${color}`); }
             if (isBlink) classes.push('blink-text');
-
-            if (styles.length === 0 && classes.length === 0) {
-                html += buffer;
-            } else {
-                const styleAttr = styles.length > 0 ? ` style="${styles.join(';')}"` : '';
-                const classAttr = classes.length > 0 ? ` class="${classes.join(' ')}"` : '';
-                html += `<span${classAttr}${styleAttr}>${buffer}</span>`;
-            }
+            if (styles.length === 0 && classes.length === 0) { html += buffer; } 
+            else { html += `<span${classes.length > 0 ? ` class="${classes.join(' ')}"` : ''}${styles.length > 0 ? ` style="${styles.join(';')}"` : ''}>${buffer}</span>`; }
             buffer = '';
         };
 
-        let i = 0;
-        const len = clean.length;
-
+        let i = 0; const len = clean.length;
         while (i < len) {
             if (clean[i] === '<') {
-                flush();
-                let tag = '';
-                while (i < len && clean[i] !== '>') { 
-                    tag += clean[i]; 
-                    i++; 
-                }
-                if (i < len) {
-                    tag += clean[i];
-                    i++;
-                }
-                html += tag;
-                continue;
+                flush(); let tag = '';
+                while (i < len && clean[i] !== '>') { tag += clean[i]; i++; }
+                if (i < len) { tag += clean[i]; i++; }
+                html += tag; continue;
             }
             if (clean[i] !== '#') { buffer += clean[i]; i++; continue; }
-
             const nextChar = i + 1 < len ? clean[i + 1] : '';
             if (nextChar === '#') { buffer += '#'; i += 2; continue; }
 
-            flush();
-            i++;
-            if (i >= len) break;
-            const cmd = clean[i];
+            flush(); i++; if (i >= len) break; const cmd = clean[i];
 
             if (COLOR_MAP[cmd]) { color = COLOR_MAP[cmd]; i++; } 
             else if (cmd === 'c' || cmd === 'C') {
-                i++; let hex = '';
-                while (i < len && hex.length < 6 && /[0-9a-fA-F]/.test(clean[i])) { hex += clean[i]; i++; }
+                i++; let hex = ''; while (i < len && hex.length < 6 && /[0-9a-fA-F]/.test(clean[i])) { hex += clean[i]; i++; }
                 if (hex.length > 0) color = '#' + hex;
             } 
-            else if (cmd === 'A') {
-                i++; let iconId = '';
-                while (i < len && iconId.length < 3 && /[0-9]/.test(clean[i])) { iconId += clean[i]; i++; }
-            } 
+            else if (cmd === 'A') { i++; let iconId = ''; while (i < len && iconId.length < 3 && /[0-9]/.test(clean[i])) { iconId += clean[i]; i++; } } 
             else if (cmd === 'L') { isUnderline = true; i++; } 
             else if (cmd === 'b') { isBlink = true; i++; } 
             else if (cmd === 'n') { color = null; isUnderline = false; isBlink = false; i++; } 
             else { i++; }
         }
-        flush();
-        return html;
+        flush(); return html;
     },
 
-    // 1. Khởi tạo Engine Animation Spring (Chạy 1 lần duy nhất)
+    // 1. ENGINE ANIMATION ĐỈNH CAO (Animate-UI Standard)
     injectCopyStyles: () => {
         if (document.getElementById('anim-copy-styles')) return;
         const style = document.createElement('style');
         style.id = 'anim-copy-styles';
         style.innerHTML = `
-            @keyframes copy-check-in {
-                0% { transform: scale(0.3) rotate(-15deg); opacity: 0; }
-                50% { transform: scale(1.25) rotate(5deg); opacity: 1; }
-                100% { transform: scale(1.1) rotate(0deg); opacity: 1; }
+            .copy-wrapper { position: relative; display: inline-flex; align-items: center; justify-content: center; outline: none; }
+            .copy-svg { transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+            .check-svg { 
+                position: absolute; 
+                transition: all 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+                transform: scale(0.3) rotate(-15deg); 
+                opacity: 0; 
+                color: #34d399; /* Emerald 400 */
+                filter: drop-shadow(0 0 6px rgba(52,211,153,0.4)); 
             }
-            .anim-copy-in {
-                animation: copy-check-in 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-            }
-            /* Đảm bảo thẻ i luôn giữ form khi nhét div vào trong */
-            .copy-btn-morphing {
-                display: inline-flex !important;
-                align-items: center;
-                justify-content: center;
-            }
+            /* Trạng thái khi kích hoạt */
+            .copy-wrapper.copied .copy-svg { transform: scale(0.3); opacity: 0; }
+            .copy-wrapper.copied .check-svg { transform: scale(1.1) rotate(0deg); opacity: 1; }
         `;
         document.head.appendChild(style);
     },
 
-    // 2. Tương thích chéo (Cross-compatibility) cho cả thẻ <button> và thẻ <i>
+    // 2. LOGIC TOGGLE CLASS (Không phá vỡ DOM)
     copy: (txt, btnEl = null, label = "", e = null) => {
         if (e && e.stopPropagation) e.stopPropagation();
         utils.injectCopyStyles();
@@ -153,31 +113,17 @@ const utils = {
                 const msg = label ? `Đã sao chép ${label}` : `Đã sao chép nội dung`;
                 app.toast(msg, "success");
                 
-                if (btnEl && !btnEl.dataset.copying) {
-                    btnEl.dataset.copying = "true";
-                    
-                    // Sao lưu trạng thái cũ
-                    const oldHTML = btnEl.innerHTML;
-                    const isIconTag = btnEl.tagName.toLowerCase() === 'i';
-                    const oldClasses = btnEl.className;
-                    
-                    // Nếu là thẻ <i> (như nút Copy Tên, Copy Lịch sử), ép nó thành block để nhét SVG không bị lệch
-                    if (isIconTag) {
-                        btnEl.classList.remove('fa-regular', 'fa-copy', 'fa-solid'); // Tạm xóa icon fa cũ
-                        btnEl.classList.add('copy-btn-morphing'); // Ép flexbox
+                if (btnEl) {
+                    if (btnEl.classList.contains('copy-wrapper')) {
+                        // Kích hoạt animation Morphing
+                        btnEl.classList.add('copied');
+                        setTimeout(() => btnEl.classList.remove('copied'), 2000);
+                    } else {
+                        // Fallback an toàn cho các thẻ <i> cũ chưa kịp update (ví dụ ở JSON box)
+                        const oldHTML = btnEl.innerHTML;
+                        btnEl.innerHTML = `<svg class="w-[1.2em] h-[1.2em] text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.4)] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>`;
+                        setTimeout(() => btnEl.innerHTML = oldHTML, 2000);
                     }
-
-                    // Render SVG Checkmark mượt mà
-                    btnEl.innerHTML = `<svg class="w-[1.2em] h-[1.2em] text-emerald-400 anim-copy-in drop-shadow-[0_0_8px_rgba(52,211,153,0.4)] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>`;
-                    
-                    setTimeout(() => { 
-                        // Khôi phục hiện trạng nguyên thủy
-                        btnEl.innerHTML = oldHTML; 
-                        if (isIconTag) {
-                            btnEl.className = oldClasses;
-                        }
-                        delete btnEl.dataset.copying;
-                    }, 2000);
                 }
             } else {
                 app.toast("Lỗi sao chép vào Clipboard", "error");
@@ -186,11 +132,7 @@ const utils = {
         document.body.removeChild(t);
     },
 
-    escapeHtml: (t) => String(t)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
+    escapeHtml: (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
 };
 
 // =========================================================================
@@ -603,29 +545,46 @@ const app = {
 
             <!-- TẦNG 1: ĐỊNH DANH -->
             <div class="flex flex-col md:flex-row gap-8 mb-6 md:mb-8 items-stretch">
-                <!-- Cột trái: Avatar + UID chuẩn game -->
+                <!-- Cột trái: Avatar + UID -->
                 <div class="flex flex-col items-center shrink-0 justify-between">
                     <div class="relative w-40 h-40 md:w-44 md:h-44 rounded-[2.5rem] p-1 border-2 border-white/10 overflow-hidden shadow-2xl bg-[#0b101e] cursor-pointer group-avatar transition-transform hover:scale-105" onclick="viewer.openAvatar(this, '${uid}')">
                         <img src="${d.avatar}" class="w-full h-full object-cover rounded-[2.3rem]">
                         <div class="absolute inset-0 bg-black/30 opacity-0 group-avatar:hover:opacity-100 transition flex items-center justify-center"><i class="fa-solid fa-expand text-white text-2xl"></i></div>
                     </div>
-                    <h2 class="text-3xl font-bold text-white mt-4 mb-2 flex md:hidden items-center justify-center gap-2 whitespace-pre-wrap text-center"><span class="break-words max-w-full">${parsedName}</span><i class="fa-regular fa-copy text-lg text-slate-600 hover:text-white copy-btn shrink-0" data-copy="${utils.escapeAttr(d.nameRaw)}" onclick="utils.copy(this.getAttribute('data-copy'), this, 'Tên nhân vật', event)"></i></h2>
                     
+                    <!-- Mobile Name -->
+                    <h2 class="text-3xl font-bold text-white mt-4 mb-2 flex md:hidden items-center justify-center gap-2 whitespace-pre-wrap text-center">
+                        <span class="break-words max-w-full">${parsedName}</span>
+                        <button class="copy-wrapper text-slate-500 hover:text-white transition-colors shrink-0 outline-none" data-copy="${utils.escapeAttr(d.nameRaw)}" onclick="utils.copy(this.getAttribute('data-copy'), this, 'Tên nhân vật', event)" title="Sao chép tên">
+                            <svg class="copy-svg w-[22px] h-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            <svg class="check-svg w-[22px] h-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                        </button>
+                    </h2>
+                    
+                    <!-- Ô UID: Nút copy UID cũng biến thành Animate-UI Standard -->
                     <div class="mt-5 md:mt-0 w-38 mx-auto flex items-center justify-between bg-black/30 px-3.5 py-2 rounded-full border border-white/5 shadow-inner">
                         <div class="flex items-center gap-1.5 min-w-0">
                             <span class="text-[11px] font-semibold text-slate-400 tracking-wider shrink-0">UID:</span>
                             <span class="font-mono font-bold text-sky-300 text-sm md:text-base tracking-tight truncate">${d.displayUid || d.uid}</span>
                         </div>
-                        <button onclick="utils.copy('${uid}', this, 'UID', event)" class="w-6 h-6 rounded-full bg-white/5 hover:bg-sky-500/20 text-slate-400 hover:text-sky-300 active:scale-90 transition-all flex items-center justify-center text-xs shrink-0 ml-1 relative group/copy" title="Sao chép UID gốc">
-                            <svg class="w-3.5 h-3.5 transition-all duration-300 group-hover/copy:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        <button onclick="utils.copy('${uid}', this, 'UID', event)" class="copy-wrapper w-6 h-6 rounded-full bg-white/5 hover:bg-sky-500/20 text-slate-400 hover:text-sky-300 active:scale-90 transition-colors flex items-center justify-center shrink-0 ml-1 outline-none" title="Sao chép UID gốc">
+                            <svg class="copy-svg w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            <svg class="check-svg w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
                         </button>
                     </div>
                 </div>
                 
-                <!-- Cột phải: Tên, Badge và Ô Bio -->
+                <!-- Cột phải: PC Name, Badge và Ô Bio -->
                 <div class="flex-grow min-w-0 flex flex-col justify-between pt-1">
                     <div>
-                        <h2 class="text-3xl md:text-4xl font-bold text-white mb-2 hidden md:flex items-center gap-3 whitespace-pre-wrap"><span class="break-words min-w-0">${parsedName}</span><i class="fa-regular fa-copy text-lg text-slate-600 hover:text-white copy-btn shrink-0" data-copy="${utils.escapeAttr(d.nameRaw)}" onclick="utils.copy(this.getAttribute('data-copy'), this, 'Tên nhân vật', event)"></i></h2>
+                        <!-- PC Name -->
+                        <h2 class="text-3xl md:text-4xl font-bold text-white mb-2 hidden md:flex items-center gap-3 whitespace-pre-wrap">
+                            <span class="break-words min-w-0">${parsedName}</span>
+                            <button class="copy-wrapper text-slate-500 hover:text-white transition-colors shrink-0 outline-none mt-1" data-copy="${utils.escapeAttr(d.nameRaw)}" onclick="utils.copy(this.getAttribute('data-copy'), this, 'Tên nhân vật', event)" title="Sao chép tên">
+                                <svg class="copy-svg w-[26px] h-[26px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                <svg class="check-svg w-[26px] h-[26px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                            </button>
+                        </h2>
                         
                         <div class="flex flex-nowrap gap-3 text-xs font-bold text-slate-300 mb-4 uppercase tracking-wider justify-center md:justify-start overflow-x-auto no-scrollbar">
                             <span class="bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 whitespace-nowrap shadow-sm">${d.gender}</span>
