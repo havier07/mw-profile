@@ -562,14 +562,11 @@ const app = {
                 bioContent = `<div class="flex gap-4 items-start"><div class="text-sky-400 font-mono font-bold text-lg border-r border-white/10 pr-4 pt-1">#${d.moodIcon}</div><div class="text-slate-500 italic opacity-50 font-medium text-base flex-grow">Chưa thiết lập</div></div>`;
             }
         } else if (d.moodIcon && String(d.moodIcon).trim() !== "" && d.moodIcon !== "A100") {
-            bioContent = `<div class="flex gap-4 items-start"><div class="text-sky-400 font-mono font-bold text-lg border-r border-white/10 pr-4 pt-1">#${d.moodIcon}</div><div class="text-slate-200 leading-relaxed font-medium text-base whitespace-pre-wrap flex-grow break-words">${parsedMood}</div></div>`;
+            bioContent = `<div class="flex gap-4 items-start h-full"><div class="text-sky-400 font-mono font-bold text-lg border-r border-white/10 pr-4 pt-1">#${d.moodIcon}</div><div class="text-slate-200 leading-relaxed font-medium text-base whitespace-pre-wrap flex-grow break-words overflow-y-auto max-h-[160px] custom-scrollbar">${parsedMood}</div></div>`;
         } else {
-            bioContent = `<p class="text-slate-200 leading-relaxed font-medium text-base whitespace-pre-wrap break-words">${parsedMood}</p>`;
+            bioContent = `<p class="text-slate-200 leading-relaxed font-medium text-base whitespace-pre-wrap break-words overflow-y-auto max-h-[160px] custom-scrollbar">${parsedMood}</p>`;
         }
 
-        // ==========================================
-        // UI CORE: TỐI ƯU KHÔNG GIAN THOÁNG ĐÃNG
-        // ==========================================
         const box = "bg-white/[0.03] rounded-2xl p-4 border border-white/10 flex flex-col justify-between hover:bg-white/[0.07] hover:border-white/20 transition-all duration-200 active:scale-[0.98] group/box shadow-lg h-full relative overflow-hidden";
         const row = "text-xs md:text-sm flex justify-between items-center py-1.5 gap-2 border-b border-white/[0.03] last:border-0 relative z-10";
         const lbl = "text-slate-400 flex items-center gap-2 truncate font-medium shrink-0";
@@ -589,37 +586,47 @@ const app = {
                 <button onclick="app.showJson('${uid}')" class="px-2.5 md:px-3 py-1 bg-white/5 hover:bg-white/10 active:scale-95 rounded-lg text-xs font-bold text-sky-400 border border-sky-500/20 transition flex items-center gap-1 shrink-0"><i class="fa-solid fa-code"></i> JSON</button>
             </div>
 
-            <!-- TẦNG 1: ĐỊNH DANH (AVATAR CHUẨN KÍCH THƯỚC VỪA VẶN & BIO) -->
-            <div class="flex flex-col md:flex-row gap-8 mb-6 md:mb-8">
-                <div class="flex flex-col items-center shrink-0">
+            <!-- TẦNG 1: ĐỊNH DANH -->
+            <div class="flex flex-col md:flex-row gap-8 mb-6 md:mb-8 items-stretch">
+                <!-- Cột trái: Avatar + UID chuẩn game -->
+                <div class="flex flex-col items-center shrink-0 justify-between">
                     <div class="relative w-40 h-40 md:w-44 md:h-44 rounded-[2.5rem] p-1 border-2 border-white/10 overflow-hidden shadow-2xl bg-[#0b101e] cursor-pointer group-avatar transition-transform hover:scale-105" onclick="viewer.openAvatar(this, '${uid}')">
                         <img src="${d.avatar}" class="w-full h-full object-cover rounded-[2.3rem]">
                         <div class="absolute inset-0 bg-black/30 opacity-0 group-avatar:hover:opacity-100 transition flex items-center justify-center"><i class="fa-solid fa-expand text-white text-2xl"></i></div>
                     </div>
                     <h2 class="text-3xl font-bold text-white mt-4 mb-2 flex md:hidden items-center justify-center gap-2 whitespace-pre-wrap text-center"><span class="break-words max-w-full">${parsedName}</span><i class="fa-regular fa-copy text-lg text-slate-600 hover:text-white copy-btn shrink-0" data-copy="${utils.escapeAttr(d.nameRaw)}" onclick="utils.copy(this.getAttribute('data-copy'), this, 'Tên nhân vật', event)"></i></h2>
-                    <div class="mt-2 md:mt-4 flex items-center gap-2 bg-black/30 px-4 py-1.5 rounded-full border border-white/5 shadow-inner">
-                        <span class="font-mono font-bold text-sky-300 text-lg">${uid}</span><i class="fa-regular fa-copy text-slate-500 hover:text-white copy-btn" onclick="utils.copy('${uid}', this, 'UID', event)"></i>
+                    
+                    <div class="mt-5 md:mt-0 w-38 mx-auto flex items-center justify-between bg-black/30 px-3.5 py-2 rounded-full border border-white/5 shadow-inner">
+                        <div class="flex items-center gap-1.5 min-w-0">
+                            <span class="text-[11px] font-semibold text-slate-400 tracking-wider shrink-0">UID:</span>
+                            <span class="font-mono font-bold text-sky-300 text-sm md:text-base tracking-tight truncate">${d.displayUid || d.uid}</span>
+                        </div>
+                        <button onclick="utils.copy('${uid}', this, 'UID', event)" class="w-6 h-6 rounded-full bg-white/5 hover:bg-sky-500/20 text-slate-400 hover:text-sky-300 active:scale-90 transition-all flex items-center justify-center text-xs shrink-0 ml-1 relative group/copy" title="Sao chép UID gốc">
+                            <svg class="w-3.5 h-3.5 transition-all duration-300 group-hover/copy:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        </button>
                     </div>
                 </div>
                 
-                <div class="flex-grow min-w-0 pt-2">
-                    <h2 class="text-3xl md:text-4xl font-bold text-white mb-2 hidden md:flex items-center gap-3 whitespace-pre-wrap"><span class="break-words min-w-0">${parsedName}</span><i class="fa-regular fa-copy text-lg text-slate-600 hover:text-white copy-btn shrink-0" data-copy="${utils.escapeAttr(d.nameRaw)}" onclick="utils.copy(this.getAttribute('data-copy'), this, 'Tên nhân vật', event)"></i></h2>
-                    
-                    <div class="flex flex-nowrap gap-3 text-xs font-bold text-slate-300 mb-6 uppercase tracking-wider justify-center md:justify-start overflow-x-auto no-scrollbar">
-                        <span class="bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 whitespace-nowrap shadow-sm">${d.gender}</span>
-                        <span class="bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 whitespace-nowrap shadow-sm"><i class="fa-solid fa-earth-americas text-indigo-400 mr-1"></i> ${d.country}</span>
-                        <span class="bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 whitespace-nowrap shadow-sm"><i class="fa-solid fa-language text-purple-400 mr-1"></i> ${d.lang}</span>
+                <!-- Cột phải: Tên, Badge và Ô Bio -->
+                <div class="flex-grow min-w-0 flex flex-col justify-between pt-1">
+                    <div>
+                        <h2 class="text-3xl md:text-4xl font-bold text-white mb-2 hidden md:flex items-center gap-3 whitespace-pre-wrap"><span class="break-words min-w-0">${parsedName}</span><i class="fa-regular fa-copy text-lg text-slate-600 hover:text-white copy-btn shrink-0" data-copy="${utils.escapeAttr(d.nameRaw)}" onclick="utils.copy(this.getAttribute('data-copy'), this, 'Tên nhân vật', event)"></i></h2>
+                        
+                        <div class="flex flex-nowrap gap-3 text-xs font-bold text-slate-300 mb-4 uppercase tracking-wider justify-center md:justify-start overflow-x-auto no-scrollbar">
+                            <span class="bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 whitespace-nowrap shadow-sm">${d.gender}</span>
+                            <span class="bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 whitespace-nowrap shadow-sm"><i class="fa-solid fa-earth-americas text-indigo-400 mr-1"></i> ${d.country}</span>
+                            <span class="bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 whitespace-nowrap shadow-sm"><i class="fa-solid fa-language text-purple-400 mr-1"></i> ${d.lang}</span>
+                        </div>
                     </div>
                     
-                    <div class="bg-black/20 rounded-2xl p-5 border border-white/5 relative hover:bg-black/30 transition shadow-inner">
+                    <div class="bg-black/25 rounded-2xl p-4 md:p-5 border border-white/5 relative hover:bg-black/30 transition shadow-inner flex-grow flex flex-col justify-center">
                         ${bioContent}
                     </div>
                 </div>
             </div>
             
-            <!-- TẦNG 2: 4 THẺ THỐNG KÊ TRÀN VIỀN (FULL-WIDTH 100%) -->
+            <!-- TẦNG 2: 4 THẺ THỐNG KÊ TRÀN VIỀN -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 mb-5">
-                
                 <div class="${box}">
                     <div class="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover/box:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                     <div class="text-[11px] font-bold text-purple-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 border-b border-purple-500/20 pb-1.5 relative z-10">
@@ -687,10 +694,9 @@ const app = {
                         <span class="text-green-300 font-mono font-semibold ml-1 truncate">${d.wlTime}</span>
                     </div>
                 </div>
-
             </div>
 
-            <!-- TẦNG 3: THƯ VIỆN ẢNH TRÀN VIỀN -->
+            <!-- TẦNG 3: THƯ VIỆN ẢNH -->
             ${(d.photos && d.photos.length) ? `
             <div class="mt-6 pt-5 border-t border-white/5">
                 <h4 class="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-2"><i class="fa-solid fa-images"></i> Thư viện ảnh (${d.photos.length}) <span class="text-[10px] font-normal normal-case opacity-50 ml-auto hidden md:inline">Kéo để cuộn</span></h4>
