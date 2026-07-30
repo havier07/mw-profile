@@ -2,6 +2,11 @@ const PROXY_URL = "https://mw-proxy.havier07.workers.dev/?uid=";
 
 const $ = document.querySelector.bind(document);
 
+const COLOR_MAP = {
+    'K': '#000000', 'W': '#ffffff', 'R': '#ef4444', 'Y': '#eab308',
+    'B': '#3b82f6', 'G': '#22c55e'
+};
+
 const utils = {
     fetchFast: async (fullUrl) => {
         const controller = new AbortController();
@@ -34,7 +39,6 @@ const utils = {
             .replace(/\n/g, "<br>");
 
         let html = ''; let buffer = ''; let color = null; let isBlink = false; let isUnderline = false;
-        const COLOR_MAP = { 'K': '#000000', 'W': '#ffffff', 'R': '#ef4444', 'Y': '#eab308', 'B': '#3b82f6', 'G': '#22c55e' };
 
         const flush = () => {
             if (!buffer) return;
@@ -302,7 +306,7 @@ const app = {
                 card.classList.remove("card-fetching");
             }
 
-            const btn = card.querySelector('button[onclick*="reloadProfile"]');
+            const btn = card.querySelector('.btn-reload');
             if (!btn) return;
 
             const icon = btn.querySelector("i");
@@ -313,14 +317,14 @@ const app = {
                 btn.classList.add("opacity-70", "cursor-not-allowed", "ring-2", "ring-emerald-400/50", "bg-emerald-500/10");
                 if (icon) {
                     icon.classList.remove("group-hover/btn:rotate-180", "transition-transform", "duration-300");
-                    icon.classList.add("spin-active", "text-emerald-400");
+                    icon.classList.add("fa-spin", "text-emerald-400");
                 }
                 if (text) text.innerText = "Đang tải...";
             } else {
                 btn.disabled = false;
                 btn.classList.remove("opacity-70", "cursor-not-allowed", "ring-2", "ring-emerald-400/50", "bg-emerald-500/10");
                 if (icon) {
-                    icon.classList.remove("spin-active", "text-emerald-400");
+                    icon.classList.remove("fa-spin", "text-emerald-400");
                     icon.classList.add("transition-transform", "duration-300", "group-hover/btn:rotate-180");
                 }
                 if (text) text.innerText = "Tải lại";
@@ -551,8 +555,11 @@ const app = {
             <div class="absolute inset-0 bg-gradient-to-br ${bg} -z-10 rounded-3xl"></div>
             
             <div class="flex gap-1.5 md:gap-2 z-30 justify-end md:absolute md:top-4 md:right-4 mb-6 md:mb-0 flex-wrap">
-                <button onclick="app.reloadProfile('${uid}', this, event)" class="px-2.5 md:px-3 py-1 bg-white/5 hover:bg-emerald-500/20 active:scale-95 rounded-lg text-xs font-bold text-emerald-400 border border-emerald-500/20 transition-all flex items-center gap-1.5 shrink-0 shadow-sm group/btn" title="Tải lại dữ liệu trực tiếp từ máy chủ game (Force Reload)">
-                    <i class="fa-solid fa-rotate-right transition-transform duration-300 group-hover/btn:rotate-180"></i> <span class="hidden sm:inline">Tải lại</span>
+                <button onclick="app.reloadProfile('${uid}', this, event)" class="btn-reload px-2.5 md:px-3 py-1 bg-white/5 hover:bg-emerald-500/20 active:scale-95 rounded-lg text-xs font-bold text-emerald-400 border border-emerald-500/20 transition-all flex items-center gap-1.5 shrink-0 shadow-sm group/btn" title="Tải lại dữ liệu trực tiếp từ máy chủ game">
+                    <div class="w-3.5 h-3.5 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-rotate-right transition-transform duration-300 group-hover/btn:rotate-180 origin-center transform-gpu"></i>
+                    </div>
+                    <span class="hidden sm:inline">Tải lại</span>
                 </button>
                 <button onclick="app.share('${uid}')" class="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-white/5 hover:bg-white/10 active:scale-95 flex items-center justify-center text-slate-300 hover:text-white transition shrink-0" title="Share"><i class="fa-solid fa-share-nodes"></i></button>
                 <button onclick="app.openApi('${uid}')" class="px-2.5 md:px-3 py-1 bg-white/5 hover:bg-white/10 active:scale-95 rounded-lg text-xs font-bold text-purple-400 border border-purple-500/20 transition flex items-center gap-1 shrink-0"><i class="fa-solid fa-server"></i> API</button>
