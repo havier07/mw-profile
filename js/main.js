@@ -589,7 +589,10 @@ const app = {
                                 <i class="fa-solid fa-user-astronaut text-purple-400 text-sm"></i> NHÂN VẬT
                             </div>
                             <div class="space-y-0.5 flex-grow">
-                                <div class="${row}" data-tip="${mTip}"><span class="${lbl}">${ico('fa-cube', 'text-purple-400')} Model</span><span class="${valWrap} cursor-help hover:text-purple-300 transition-colors ${mClass}">${mText}</span></div>
+                                
+                                <!-- CHỈ CẦN GỌI d.mTip, d.mClass, d.mText TRỰC TIẾP TỪ SERVER -->
+                                <div class="${row}" data-tip="${d.mTip}"><span class="${lbl}">${ico('fa-cube', 'text-purple-400')} Model</span><span class="${valWrap} cursor-help hover:text-purple-300 transition-colors ${d.mClass}">${d.mText}</span></div>
+                                
                                 <div class="${row}"><span class="${lbl}">${ico('fa-shirt', 'text-pink-400')} Skin</span><span class="${val}" title="${d.skin}">${d.skin}</span></div>
                                 <div class="${row}"><span class="${lbl}">${ico('fa-heart', 'text-rose-400')} Fan</span><span class="${val} text-rose-300">${(d.funCount || 0).toLocaleString()}</span></div>
                                 <div class="${row}" data-tip="Phòng trưng bày Skin, DIY, Thần thú & Skin công cụ"><span class="${lbl}">${ico('fa-wand-magic-sparkles', 'text-amber-400')} MiniShow</span><span class="${val}">${d.miniShow}</span></div>

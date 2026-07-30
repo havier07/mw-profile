@@ -25,7 +25,9 @@
 </head>
 <body class="min-h-screen flex flex-col">
 
-    <canvas id="star-canvas"></canvas>
+    <div id="ambient-bg">
+        <div class="ambient-blob"></div>
+    </div>
 
     <!-- Global Tooltip -->
     <div id="global-tooltip" class="fixed top-0 left-0 bg-black/90 backdrop-blur border border-white/10 px-3 py-1.5 rounded-lg text-xs text-white z-[9999] pointer-events-none transition-opacity duration-75 opacity-0 will-change-transform shadow-xl"></div>
@@ -33,7 +35,7 @@
     <main class="container mx-auto px-4 pt-4 md:pt-8 pb-24 flex-grow flex flex-col items-center max-w-5xl z-10">
         
         <!-- Header -->
-        <div class="w-full max-w-3xl text-center mb-6 animate-enter">
+        <div class="w-full max-w-3xl text-center mb-6 animate-enter relative z-[100]">
             <h1 class="text-4xl md:text-7xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-sky-300 via-indigo-300 to-purple-300 tracking-tight drop-shadow-lg">
                 MiniWorld Profile
             </h1>
