@@ -564,7 +564,7 @@ const app = {
                 <!-- Cột trái: Avatar + UID -->
                 <div class="flex flex-col items-center shrink-0 justify-between">
                     <div class="relative w-40 h-40 md:w-44 md:h-44 rounded-[2.5rem] p-1 border-2 border-white/10 overflow-hidden shadow-2xl bg-[#0b101e] cursor-pointer group-avatar transition-transform hover:scale-105" onclick="viewer.openAvatar(this, '${uid}')">
-                        <img src="${d.avatar}" class="w-full h-full object-cover rounded-[2.3rem]">
+                        <img src="${d.avatar}" class="w-full h-full object-cover rounded-[2.3rem]" decoding="async">
                         <div class="absolute inset-0 bg-black/30 opacity-0 group-avatar:hover:opacity-100 transition flex items-center justify-center"><i class="fa-solid fa-expand text-white text-2xl"></i></div>
                     </div>
                     
@@ -692,7 +692,7 @@ const app = {
                 <h4 class="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-2"><i class="fa-solid fa-images"></i> Thư viện ảnh (${d.photos.length}) <span class="text-[10px] font-normal normal-case opacity-50 ml-auto hidden md:inline">Kéo để cuộn</span></h4>
                 <div class="gallery-scroll flex gap-3 pb-2 snap-x" id="gallery-${uid}">${d.photos.map((ph,i) => `
                     <div class="w-24 h-24 md:w-28 md:h-28 shrink-0 rounded-2xl overflow-hidden cursor-pointer border border-white/10 hover:border-sky-400 transition relative group snap-start shadow-md" onclick="viewer.openGallery(this, '${uid}', ${i})" data-tip="${ph.tip}">
-                        <img src="${ph.url}" class="w-full h-full object-cover transition duration-700 group-hover:scale-110" loading="lazy">
+                        <img src="${ph.url}" class="w-full h-full object-cover transition duration-700 group-hover:scale-110" loading="lazy" decoding="async">
                     </div>`).join('')}
                 </div>
             </div>` : ''}
@@ -714,12 +714,44 @@ const app = {
 
     initGalleryDrag(el) {
         if (!el) return;
-        let isDown = false, startX, scrollLeft;
-        el.addEventListener("wheel", (e) => { if (el.scrollWidth > el.clientWidth) { e.preventDefault(); el.scrollLeft += e.deltaY; } }, { passive: false });
-        el.addEventListener("mousedown", (e) => { if (el.scrollWidth <= el.clientWidth) return; isDown = true; el.classList.add("active"); startX = e.pageX - el.offsetLeft; scrollLeft = el.scrollLeft; });
-        el.addEventListener("mouseleave", () => { isDown = false; el.classList.remove("active"); });
-        el.addEventListener("mouseup", () => { isDown = false; el.classList.remove("active"); });
-        el.addEventListener("mousemove", (e) => { if (!isDown) return; e.preventDefault(); const x = e.pageX - el.offsetLeft; const walk = (x - startX) * 2; el.scrollLeft = scrollLeft - walk; });
+        let isDown = false, startX, scrollLeft, rafId = null;
+        
+        el.addEventListener("wheel", (e) => { 
+            if (el.scrollWidth > el.clientWidth) { 
+                e.preventDefault(); 
+                el.scrollLeft += e.deltaY; 
+            } 
+        }, { passive: false });
+        
+        el.addEventListener("mousedown", (e) => { 
+            if (el.scrollWidth <= el.clientWidth) return; 
+            isDown = true; 
+            el.classList.add("active"); 
+            startX = e.pageX - el.offsetLeft; 
+            scrollLeft = el.scrollLeft; 
+        });
+        
+        const stopDrag = () => {
+            isDown = false;
+            el.classList.remove("active");
+            if (rafId) cancelAnimationFrame(rafId);
+        };
+        
+        el.addEventListener("mouseleave", stopDrag);
+        el.addEventListener("mouseup", stopDrag);
+        
+        el.addEventListener("mousemove", (e) => { 
+            if (!isDown) return; 
+            e.preventDefault(); 
+            const x = e.pageX - el.offsetLeft; 
+            const walk = (x - startX) * 2; 
+            
+            // TỐI ƯU HÓA: Bọc tính toán Layout vào requestAnimationFrame
+            if (rafId) cancelAnimationFrame(rafId);
+            rafId = requestAnimationFrame(() => {
+                el.scrollLeft = scrollLeft - walk;
+            });
+        });
     },
 
     skeleton: (n) => Array(n).fill(0).map(() => `<div class="glass-panel rounded-3xl p-6 h-96 animate-pulse"><div class="flex gap-8"><div class="w-44 h-44 bg-white/5 rounded-[2.5rem] shrink-0"></div><div class="flex-grow space-y-4"><div class="h-10 bg-white/5 w-2/3 rounded-xl"></div><div class="h-6 bg-white/5 w-1/3 rounded-lg"></div><div class="h-32 bg-white/5 w-full rounded-2xl mt-4"></div></div></div></div>`).join(""),
