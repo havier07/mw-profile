@@ -543,10 +543,12 @@ const app = {
 
         const box = "bg-white/[0.03] rounded-2xl p-4 border border-white/10 flex flex-col justify-between hover:bg-white/[0.07] hover:border-white/20 transition-all duration-200 active:scale-[0.98] group/box shadow-lg h-full";
         
-        const row = "text-xs md:text-sm flex flex-wrap justify-between items-start gap-x-2 gap-y-1.5 py-1.5 border-b border-white/[0.03] last:border-0";
+        const box = "bg-white/[0.03] rounded-2xl p-4 border border-white/10 flex flex-col justify-between hover:bg-white/[0.07] hover:border-white/20 transition-all duration-200 active:scale-[0.98] group/box shadow-lg h-full";
+        
+        const row = "text-xs md:text-sm flex justify-between items-start py-1.5 gap-2 border-b border-white/[0.03] last:border-0";
         const lbl = "text-slate-400 flex items-center gap-2 truncate font-medium mt-[1px] shrink-0";
         const val = "text-white font-semibold truncate font-mono text-right ml-auto";
-        const valWrap = "text-white font-semibold text-right break-words leading-[1.2] ml-auto max-w-full"; 
+        const valWrap = "text-white font-semibold text-right break-words leading-[1.3] flex-1 min-w-0"; 
         const ico = (cls, color) => `<i class="fa-solid ${cls} ${color} w-4 text-center shrink-0 text-xs md:text-sm group-hover/box:scale-110 transition-transform duration-200"></i>`;
 
         card.innerHTML = `
