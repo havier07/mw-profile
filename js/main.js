@@ -71,7 +71,7 @@ const utils = {
 
             flush(); i++; if (i >= len) break; const cmd = clean[i];
 
-            if (COLOR_MAP_GLOBAL[cmd]) { color = COLOR_MAP_GLOBAL[cmd]; i++; } 
+            if (COLOR_MAP[cmd]) { color = COLOR_MAP[cmd]; i++; } 
             else if (cmd === 'c' || cmd === 'C') {
                 i++; let hex = ''; while (i < len && hex.length < 6 && /[0-9a-fA-F]/.test(clean[i])) { hex += clean[i]; i++; }
                 if (hex.length > 0) color = '#' + hex;
@@ -247,6 +247,7 @@ const app = {
     renderChunkId: null,
 
     init() {
+        this.fetchVersion();
         this.renderHist();
         
         const searchInput = $("#search-input");
@@ -317,6 +318,24 @@ const app = {
             const item = e.target.closest("[data-tip]");
             if (item && tipEl) tipEl.classList.add("opacity-0");
         });
+    },
+
+    async fetchVersion() {
+        try {
+            const proxyBase = PROXY_URL.split('?')[0]; 
+            const res = await fetch(`${proxyBase}?act=version`);
+            const data = await res.json();
+            
+            if (data && data.version) {
+                const verEl = document.getElementById("mw-version");
+                if (verEl) {
+                    verEl.innerHTML = `&nbsp;&nbsp;<span class="opacity-40">|</span>&nbsp;&nbsp;Phiên bản MiniWorld: <span class="text-sky-400 font-mono font-bold">${data.version}</span>`;
+                    verEl.classList.remove("opacity-0", "translate-y-1");
+                }
+            }
+        } catch(e) {
+            console.log("Không thể tải phiên bản MW:", e);
+        }
     },
 
     setCardLoadingState(uids, isLoading = true) {
@@ -545,8 +564,10 @@ const app = {
 
         const card = document.createElement("div");
         card.id = `profile-card-${uid}`;
+        
+        // Tối ưu GPU: Không box-shadow transition, dùng contain-paint
         card.className = `glass-panel rounded-3xl p-6 relative overflow-hidden transition-transform duration-300 ease-out border-t border-white/10 group transform-gpu will-change-transform contain-paint ${isSilent ? '' : 'animate-enter'}`;
-
+        
         const isNu = String(d.gender).includes('venus');
         const bg = isNu ? "from-pink-500/10 via-purple-500/5 to-rose-500/10" : "from-sky-500/10 via-blue-500/5 to-cyan-500/10";
 
@@ -560,22 +581,23 @@ const app = {
         let bioContent;
         if (!parsedMood) {
             if (!d.moodIcon || String(d.moodIcon).trim() === "" || d.moodIcon === "A100") {
-                bioContent = '<p class="text-slate-500 italic opacity-50 font-medium text-base">Chưa thiết lập</p>';
+                bioContent = '<p class="text-slate-500 italic opacity-50 font-medium text-base md:text-lg">Chưa thiết lập</p>';
             } else {
-                bioContent = `<div class="flex gap-4 items-start"><div class="text-sky-400 font-mono font-bold text-lg border-r border-white/10 pr-4 pt-1">#${d.moodIcon}</div><div class="text-slate-500 italic opacity-50 font-medium text-base flex-grow">Chưa thiết lập</div></div>`;
+                bioContent = `<div class="flex gap-4 items-start"><div class="text-sky-400 font-mono font-bold text-lg md:text-xl border-r border-white/10 pr-4 pt-1">#${d.moodIcon}</div><div class="text-slate-500 italic opacity-50 font-medium text-base md:text-lg flex-grow">Chưa thiết lập</div></div>`;
             }
         } else if (d.moodIcon && String(d.moodIcon).trim() !== "" && d.moodIcon !== "A100") {
-            bioContent = `<div class="flex gap-4 items-start h-full"><div class="text-sky-400 font-mono font-bold text-lg border-r border-white/10 pr-4 pt-1">#${d.moodIcon}</div><div class="text-slate-200 leading-relaxed font-medium text-base whitespace-pre-wrap flex-grow break-words overflow-y-auto max-h-[160px] custom-scrollbar">${parsedMood}</div></div>`;
+            bioContent = `<div class="flex gap-4 items-start h-full"><div class="text-sky-400 font-mono font-bold text-lg md:text-xl border-r border-white/10 pr-4 pt-1">#${d.moodIcon}</div><div class="text-slate-200 leading-relaxed font-medium text-base md:text-lg whitespace-pre-wrap flex-grow break-words overflow-y-auto max-h-[160px] custom-scrollbar">${parsedMood}</div></div>`;
         } else {
-            bioContent = `<p class="text-slate-200 leading-relaxed font-medium text-base whitespace-pre-wrap break-words overflow-y-auto max-h-[160px] custom-scrollbar">${parsedMood}</p>`;
+            bioContent = `<p class="text-slate-200 leading-relaxed font-medium text-base md:text-lg whitespace-pre-wrap break-words overflow-y-auto max-h-[160px] custom-scrollbar">${parsedMood}</p>`;
         }
-        
+
+        // Tối ưu GPU Box & NÂNG CẤP TYPOGRAPHY
         const box = "bg-white/[0.03] rounded-2xl p-4 border border-white/10 flex flex-col justify-between hover:bg-white/[0.07] hover:border-white/20 transition-[background-color,border-color,transform] duration-200 ease-out active:scale-[0.98] group/box shadow-lg h-full relative overflow-hidden transform-gpu will-change-transform";
-        const row = "text-xs md:text-sm flex justify-between items-center py-1.5 gap-2 border-b border-white/[0.03] last:border-0 relative z-10";
+        const row = "text-sm md:text-base flex justify-between items-center py-1.5 gap-2 border-b border-white/[0.03] last:border-0 relative z-10";
         const lbl = "text-slate-400 flex items-center gap-2 truncate font-medium shrink-0";
         const val = "text-white font-semibold truncate font-mono text-right ml-auto";
-        const valWrap = "text-white font-semibold text-right break-words leading-[1.25] tracking-tight text-[11px] md:text-xs flex-1 min-w-0"; 
-        const ico = (cls, color) => `<i class="fa-solid ${cls} ${color} w-4 text-center shrink-0 text-xs md:text-sm group-hover/box:scale-110 transition-transform duration-200 transform-gpu"></i>`;
+        const valWrap = "text-white font-semibold text-right break-words leading-[1.25] tracking-tight text-xs md:text-sm flex-1 min-w-0"; 
+        const ico = (cls, color) => `<i class="fa-solid ${cls} ${color} w-5 text-center shrink-0 text-sm md:text-base group-hover/box:scale-110 transition-transform duration-200 transform-gpu"></i>`;
 
         card.innerHTML = `
             <div class="absolute inset-0 bg-gradient-to-br ${bg} -z-10 rounded-3xl"></div>
@@ -601,8 +623,8 @@ const app = {
                         <div class="absolute inset-0 bg-black/30 opacity-0 group-avatar:hover:opacity-100 transition flex items-center justify-center"><i class="fa-solid fa-expand text-white text-2xl"></i></div>
                     </div>
                     
-                    <!-- Mobile Name -->
-                    <h2 class="text-3xl font-bold text-white mt-4 mb-2 flex md:hidden items-center justify-center gap-2 whitespace-pre-wrap text-center">
+                    <!-- Mobile Name (Tăng lên text-4xl) -->
+                    <h2 class="text-4xl font-bold text-white mt-4 mb-2 flex md:hidden items-center justify-center gap-2 whitespace-pre-wrap text-center">
                         <span class="break-words max-w-full">${parsedName}</span>
                         <button class="copy-wrapper text-slate-500 hover:text-white transition-colors shrink-0 outline-none" data-copy="${utils.escapeAttr(d.nameRaw)}" onclick="utils.copy(this.getAttribute('data-copy'), this, 'Tên nhân vật', event)" title="Sao chép tên">
                             <svg class="copy-svg w-[22px] h-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
@@ -610,7 +632,7 @@ const app = {
                         </button>
                     </h2>
                     
-                    <!-- Ô UID: Nút copy UID cũng biến thành Animate-UI Standard -->
+                    <!-- Ô UID -->
                     <div class="mt-5 md:mt-0 w-38 mx-auto flex items-center justify-between bg-black/30 px-3.5 py-2 rounded-full border border-white/5 shadow-inner">
                         <div class="flex items-center gap-1.5 min-w-0">
                             <span class="text-[11px] font-semibold text-slate-400 tracking-wider shrink-0">UID:</span>
@@ -626,16 +648,16 @@ const app = {
                 <!-- Cột phải: PC Name, Badge và Ô Bio -->
                 <div class="flex-grow min-w-0 flex flex-col justify-between pt-1">
                     <div>
-                        <!-- PC Name -->
-                        <h2 class="text-3xl md:text-4xl font-bold text-white mb-2 hidden md:flex items-center gap-3 whitespace-pre-wrap">
+                        <!-- PC Name (Tăng lên text-4xl md:text-5xl) -->
+                        <h2 class="text-4xl md:text-5xl font-bold text-white mb-2 hidden md:flex items-center gap-3 whitespace-pre-wrap">
                             <span class="break-words min-w-0">${parsedName}</span>
                             <button class="copy-wrapper text-slate-500 hover:text-white transition-colors shrink-0 outline-none mt-1" data-copy="${utils.escapeAttr(d.nameRaw)}" onclick="utils.copy(this.getAttribute('data-copy'), this, 'Tên nhân vật', event)" title="Sao chép tên">
-                                <svg class="copy-svg w-[26px] h-[26px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                                <svg class="check-svg w-[26px] h-[26px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                                <svg class="copy-svg w-[28px] h-[28px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                <svg class="check-svg w-[28px] h-[28px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
                             </button>
                         </h2>
                         
-                        <div class="flex flex-nowrap gap-3 text-xs font-bold text-slate-300 mb-4 uppercase tracking-wider justify-center md:justify-start overflow-x-auto no-scrollbar">
+                        <div class="flex flex-nowrap gap-3 text-sm font-bold text-slate-300 mb-4 uppercase tracking-wider justify-center md:justify-start overflow-x-auto no-scrollbar">
                             <span class="bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 whitespace-nowrap shadow-sm">${d.gender}</span>
                             <span class="bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 whitespace-nowrap shadow-sm"><i class="fa-solid fa-earth-americas text-indigo-400 mr-1"></i> ${d.country}</span>
                             <span class="bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 whitespace-nowrap shadow-sm"><i class="fa-solid fa-language text-purple-400 mr-1"></i> ${d.lang}</span>
@@ -652,16 +674,18 @@ const app = {
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 mb-5">
                 <div class="${box}">
                     <div class="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover/box:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-                    <div class="text-[11px] font-bold text-purple-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 border-b border-purple-500/20 pb-1.5 relative z-10">
-                        <i class="fa-solid fa-user-astronaut text-purple-400 text-sm"></i> NHÂN VẬT
+                    <!-- Tiêu đề thẻ: text-xs md:text-sm -->
+                    <div class="text-xs md:text-sm font-bold text-purple-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 border-b border-purple-500/20 pb-1.5 relative z-10">
+                        <i class="fa-solid fa-user-astronaut text-purple-400 text-sm md:text-base"></i> NHÂN VẬT
                     </div>
-                    <div class="space-y-0.5 flex-grow">
+                    <div class="space-y-1 flex-grow">
                         <div class="${row}" data-tip="${d.mTip || 'Model'}"><span class="${lbl}">${ico('fa-cube', 'text-purple-400')} Model</span><span class="${valWrap} cursor-help hover:text-purple-300 transition-colors ${d.mClass || 'font-mono'}">${d.mText || d.modelName || 'N/A'}</span></div>
                         <div class="${row}"><span class="${lbl}">${ico('fa-shirt', 'text-pink-400')} Skin</span><span class="${val}" title="${d.skin}">${d.skin}</span></div>
                         <div class="${row}"><span class="${lbl}">${ico('fa-heart', 'text-rose-400')} Fan</span><span class="${val} text-rose-300">${(d.funCount || 0).toLocaleString()}</span></div>
                         <div class="${row}" data-tip="Phòng trưng bày Skin, DIY, Thần thú & Skin công cụ"><span class="${lbl}">${ico('fa-wand-magic-sparkles', 'text-amber-400')} MiniShow</span><span class="${valWrap}">${d.miniShow}</span></div>
                     </div>
-                    <div class="text-[10px] text-purple-300/70 mt-3 pt-2 border-t border-white/5 flex items-center justify-between relative z-10">
+                    <!-- Footer thẻ: text-[11px] md:text-xs -->
+                    <div class="text-[11px] md:text-xs text-purple-300/70 mt-3 pt-2 border-t border-white/5 flex items-center justify-between relative z-10">
                         <span class="flex items-center gap-1 truncate"><i class="fa-solid fa-clock text-indigo-400"></i> DIY:</span>
                         <span class="font-mono truncate ml-1">${d.diyTime}</span>
                     </div>
@@ -669,16 +693,16 @@ const app = {
 
                 <div class="${box}">
                     <div class="absolute inset-0 bg-gradient-to-br from-sky-500/5 to-transparent opacity-0 group-hover/box:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-                    <div class="text-[11px] font-bold text-sky-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 border-b border-sky-500/20 pb-1.5 relative z-10">
-                        <i class="fa-solid fa-code text-sky-400 text-sm"></i> NHÀ PHÁT TRIỂN
+                    <div class="text-xs md:text-sm font-bold text-sky-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 border-b border-sky-500/20 pb-1.5 relative z-10">
+                        <i class="fa-solid fa-code text-sky-400 text-sm md:text-base"></i> NHÀ PHÁT TRIỂN
                     </div>
-                    <div class="space-y-0.5 flex-grow">
+                    <div class="space-y-1 flex-grow">
                         <div class="${row}"><span class="${lbl}">${ico('fa-layer-group', 'text-sky-400')} Cấp</span><span class="${val} text-yellow-400">${d.dLvl}</span></div>
                         <div class="${row}"><span class="${lbl}">${ico('fa-chart-line', 'text-cyan-400')} Stat</span><span class="${val}">${d.dStat}</span></div>
                         <div class="${row}"><span class="${lbl}">${ico('fa-map', 'text-teal-400')} Map</span><span class="${val} text-teal-300">${(d.mapCount || 0).toLocaleString()}</span></div>
                         <div class="${row}"><span class="${lbl}">${ico('fa-cloud-arrow-down', 'text-emerald-400')} Tải</span><span class="${val} text-green-400">${d.dDl}</span></div>
                     </div>
-                    <div class="text-[10px] text-sky-300/70 mt-3 pt-2 border-t border-white/5 flex items-center justify-between relative z-10">
+                    <div class="text-[11px] md:text-xs text-sky-300/70 mt-3 pt-2 border-t border-white/5 flex items-center justify-between relative z-10">
                         <span class="flex items-center gap-1 truncate"><i class="fa-solid fa-crop-simple text-teal-400"></i> Khung:</span>
                         <span class="font-mono truncate ml-1">${d.dFrame}</span>
                     </div>
@@ -686,16 +710,16 @@ const app = {
 
                 <div class="${box}">
                     <div class="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent opacity-0 group-hover/box:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-                    <div class="text-[11px] font-bold text-yellow-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 border-b border-yellow-500/20 pb-1.5 relative z-10">
-                        <i class="fa-solid fa-user-graduate text-yellow-400 text-sm"></i> Người Sành Sỏi
+                    <div class="text-xs md:text-sm font-bold text-yellow-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 border-b border-yellow-500/20 pb-1.5 relative z-10">
+                        <i class="fa-solid fa-user-graduate text-yellow-400 text-sm md:text-base"></i> Người Sành Sỏi
                     </div>
-                    <div class="space-y-0.5 flex-grow">
+                    <div class="space-y-1 flex-grow">
                         <div class="${row}"><span class="${lbl}">${ico('fa-medal', 'text-yellow-400')} Cấp</span><span class="${val} text-white">${d.eLvl}</span></div>
                         <div class="${row}"><span class="${lbl}">${ico('fa-fire', 'text-orange-400')} Stat</span><span class="${val}">${d.eStat}</span></div>
                         <div class="${row}"><span class="${lbl}">${ico('fa-bullseye', 'text-amber-400')} Điểm</span><span class="${val}">${d.eScore}/${d.eMax}</span></div>
                         <div class="${row}"><span class="${lbl}">${ico('fa-gem', 'text-lime-400')} Uy tín</span><span class="${val} text-blue-300">${d.ePt}</span></div>
                     </div>
-                    <div class="text-[10px] text-yellow-200/60 mt-3 pt-2 border-t border-white/5 flex items-center justify-between relative z-10">
+                    <div class="text-[11px] md:text-xs text-yellow-200/60 mt-3 pt-2 border-t border-white/5 flex items-center justify-between relative z-10">
                         <span class="flex items-center gap-1 truncate"><i class="fa-solid fa-calendar-check text-yellow-400/80"></i> Mời:</span>
                         <span class="font-mono truncate ml-1">${d.eTime}</span>
                     </div>
@@ -703,16 +727,17 @@ const app = {
 
                 <div class="${box}">
                     <div class="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent opacity-0 group-hover/box:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-                    <div class="text-[11px] font-bold text-red-400 uppercase tracking-wider mb-2 flex items-center gap-1.5 border-b border-red-500/20 pb-1.5 relative z-10">
-                        <i class="fa-solid fa-shield-halved text-red-400 text-sm"></i> BÁO CÁO & UY TÍN
+                    <div class="text-xs md:text-sm font-bold text-red-400 uppercase tracking-wider mb-2 flex items-center gap-1.5 border-b border-red-500/20 pb-1.5 relative z-10">
+                        <i class="fa-solid fa-shield-halved text-red-400 text-sm md:text-base"></i> BÁO CÁO & UY TÍN
                     </div>
                     <div class="flex-grow flex flex-col justify-center items-center text-center py-2 relative z-10">
-                        <span class="text-3xl md:text-4xl font-bold font-mono text-white leading-none mb-1.5 tracking-tight group-hover/box:scale-105 transition-transform">${d.repCount}</span>
-                        <span class="text-[10px] text-red-200/60 uppercase tracking-wider flex items-center gap-1 font-semibold">
+                        <!-- Report Number (Tăng lên text-4xl md:text-5xl) -->
+                        <span class="text-4xl md:text-5xl font-bold font-mono text-white leading-none mb-1.5 tracking-tight group-hover/box:scale-105 transition-transform">${d.repCount}</span>
+                        <span class="text-[11px] md:text-xs text-red-200/60 uppercase tracking-wider flex items-center gap-1 font-semibold">
                             <i class="fa-solid fa-flag text-rose-400"></i> Lần bị tố cáo
                         </span>
                     </div>
-                    <div class="border-t border-white/5 mt-3 pt-2 text-[10px] flex items-center justify-between text-slate-400 relative z-10">
+                    <div class="border-t border-white/5 mt-3 pt-2 text-[11px] md:text-xs flex items-center justify-between text-slate-400 relative z-10">
                         <span class="flex items-center gap-1 shrink-0"><i class="fa-solid fa-list-check text-emerald-400"></i> WhiteList:</span>
                         <span class="text-green-300 font-mono font-semibold ml-1 truncate">${d.wlTime}</span>
                     </div>
@@ -722,15 +747,17 @@ const app = {
             <!-- TẦNG 3: THƯ VIỆN ẢNH -->
             ${(d.photos && d.photos.length) ? `
             <div class="mt-6 pt-5 border-t border-white/5">
-                <h4 class="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-2"><i class="fa-solid fa-images"></i> Thư viện ảnh (${d.photos.length}) <span class="text-[10px] font-normal normal-case opacity-50 ml-auto hidden md:inline">Kéo để cuộn</span></h4>
+                <!-- Tiêu đề (Tăng lên text-sm md:text-base), Kéo để cuộn (Tăng lên text-xs) -->
+                <h4 class="text-sm md:text-base font-bold text-slate-500 uppercase mb-3 flex items-center gap-2"><i class="fa-solid fa-images"></i> Thư viện ảnh (${d.photos.length}) <span class="text-xs font-normal normal-case opacity-50 ml-auto hidden md:inline">Kéo để cuộn</span></h4>
                 <div class="gallery-scroll flex gap-3 pb-2 snap-x" id="gallery-${uid}">${d.photos.map((ph,i) => `
                     <div class="w-24 h-24 md:w-28 md:h-28 shrink-0 rounded-2xl overflow-hidden cursor-pointer border border-white/10 hover:border-sky-400 transition relative group snap-start shadow-md" onclick="viewer.openGallery(this, '${uid}', ${i})" data-tip="${ph.tip}">
-                        <img src="${ph.url}" class="w-full h-full object-cover transition duration-700 group-hover:scale-110" loading="lazy" decoding="async">
+                        <img src="${ph.url}" class="w-full h-full object-cover transition duration-700 group-hover:scale-110" width="112" height="112" loading="lazy" decoding="async">
                     </div>`).join('')}
                 </div>
             </div>` : ''}
 
-            <div class="mt-4 text-right text-[11px] text-slate-500 font-medium italic">Cập nhật: <span class="text-slate-400 not-italic">${d.updateTimeStr}</span></div>
+            <!-- Thời gian cập nhật (Tăng lên text-xs md:text-sm) -->
+            <div class="mt-5 text-right text-xs md:text-sm text-slate-500 font-medium italic">Cập nhật: <span class="text-slate-400 not-italic">${d.updateTimeStr}</span></div>
         `;
 
         if (d.photos && d.photos.length) {
