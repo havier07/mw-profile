@@ -75,33 +75,48 @@ const utils = {
         flush(); return html;
     },
 
-    // 1. ENGINE ANIMATION ĐỈNH CAO (Animate-UI Standard)
+    // 1. ENGINE ANIMATION (Nhanh nhạy, dứt khoát chuẩn Apple/Vercel)
     injectCopyStyles: () => {
         if (document.getElementById('anim-copy-styles')) return;
         const style = document.createElement('style');
         style.id = 'anim-copy-styles';
         style.innerHTML = `
             .copy-wrapper { position: relative; display: inline-flex; align-items: center; justify-content: center; outline: none; }
-            .copy-svg { transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+            
+            /* Icon copy gốc: Trạng thái mặc định */
+            .copy-svg { 
+                transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); 
+                transform: scale(1); 
+                opacity: 1; 
+            }
+            
+            /* Icon tick xanh: Nằm chìm chờ sẵn */
             .check-svg { 
                 position: absolute; 
-                transition: all 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+                transition: all 0.15s cubic-bezier(0.4, 0, 1, 1); 
                 transform: scale(0.3) rotate(-15deg); 
                 opacity: 0; 
-                color: #34d399; /* Emerald 400 */
+                color: #34d399; 
                 filter: drop-shadow(0 0 6px rgba(52,211,153,0.4)); 
             }
-            /* Trạng thái khi kích hoạt */
-            .copy-wrapper.copied .copy-svg { transform: scale(0.3); opacity: 0; }
-            .copy-wrapper.copied .check-svg { transform: scale(1.1) rotate(0deg); opacity: 1; }
+            
+            /* KHI ACTIVATE: Copy thụt vào siêu tốc (0.15s), Tick xanh nảy ra cực mạnh (0.25s) */
+            .copy-wrapper.copied .copy-svg { 
+                transform: scale(0.3); 
+                opacity: 0; 
+                transition: all 0.15s cubic-bezier(0.4, 0, 1, 1); 
+            }
+            .copy-wrapper.copied .check-svg { 
+                transform: scale(1.1) rotate(0deg); 
+                opacity: 1; 
+                transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); 
+            }
         `;
         document.head.appendChild(style);
     },
 
-    // 2. LOGIC TOGGLE CLASS (Không phá vỡ DOM)
     copy: (txt, btnEl = null, label = "", e = null) => {
         if (e && e.stopPropagation) e.stopPropagation();
-        utils.injectCopyStyles();
 
         const t = document.createElement("textarea");
         t.value = txt; t.style.position = "fixed"; t.style.left = "-9999px";
@@ -115,11 +130,9 @@ const utils = {
                 
                 if (btnEl) {
                     if (btnEl.classList.contains('copy-wrapper')) {
-                        // Kích hoạt animation Morphing
                         btnEl.classList.add('copied');
                         setTimeout(() => btnEl.classList.remove('copied'), 2000);
                     } else {
-                        // Fallback an toàn cho các thẻ <i> cũ chưa kịp update (ví dụ ở JSON box)
                         const oldHTML = btnEl.innerHTML;
                         btnEl.innerHTML = `<svg class="w-[1.2em] h-[1.2em] text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.4)] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>`;
                         setTimeout(() => btnEl.innerHTML = oldHTML, 2000);
@@ -134,6 +147,9 @@ const utils = {
 
     escapeHtml: (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
 };
+
+// GỌI NGAY LẬP TỨC ĐỂ FIX LỖI VỠ FORM Ở FIRST LOAD
+utils.injectCopyStyles();
 
 // =========================================================================
 // UNIVERSAL LINK ENGINE
