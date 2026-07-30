@@ -515,7 +515,7 @@ const app = {
 
         const card = document.createElement("div");
         card.id = `profile-card-${uid}`;
-        card.className = `glass-panel rounded-3xl p-6 relative overflow-hidden transition-all duration-300 border-t border-white/10 group hover:shadow-sky-500/10 hover:shadow-2xl ${isSilent ? '' : 'animate-enter'}`;
+        card.className = `glass-panel rounded-3xl p-6 relative overflow-hidden transition-[transform,box-shadow] duration-300 ease-out border-t border-white/10 group hover:shadow-sky-500/10 hover:shadow-2xl transform-gpu will-change-[transform,box-shadow] contain-paint ${isSilent ? '' : 'animate-enter'}`;
         
         const isNu = String(d.gender).includes('venus');
         const bg = isNu ? "from-pink-500/10 via-purple-500/5 to-rose-500/10" : "from-sky-500/10 via-blue-500/5 to-cyan-500/10";
@@ -539,13 +539,13 @@ const app = {
         } else {
             bioContent = `<p class="text-slate-200 leading-relaxed font-medium text-base whitespace-pre-wrap break-words overflow-y-auto max-h-[160px] custom-scrollbar">${parsedMood}</p>`;
         }
-
-        const box = "bg-white/[0.03] rounded-2xl p-4 border border-white/10 flex flex-col justify-between hover:bg-white/[0.07] hover:border-white/20 transition-all duration-200 active:scale-[0.98] group/box shadow-lg h-full relative overflow-hidden";
+        
+        const box = "bg-white/[0.03] rounded-2xl p-4 border border-white/10 flex flex-col justify-between hover:bg-white/[0.07] hover:border-white/20 transition-[background-color,border-color,transform] duration-200 ease-out active:scale-[0.98] group/box shadow-lg h-full relative overflow-hidden transform-gpu will-change-transform";
         const row = "text-xs md:text-sm flex justify-between items-center py-1.5 gap-2 border-b border-white/[0.03] last:border-0 relative z-10";
         const lbl = "text-slate-400 flex items-center gap-2 truncate font-medium shrink-0";
         const val = "text-white font-semibold truncate font-mono text-right ml-auto";
         const valWrap = "text-white font-semibold text-right break-words leading-[1.25] tracking-tight text-[11px] md:text-xs flex-1 min-w-0"; 
-        const ico = (cls, color) => `<i class="fa-solid ${cls} ${color} w-4 text-center shrink-0 text-xs md:text-sm group-hover/box:scale-110 transition-transform duration-200"></i>`;
+        const ico = (cls, color) => `<i class="fa-solid ${cls} ${color} w-4 text-center shrink-0 text-xs md:text-sm group-hover/box:scale-110 transition-transform duration-200 transform-gpu"></i>`;
 
         card.innerHTML = `
             <div class="absolute inset-0 bg-gradient-to-br ${bg} -z-10 rounded-3xl"></div>
