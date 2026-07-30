@@ -680,8 +680,8 @@ const app = {
                     </div>
                     <div class="space-y-1 flex-grow">
                         <div class="${row}" data-tip="${d.mTip || 'Model'}"><span class="${lbl}">${ico('fa-cube', 'text-purple-400')} Model</span><span class="${valWrap} cursor-help hover:text-purple-300 transition-colors ${d.mClass || 'font-mono'}">${d.mText || d.modelName || 'N/A'}</span></div>
-                        <div class="${row}"><span class="${lbl}">${ico('fa-shirt', 'text-pink-400')} Skin</span><span class="${val}" title="${d.skin}">${d.skin}</span></div>
-                        <div class="${row}"><span class="${lbl}">${ico('fa-heart', 'text-rose-400')} Fan</span><span class="${val} text-rose-300">${(d.funCount || 0).toLocaleString()}</span></div>
+                        <div class="${row}"><span class="${lbl}">${ico('fa-shirt', 'text-pink-400')} Trang phục</span><span class="${val}" title="${d.skin}">${d.skin}</span></div>
+                        <div class="${row}"><span class="${lbl}">${ico('fa-heart', 'text-rose-400')} Người hâm mộ</span><span class="${val} text-rose-300">${(d.funCount || 0).toLocaleString()}</span></div>
                         <div class="${row}" data-tip="Phòng trưng bày Skin, DIY, Thần thú & Skin công cụ"><span class="${lbl}">${ico('fa-wand-magic-sparkles', 'text-amber-400')} MiniShow</span><span class="${valWrap}">${d.miniShow}</span></div>
                     </div>
                     <!-- Footer thẻ: text-[11px] md:text-xs -->
@@ -698,9 +698,9 @@ const app = {
                     </div>
                     <div class="space-y-1 flex-grow">
                         <div class="${row}"><span class="${lbl}">${ico('fa-layer-group', 'text-sky-400')} Cấp</span><span class="${val} text-yellow-400">${d.dLvl}</span></div>
-                        <div class="${row}"><span class="${lbl}">${ico('fa-chart-line', 'text-cyan-400')} Stat</span><span class="${val}">${d.dStat}</span></div>
-                        <div class="${row}"><span class="${lbl}">${ico('fa-map', 'text-teal-400')} Map</span><span class="${val} text-teal-300">${(d.mapCount || 0).toLocaleString()}</span></div>
-                        <div class="${row}"><span class="${lbl}">${ico('fa-cloud-arrow-down', 'text-emerald-400')} Tải</span><span class="${val} text-green-400">${d.dDl}</span></div>
+                        <div class="${row}"><span class="${lbl}">${ico('fa-chart-line', 'text-cyan-400')} Trạng thái</span><span class="${val}">${d.dStat}</span></div>
+                        <div class="${row}"><span class="${lbl}">${ico('fa-map', 'text-teal-400')} Bản đồ</span><span class="${val} text-teal-300">${(d.mapCount || 0).toLocaleString()}</span></div>
+                        <div class="${row}"><span class="${lbl}">${ico('fa-cloud-arrow-down', 'text-emerald-400')} Lượt tải</span><span class="${val} text-green-400">${d.dDl}</span></div>
                     </div>
                     <div class="text-[11px] md:text-xs text-sky-300/70 mt-3 pt-2 border-t border-white/5 flex items-center justify-between relative z-10">
                         <span class="flex items-center gap-1 truncate"><i class="fa-solid fa-crop-simple text-teal-400"></i> Khung:</span>
@@ -715,7 +715,7 @@ const app = {
                     </div>
                     <div class="space-y-1 flex-grow">
                         <div class="${row}"><span class="${lbl}">${ico('fa-medal', 'text-yellow-400')} Cấp</span><span class="${val} text-white">${d.eLvl}</span></div>
-                        <div class="${row}"><span class="${lbl}">${ico('fa-fire', 'text-orange-400')} Stat</span><span class="${val}">${d.eStat}</span></div>
+                        <div class="${row}"><span class="${lbl}">${ico('fa-fire', 'text-orange-400')} Trạng thái</span><span class="${val}">${d.eStat}</span></div>
                         <div class="${row}"><span class="${lbl}">${ico('fa-bullseye', 'text-amber-400')} Điểm</span><span class="${val}">${d.eScore}/${d.eMax}</span></div>
                         <div class="${row}"><span class="${lbl}">${ico('fa-gem', 'text-lime-400')} Uy tín</span><span class="${val} text-blue-300">${d.ePt}</span></div>
                     </div>
@@ -748,7 +748,10 @@ const app = {
             ${(d.photos && d.photos.length) ? `
             <div class="mt-6 pt-5 border-t border-white/5">
                 <!-- Tiêu đề (Tăng lên text-sm md:text-base), Kéo để cuộn (Tăng lên text-xs) -->
-                <h4 class="text-sm md:text-base font-bold text-slate-500 uppercase mb-3 flex items-center gap-2"><i class="fa-solid fa-images"></i> Thư viện ảnh (${d.photos.length}) <span class="text-xs font-normal normal-case opacity-50 ml-auto hidden md:inline">Kéo để cuộn</span></h4>
+                <h4 class="text-sm md:text-base font-bold text-slate-500 uppercase mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-images"></i> Thư viện ảnh (${d.photos.length}) 
+                    <span class="text-sm font-medium normal-case text-slate-400 opacity-75 ml-auto hidden md:flex items-center gap-1.5"><i class="fa-solid fa-arrows-left-right text-xs"></i> Kéo để cuộn</span>
+                </h4>
                 <div class="gallery-scroll flex gap-3 pb-2 snap-x" id="gallery-${uid}">${d.photos.map((ph,i) => `
                     <div class="w-24 h-24 md:w-28 md:h-28 shrink-0 rounded-2xl overflow-hidden cursor-pointer border border-white/10 hover:border-sky-400 transition relative group snap-start shadow-md" onclick="viewer.openGallery(this, '${uid}', ${i})" data-tip="${ph.tip}">
                         <img src="${ph.url}" class="w-full h-full object-cover transition duration-700 group-hover:scale-110" width="112" height="112" loading="lazy" decoding="async">
