@@ -259,13 +259,41 @@ const app = {
 
     init() {
         this.renderHist();
-        $("#search-input").addEventListener("focus", () => this.history.length && $("#history-box").classList.remove("hidden"));
-        document.addEventListener("click", (e) => !e.target.closest("#search-input") && !e.target.closest("#history-box") && $("#history-box").classList.add("hidden"));
-        $("#search-input").addEventListener("keydown", (e) => e.key === "Enter" && this.search());
+        
+        const searchInput = $("#search-input");
+        const historyBox = $("#history-box");
+        
+        if (searchInput && historyBox) {
+            // UI/UX FIX: Luôn mở hộp lịch sử để phản hồi thị giác
+            searchInput.addEventListener("focus", () => {
+                historyBox.classList.remove("hidden");
+                historyBox.classList.add("flex"); // Ép kiểu Flex để mượt mà
+            });
+        }
+
+        document.addEventListener("click", (e) => {
+            // Ẩn mượt mà khi click ra ngoài
+            if (!e.target.closest("#search-input") && !e.target.closest("#history-box")) {
+                if (historyBox) {
+                    historyBox.classList.add("hidden");
+                    historyBox.classList.remove("flex");
+                }
+            }
+        });
+        
+        if (searchInput) {
+            searchInput.addEventListener("keydown", (e) => e.key === "Enter" && this.search());
+            searchInput.addEventListener("input", (e) => {
+                const val = e.target.value.trim();
+                // Kích hoạt preload siêu tốc khi nhập đủ số
+                if (/^\d{7,10}$/.test(val)) fetch(PROXY_URL + val).catch(() => { }); 
+            });
+        }
         
         const p = new URLSearchParams(location.search).get("uid");
-        if (p) { $("#search-input").value = p; this.search(); }
+        if (p && searchInput) { searchInput.value = p; this.search(); }
 
+        // Logic Global Tooltip giữ nguyên
         const tipEl = document.getElementById("global-tooltip");
         let tipReq = null;
         document.addEventListener("mouseover", (e) => {
@@ -285,11 +313,6 @@ const app = {
         document.addEventListener("mouseout", (e) => {
             const item = e.target.closest("[data-tip]");
             if (item && tipEl) tipEl.classList.add("opacity-0");
-        });
-
-        $("#search-input").addEventListener("input", (e) => {
-            const val = e.target.value.trim();
-            if (/^\d{7,10}$/.test(val)) fetch(PROXY_URL + val).catch(() => { }); 
         });
     },
 
@@ -385,7 +408,10 @@ const app = {
         const cachedData = localStorage.getItem(cacheKey);
 
         const histBox = $("#history-box");
-        if (histBox) histBox.classList.add("hidden");
+        if (histBox) {
+            histBox.classList.add("hidden");
+            histBox.classList.remove("flex");
+        }
 
         if (cachedData) {
             try { 
@@ -775,7 +801,12 @@ const app = {
         const l = $("#history-list");
         if (!l) return;
         if (!this.history.length) { 
-            l.innerHTML = '<div class="col-span-2 text-center text-slate-500 italic text-xs py-4">Trống</div>'; 
+            // UI/UX FIX: Trạng thái trống (Empty State) sang trọng
+            l.innerHTML = `
+                <div class="col-span-2 flex flex-col items-center justify-center py-8 text-slate-500 opacity-50 select-none">
+                    <i class="fa-solid fa-ghost text-3xl mb-3"></i>
+                    <span class="text-xs font-bold uppercase tracking-widest">Lịch sử trống</span>
+                </div>`; 
             return; 
         }
 
