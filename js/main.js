@@ -119,7 +119,6 @@ const utils = {
         if (document.getElementById('anim-copy-styles')) return;
         const style = document.createElement('style');
         style.id = 'anim-copy-styles';
-        // Sử dụng Cubic-bezier để tạo hiệu ứng "Nảy" (Overshoot Spring) đặc trưng của Animate-UI
         style.innerHTML = `
             @keyframes copy-check-in {
                 0% { transform: scale(0.3) rotate(-15deg); opacity: 0; }
@@ -129,11 +128,17 @@ const utils = {
             .anim-copy-in {
                 animation: copy-check-in 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
             }
+            /* Đảm bảo thẻ i luôn giữ form khi nhét div vào trong */
+            .copy-btn-morphing {
+                display: inline-flex !important;
+                align-items: center;
+                justify-content: center;
+            }
         `;
         document.head.appendChild(style);
     },
 
-    // 2. Logic Copy tích hợp Anti-Layout-Shift & Morphing
+    // 2. Tương thích chéo (Cross-compatibility) cho cả thẻ <button> và thẻ <i>
     copy: (txt, btnEl = null, label = "", e = null) => {
         if (e && e.stopPropagation) e.stopPropagation();
         utils.injectCopyStyles();
@@ -151,17 +156,26 @@ const utils = {
                 if (btnEl && !btnEl.dataset.copying) {
                     btnEl.dataset.copying = "true";
                     
-                    // Đo lường và ĐÓNG BĂNG kích thước cũ để chống Layout Shift
-                    const w = btnEl.offsetWidth;
-                    const h = btnEl.offsetHeight;
+                    // Sao lưu trạng thái cũ
                     const oldHTML = btnEl.innerHTML;
+                    const isIconTag = btnEl.tagName.toLowerCase() === 'i';
+                    const oldClasses = btnEl.className;
                     
-                    // Render SVG Checkmark mượt mà với hiệu ứng Glow nền
-                    btnEl.innerHTML = `<div class="flex items-center justify-center pointer-events-none" style="min-width:${w || 16}px; min-height:${h || 16}px;"><svg class="w-full h-full max-w-[1.1em] max-h-[1.1em] text-emerald-400 anim-copy-in drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg></div>`;
+                    // Nếu là thẻ <i> (như nút Copy Tên, Copy Lịch sử), ép nó thành block để nhét SVG không bị lệch
+                    if (isIconTag) {
+                        btnEl.classList.remove('fa-regular', 'fa-copy', 'fa-solid'); // Tạm xóa icon fa cũ
+                        btnEl.classList.add('copy-btn-morphing'); // Ép flexbox
+                    }
+
+                    // Render SVG Checkmark mượt mà
+                    btnEl.innerHTML = `<svg class="w-[1.2em] h-[1.2em] text-emerald-400 anim-copy-in drop-shadow-[0_0_8px_rgba(52,211,153,0.4)] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>`;
                     
-                    // Kéo dài thời gian hiển thị tick xanh lên 2s (Chuẩn UX)
                     setTimeout(() => { 
+                        // Khôi phục hiện trạng nguyên thủy
                         btnEl.innerHTML = oldHTML; 
+                        if (isIconTag) {
+                            btnEl.className = oldClasses;
+                        }
                         delete btnEl.dataset.copying;
                     }, 2000);
                 }
