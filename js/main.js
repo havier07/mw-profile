@@ -541,10 +541,11 @@ const app = {
             bioContent = `<p class="text-slate-200 leading-relaxed font-medium text-base whitespace-pre-wrap break-words">${parsedMood}</p>`;
         }
 
-        const box = "bg-white/[0.03] rounded-2xl p-4 border border-white/10 flex flex-col justify-between hover:bg-white/[0.07] hover:border-white/20 transition-all duration-200 active:scale-[0.98] group/box shadow-lg";
-        const row = "text-xs md:text-sm flex justify-between items-center py-1 border-b border-white/[0.03] last:border-0";
-        const lbl = "text-slate-400 flex items-center gap-2 truncate font-medium";
-        const val = "text-white font-semibold truncate ml-2 font-mono";
+        const box = "bg-white/[0.03] rounded-2xl p-4 border border-white/10 flex flex-col justify-between hover:bg-white/[0.07] hover:border-white/20 transition-all duration-200 active:scale-[0.98] group/box shadow-lg h-full";
+        const row = "text-xs md:text-sm flex justify-between items-start py-1.5 border-b border-white/[0.03] last:border-0";
+        const lbl = "text-slate-400 flex items-center gap-2 truncate font-medium mt-[1px] shrink-0";
+        const val = "text-white font-semibold truncate ml-2 font-mono text-right";
+        const valWrap = "text-white font-semibold ml-2 text-right flex-1 break-words leading-[1.2]"; 
         const ico = (cls, color) => `<i class="fa-solid ${cls} ${color} w-4 text-center shrink-0 text-xs md:text-sm group-hover/box:scale-110 transition-transform duration-200"></i>`;
 
         card.innerHTML = `
@@ -588,7 +589,7 @@ const app = {
                                 <i class="fa-solid fa-user-astronaut text-purple-400 text-sm"></i> NHÂN VẬT
                             </div>
                             <div class="space-y-0.5 flex-grow">
-                                <div class="${row}"><span class="${lbl}">${ico('fa-cube', 'text-purple-400')} Model</span><span class="${val}">${d.model}</span></div>
+                                <div class="${row}" data-tip="${mTip}"><span class="${lbl}">${ico('fa-cube', 'text-purple-400')} Model</span><span class="${valWrap} cursor-help hover:text-purple-300 transition-colors ${mClass}">${mText}</span></div>
                                 <div class="${row}"><span class="${lbl}">${ico('fa-shirt', 'text-pink-400')} Skin</span><span class="${val}" title="${d.skin}">${d.skin}</span></div>
                                 <div class="${row}"><span class="${lbl}">${ico('fa-heart', 'text-rose-400')} Fan</span><span class="${val} text-rose-300">${(d.funCount || 0).toLocaleString()}</span></div>
                                 <div class="${row}" data-tip="Phòng trưng bày Skin, DIY, Thần thú & Skin công cụ"><span class="${lbl}">${ico('fa-wand-magic-sparkles', 'text-amber-400')} MiniShow</span><span class="${val}">${d.miniShow}</span></div>
