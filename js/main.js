@@ -571,7 +571,7 @@ const app = {
         const row = "text-xs md:text-sm flex justify-between items-center py-1.5 gap-2 border-b border-white/[0.03] last:border-0";
         const lbl = "text-slate-400 flex items-center gap-2 truncate font-medium shrink-0";
         const val = "text-white font-semibold truncate font-mono text-right ml-auto";
-        const valWrap = "text-white font-semibold text-center break-words leading-[1.25] tracking-tight text-[11px] md:text-xs flex-1 min-w-0"; 
+        const valWrap = "text-white font-semibold text-right break-words leading-[1.25] tracking-tight text-[11px] md:text-xs flex-1 min-w-0"; 
         const ico = (cls, color) => `<i class="fa-solid ${cls} ${color} w-4 text-center shrink-0 text-xs md:text-sm group-hover/box:scale-110 transition-transform duration-200"></i>`;
 
         card.innerHTML = `
