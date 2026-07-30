@@ -908,27 +908,37 @@ const app = {
         const l = $("#history-list");
         if (!l) return;
         if (!this.history.length) { 
-            // UI/UX FIX: Trạng thái trống (Empty State) sang trọng
             l.innerHTML = `
                 <div class="col-span-2 flex flex-col items-center justify-center py-8 text-slate-500 opacity-50 select-none">
-                    <i class="fa-solid fa-ghost text-3xl mb-3"></i>
-                    <span class="text-xs font-bold uppercase tracking-widest">Lịch sử trống</span>
+                    <i class="fa-solid fa-ghost text-4xl mb-3"></i>
+                    <span class="text-sm font-bold uppercase tracking-widest">Lịch sử trống</span>
                 </div>`; 
             return; 
         }
 
         l.innerHTML = this.history.map((h) => `
-            <div class="hist-item group relative overflow-hidden rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition flex items-stretch justify-between p-2 gap-2" data-uid="${h.uid}">
-                <div class="flex-grow min-w-0 flex flex-col justify-center cursor-pointer py-0.5" onclick="app.search('${h.uid}')" title="Click để tra cứu ${h.uid}">
-                    <div class="font-bold text-sky-300 font-mono text-sm md:text-base group-hover:text-sky-200 transition truncate">${h.uid}</div>
-                    <div class="text-xs text-slate-400 truncate">${utils.escapeAttr(h.name)}</div>
+            <!-- Nâng cấp toàn diện Box Lịch sử: Bo góc sâu hơn, padding rộng hơn, viền chuyển màu mượt mà, toàn bộ box đều click được -->
+            <div class="hist-item group relative overflow-hidden rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] hover:border-white/20 transition-all duration-300 flex items-center justify-between p-3 md:p-3.5 gap-3 shadow-sm hover:shadow-sky-500/10 cursor-pointer" data-uid="${h.uid}" onclick="app.search('${h.uid}')" title="Click để tra cứu ${h.uid}">
+                
+                <!-- Nội dung chữ: Tăng size, làm đậm chữ và thu hẹp khoảng cách ký tự (tracking-tight) để khối số tròn trịa hơn -->
+                <div class="flex-grow min-w-0 flex flex-col justify-center pointer-events-none">
+                    <div class="font-extrabold text-sky-300 font-mono text-base md:text-lg tracking-tight group-hover:text-sky-200 transition-colors truncate drop-shadow-sm">${h.uid}</div>
+                    <div class="text-sm text-slate-400 font-medium truncate mt-0.5 group-hover:text-slate-300 transition-colors">${utils.escapeAttr(h.name)}</div>
                 </div>
-                <div class="flex flex-col justify-between items-center gap-1 pl-2 border-l border-white/10 shrink-0">
-                    <button onclick="utils.copy('${h.uid}', this, 'UID', event)" class="w-7 h-6 rounded-lg bg-white/5 hover:bg-sky-500/20 text-slate-400 hover:text-sky-300 active:scale-90 transition flex items-center justify-center text-xs" title="Sao chép UID">
-                        <i class="fa-regular fa-copy"></i>
+                
+                <!-- Cột Nút bấm: Ngăn sự kiện click lan ra ngoài (stopPropagation đã tích hợp trong hàm) -->
+                <div class="flex flex-col justify-center items-center gap-1.5 pl-3 border-l border-white/10 shrink-0 h-full" onclick="event.stopPropagation()">
+                    
+                    <!-- 🚀 ĐỒNG BỘ: Nâng cấp nút Copy thành chuẩn Animate-UI (Tick xanh mượt mà) -->
+                    <button onclick="utils.copy('${h.uid}', this, 'UID', event)" class="copy-wrapper w-8 h-7 rounded-xl bg-white/5 hover:bg-sky-500/20 text-slate-400 hover:text-sky-300 active:scale-90 transition-colors flex items-center justify-center outline-none shadow-sm" title="Sao chép UID">
+                        <svg class="copy-svg w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        <svg class="check-svg w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
                     </button>
-                    <button onclick="app.deleteHist('${h.uid}', event)" class="w-7 h-6 rounded-lg bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 active:scale-90 transition flex items-center justify-center text-xs" title="Xóa khỏi lịch sử">
-                        <i class="fa-solid fa-xmark"></i></button>
+                    
+                    <!-- Nút xóa: Đồng bộ bo góc rounded-xl -->
+                    <button onclick="app.deleteHist('${h.uid}', event)" class="w-8 h-7 rounded-xl bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 active:scale-90 transition-colors flex items-center justify-center outline-none shadow-sm" title="Xóa khỏi lịch sử">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
                 </div>
             </div>
         `).join("");
