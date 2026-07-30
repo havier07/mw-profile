@@ -85,84 +85,85 @@ const utils = {
                 html += tag;
                 continue;
             }
-
-            if (clean[i] !== '#') {
-                buffer += clean[i];
-                i++;
-                continue;
-            }
+            if (clean[i] !== '#') { buffer += clean[i]; i++; continue; }
 
             const nextChar = i + 1 < len ? clean[i + 1] : '';
-            if (nextChar === '#') {
-                buffer += '#';
-                i += 2;
-                continue;
-            }
+            if (nextChar === '#') { buffer += '#'; i += 2; continue; }
 
             flush();
             i++;
             if (i >= len) break;
             const cmd = clean[i];
 
-            if (COLOR_MAP[cmd]) {
-                color = COLOR_MAP[cmd];
-                i++;
-            } 
+            if (COLOR_MAP[cmd]) { color = COLOR_MAP[cmd]; i++; } 
             else if (cmd === 'c' || cmd === 'C') {
-                i++;
-                let hex = '';
-                while (i < len && hex.length < 6 && /[0-9a-fA-F]/.test(clean[i])) {
-                    hex += clean[i];
-                    i++;
-                }
+                i++; let hex = '';
+                while (i < len && hex.length < 6 && /[0-9a-fA-F]/.test(clean[i])) { hex += clean[i]; i++; }
                 if (hex.length > 0) color = '#' + hex;
             } 
             else if (cmd === 'A') {
-                i++;
-                let iconId = '';
-                while (i < len && iconId.length < 3 && /[0-9]/.test(clean[i])) {
-                    iconId += clean[i];
-                    i++;
-                }
+                i++; let iconId = '';
+                while (i < len && iconId.length < 3 && /[0-9]/.test(clean[i])) { iconId += clean[i]; i++; }
             } 
-            else if (cmd === 'L') {
-                isUnderline = true;
-                i++;
-            } 
-            else if (cmd === 'b') {
-                isBlink = true;
-                i++;
-            } 
-            else if (cmd === 'n') {
-                color = null;
-                isUnderline = false;
-                isBlink = false;
-                i++;
-            } 
-            else {
-                i++;
-            }
+            else if (cmd === 'L') { isUnderline = true; i++; } 
+            else if (cmd === 'b') { isBlink = true; i++; } 
+            else if (cmd === 'n') { color = null; isUnderline = false; isBlink = false; i++; } 
+            else { i++; }
         }
-        
         flush();
         return html;
     },
 
+    // 1. Khởi tạo Engine Animation Spring (Chạy 1 lần duy nhất)
+    injectCopyStyles: () => {
+        if (document.getElementById('anim-copy-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'anim-copy-styles';
+        // Sử dụng Cubic-bezier để tạo hiệu ứng "Nảy" (Overshoot Spring) đặc trưng của Animate-UI
+        style.innerHTML = `
+            @keyframes copy-check-in {
+                0% { transform: scale(0.3) rotate(-15deg); opacity: 0; }
+                50% { transform: scale(1.25) rotate(5deg); opacity: 1; }
+                100% { transform: scale(1.1) rotate(0deg); opacity: 1; }
+            }
+            .anim-copy-in {
+                animation: copy-check-in 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            }
+        `;
+        document.head.appendChild(style);
+    },
+
+    // 2. Logic Copy tích hợp Anti-Layout-Shift & Morphing
     copy: (txt, btnEl = null, label = "", e = null) => {
         if (e && e.stopPropagation) e.stopPropagation();
+        utils.injectCopyStyles();
+
         const t = document.createElement("textarea");
         t.value = txt; t.style.position = "fixed"; t.style.left = "-9999px";
         document.body.appendChild(t); t.focus(); t.select();
+        
         try {
             const success = document.execCommand("copy");
             if (success) {
                 const msg = label ? `Đã sao chép ${label}` : `Đã sao chép nội dung`;
                 app.toast(msg, "success");
                 
-                if (btnEl) {
+                if (btnEl && !btnEl.dataset.copying) {
+                    btnEl.dataset.copying = "true";
+                    
+                    // Đo lường và ĐÓNG BĂNG kích thước cũ để chống Layout Shift
+                    const w = btnEl.offsetWidth;
+                    const h = btnEl.offsetHeight;
                     const oldHTML = btnEl.innerHTML;
-                    btnEl.innerHTML = '<svg class="w-3.5 h-3.5 inline-block text-green-400 scale-125 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>';
-                    setTimeout(() => { btnEl.innerHTML = oldHTML; }, 1500);
+                    
+                    // Render SVG Checkmark mượt mà với hiệu ứng Glow nền
+                    btnEl.innerHTML = `<div class="flex items-center justify-center pointer-events-none" style="min-width:${w || 16}px; min-height:${h || 16}px;"><svg class="w-full h-full max-w-[1.1em] max-h-[1.1em] text-emerald-400 anim-copy-in drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg></div>`;
+                    
+                    // Kéo dài thời gian hiển thị tick xanh lên 2s (Chuẩn UX)
+                    setTimeout(() => { 
+                        btnEl.innerHTML = oldHTML; 
+                        delete btnEl.dataset.copying;
+                    }, 2000);
                 }
             } else {
                 app.toast("Lỗi sao chép vào Clipboard", "error");
@@ -664,7 +665,7 @@ const app = {
                 <div class="${box}">
                     <div class="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent opacity-0 group-hover/box:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                     <div class="text-[11px] font-bold text-yellow-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 border-b border-yellow-500/20 pb-1.5 relative z-10">
-                        <i class="fa-solid fa-user-graduate text-yellow-400 text-sm"></i> EXPERT
+                        <i class="fa-solid fa-user-graduate text-yellow-400 text-sm"></i> Người Sành Sỏi
                     </div>
                     <div class="space-y-0.5 flex-grow">
                         <div class="${row}"><span class="${lbl}">${ico('fa-medal', 'text-yellow-400')} Cấp</span><span class="${val} text-white">${d.eLvl}</span></div>
